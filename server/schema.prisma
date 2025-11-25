@@ -1,0 +1,220 @@
+// Prisma schema for SourcePlus Licensing Server
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(uuid())
+  name         String
+  email        String    @unique
+  passwordHash String
+  role         Role      @default(developer)
+  createdAt    DateTime  @default(now())
+  lastLoginAt  DateTime?
+  lastLoginIp  String?
+  sessions     Session[]
+  auditLogs    AuditLog[]
+  replies      SupportReply[]
+}
+
+model Session {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshToken String @unique
+  userAgent  String?
+  ip         String?
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+}
+
+model Plan {
+  id             String       @id @default(uuid())
+  name           String
+  durationMonths Int
+  priceUSD       Float
+  features       Json
+  deviceLimit    Int
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  prices         PlanPrice[]
+  licenses       License[]
+}
+
+model PlanPrice {
+  id       String  @id @default(uuid())
+  planId   String
+  plan     Plan    @relation(fields: [planId], references: [id], onDelete: Cascade)
+  currency String
+  amount   Float
+
+  @@unique([planId, currency])
+}
+
+model Currency {
+  id         String   @id @default(uuid())
+  code       String   @unique
+  rate       Float
+  symbol     String
+  lastUpdated DateTime @default(now())
+}
+
+model License {
+  id              String        @id @default(uuid())
+  serial          String        @unique
+  planId          String
+  plan            Plan          @relation(fields: [planId], references: [id], onDelete: Cascade)
+  customerName    String
+  deviceLimit     Int
+  activationCount Int           @default(0)
+  hardwareId      String?
+  activationDate  DateTime?
+  expireDate      DateTime?
+  status          LicenseStatus @default(pending)
+  lastRenewalDate DateTime?
+  isPaused        Boolean       @default(false)
+  lastCheckIn     DateTime?
+  createdAt       DateTime      @default(now())
+  transactions    Transaction[]
+  tickets         SupportTicket[]
+}
+
+model AppVersion {
+  id           String   @id @default(uuid())
+  version      String
+  releaseNotes String
+  downloadUrl  String
+  forceUpdate  Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  releaseDate  DateTime @default(now())
+  createdAt    DateTime @default(now())
+}
+
+model Notification {
+  id           String   @id @default(uuid())
+  title        String
+  body         String
+  targetSerial String?
+  channel      String?
+  isRead       Boolean  @default(false)
+  sentAt       DateTime @default(now())
+}
+
+model SupportTicket {
+  id            String       @id @default(uuid())
+  licenseId     String?
+  license       License?     @relation(fields: [licenseId], references: [id], onDelete: SetNull)
+  serial        String
+  hardwareId    String
+  deviceName    String
+  systemVersion String
+  phoneNumber   String
+  appVersion    String
+  description   String
+  status        TicketStatus @default(open)
+  adminReply    String?
+  replyAt       DateTime?
+  createdAt     DateTime     @default(now())
+  replies       SupportReply[]
+  attachments   Attachment[]
+}
+
+model SupportReply {
+  id        String   @id @default(uuid())
+  ticketId  String
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  message   String
+  createdAt DateTime @default(now())
+}
+
+model Attachment {
+  id         String   @id @default(uuid())
+  ticketId   String
+  ticket     SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  path       String
+  mimeType   String
+  size       Int
+  createdAt  DateTime @default(now())
+}
+
+model Transaction {
+  id           String             @id @default(uuid())
+  licenseId    String?
+  license      License?           @relation(fields: [licenseId], references: [id], onDelete: SetNull)
+  customerName String
+  planName     String
+  amount       Float
+  currency     String
+  type         TransactionType
+  status       TransactionStatus  @default(completed)
+  reference    String?
+  date         DateTime           @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  details   String
+  ipAddress String?
+  createdAt DateTime @default(now())
+}
+
+model SystemSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model RemoteConfig {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     Json
+  description String?
+  updatedAt DateTime @updatedAt
+}
+
+enum Role {
+  admin
+  developer
+  viewer
+}
+
+enum LicenseStatus {
+  active
+  expired
+  revoked
+  pending
+  paused
+}
+
+enum TicketStatus {
+  open
+  in_progress
+  resolved
+}
+
+enum TransactionType {
+  purchase
+  renewal
+  refund
+  adjustment
+}
+
+enum TransactionStatus {
+  completed
+  pending
+  failed
+  cancelled
+}

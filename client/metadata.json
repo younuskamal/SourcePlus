@@ -1,0 +1,5 @@
+{
+  "name": "SourcePlus Licensing Server",
+  "description": "A centralized dashboard to manage POS application licenses, subscriptions, updates, and support tickets with a simulated PostgreSQL backend structure.",
+  "requestFramePermissions": []
+}
