@@ -18,7 +18,11 @@ const getPrisma = () => {
     if (!connectionString) {
       throw new Error('DATABASE_URL is required for Prisma');
     }
-    pool = new pg.Pool({ connectionString });
+    const isLocal = connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
+    pool = new pg.Pool({
+      connectionString,
+      ssl: isLocal ? false : { rejectUnauthorized: false }
+    });
     const adapter = new PrismaPg(pool);
     prisma = new PrismaClient({ adapter });
   }
