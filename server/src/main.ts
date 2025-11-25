@@ -19,6 +19,7 @@ const buildServer = () => {
 
   app.register(cors, {
     origin: ['https://sourcef.onrender.com'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true
   });
   app.register(sensible);
@@ -58,6 +59,7 @@ const start = async () => {
   const port = Number(process.env.PORT) || 3001;
   try {
     await app.ready();
+    await app.prisma.$connect();
     await ensureAdminSeed(app);
     await app.listen({ port, host: '0.0.0.0' });
     app.log.info(`Server running on port ${port}`);

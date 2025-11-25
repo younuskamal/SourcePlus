@@ -22,13 +22,14 @@ export const logAudit = async (
 
 export const ensureAdminSeed = async (app: FastifyInstance) => {
   try {
-    const passwordHash = await argon2.hash('Admin12345');
+    const passwordHash = await argon2.hash('Admin123!');
+
     await app.prisma.user.upsert({
       where: { email: 'admin@sourceplus.com' },
       update: {
+        name: 'Main Admin',
         passwordHash,
-        role: Role.admin,
-        name: 'Main Admin'
+        role: Role.admin
       },
       create: {
         name: 'Main Admin',
@@ -37,7 +38,7 @@ export const ensureAdminSeed = async (app: FastifyInstance) => {
         role: Role.admin
       }
     });
-    app.log.info('Ensured default admin user exists');
+    app.log.info('Ensured admin@sourceplus.com with password Admin123!');
   } catch (err: any) {
     if (err?.code === 'P2021' || err?.code === 'P1010') {
       app.log.warn({ err }, 'Database not ready or access denied; skipping admin seed');
