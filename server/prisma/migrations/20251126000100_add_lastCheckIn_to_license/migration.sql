@@ -1,0 +1,2 @@
+ALTER TABLE "License" ADD COLUMN "lastCheckIn" TIMESTAMP(3);
+
