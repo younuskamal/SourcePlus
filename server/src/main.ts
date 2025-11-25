@@ -8,7 +8,7 @@ import { ZodError } from 'zod';
 import authPlugin from './plugins/auth.js';
 import prismaPlugin from './plugins/prisma.js';
 import { registerRoutes } from './routes.js';
-import { ensureAdminSeed } from './utils/audit.js';
+import { runSeed } from './seed.js';
 
 dotenv.config();
 
@@ -60,7 +60,7 @@ const start = async () => {
   try {
     await app.ready();
     await app.prisma.$connect();
-    await ensureAdminSeed(app);
+    await runSeed(app);
     await app.listen({ port, host: '0.0.0.0' });
     app.log.info(`Server running on port ${port}`);
   } catch (err) {

@@ -1,7 +1,6 @@
 import { FastifyInstance } from 'fastify';
-import argon2 from 'argon2';
+import bcrypt from 'bcrypt';
 import { z } from 'zod';
-import { Role } from '@prisma/client';
 import { logAudit } from '../../utils/audit.js';
 
 const loginSchema = z.object({
@@ -15,11 +14,17 @@ export default async function authRoutes(app: FastifyInstance) {
     const user = await app.prisma.user.findUnique({ where: { email } });
     if (!user) return reply.code(401).send({ message: 'Invalid credentials' });
 
-    const valid = await argon2.verify(user.passwordHash, password);
+    const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) return reply.code(401).send({ message: 'Invalid credentials' });
 
-    const accessToken = app.jwt.sign({ id: user.id, role: user.role, email: user.email }, { expiresIn: '15m' });
-    const refreshToken = app.jwt.sign({ id: user.id, role: user.role, email: user.email }, { expiresIn: '7d' });
+    const accessToken = app.jwt.sign(
+      { id: user.id, role: user.role, email: user.email },
+      { expiresIn: '15m' }
+    );
+    const refreshToken = app.jwt.sign(
+      { id: user.id, role: user.role, email: user.email },
+      { expiresIn: '7d' }
+    );
 
     await app.prisma.session.create({
       data: {
@@ -36,12 +41,22 @@ export default async function authRoutes(app: FastifyInstance) {
       data: { lastLoginAt: new Date(), lastLoginIp: request.ip }
     });
 
-    await logAudit(app, { userId: user.id, action: 'LOGIN', details: `User ${email} logged in`, ip: request.ip });
+    await logAudit(app, {
+      userId: user.id,
+      action: 'LOGIN',
+      details: `User ${email} logged in`,
+      ip: request.ip
+    });
 
     return reply.send({
       accessToken,
       refreshToken,
-      user: { id: user.id, name: user.name, email: user.email, role: user.role }
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
     });
   });
 
