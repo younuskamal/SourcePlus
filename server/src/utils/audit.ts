@@ -22,22 +22,25 @@ export const logAudit = async (
 
 export const ensureAdminSeed = async (app: FastifyInstance) => {
   try {
-    const count = await app.prisma.user.count();
-    if (count === 0) {
-      const passwordHash = await argon2.hash('Admin@123');
-      await app.prisma.user.create({
-        data: {
-          name: 'Admin User',
-          email: 'admin@sourceplus.com',
-          passwordHash,
-          role: Role.admin
-        }
-      });
-      app.log.info('Seeded default admin user');
-    }
+    const passwordHash = await argon2.hash('Admin12345');
+    await app.prisma.user.upsert({
+      where: { email: 'admin@sourceplus.com' },
+      update: {
+        passwordHash,
+        role: Role.admin,
+        name: 'Main Admin'
+      },
+      create: {
+        name: 'Main Admin',
+        email: 'admin@sourceplus.com',
+        passwordHash,
+        role: Role.admin
+      }
+    });
+    app.log.info('Ensured default admin user exists');
   } catch (err: any) {
-    if (err?.code === 'P2021') {
-      app.log.warn('Database not migrated yet; skipping admin seed');
+    if (err?.code === 'P2021' || err?.code === 'P1010') {
+      app.log.warn({ err }, 'Database not ready or access denied; skipping admin seed');
       return;
     }
     app.log.error({ err }, 'Admin seed failed');

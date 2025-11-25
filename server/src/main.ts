@@ -26,7 +26,8 @@ const buildServer = () => {
   app.register(prismaPlugin);
   app.register(authPlugin);
 
-  app.get('/health', async () => ({ status: 'ok' }));
+  app.get('/', async () => ({ status: 'ok' }));
+  app.get('/health', async () => ({ healthy: true }));
 
   registerRoutes(app);
 
