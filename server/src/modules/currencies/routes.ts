@@ -34,8 +34,8 @@ export default async function currencyRoutes(app: FastifyInstance) {
         });
         
         if (response.ok) {
-          const data = await response.json();
-          if (data && data.rates) {
+          const data = await response.json() as { rates?: Record<string, number> };
+          if (data?.rates) {
             ratesMap = data.rates;
             synced = true;
           }

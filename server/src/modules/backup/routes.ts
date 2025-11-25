@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
-import { z } from 'zod';
 import { Role } from '@prisma/client';
 import fs from 'fs/promises';
+import { createReadStream } from 'fs';
 import path from 'path';
 import { logAudit } from '../../utils/audit.js';
 
@@ -64,11 +64,11 @@ export default async function backupRoutes(app: FastifyInstance) {
                 remoteConfigs
             ] = await app.prisma.$transaction([
                 app.prisma.user.findMany(),
-                app.prisma.subscriptionPlan.findMany({ include: { prices: true } }),
+                app.prisma.plan.findMany({ include: { prices: true } }),
                 app.prisma.currency.findMany(),
                 app.prisma.license.findMany(),
                 app.prisma.transaction.findMany(),
-                app.prisma.supportTicket.findMany({ include: { messages: true } }),
+                app.prisma.supportTicket.findMany({ include: { replies: true, attachments: true } }),
                 app.prisma.notification.findMany(),
                 app.prisma.auditLog.findMany(),
                 app.prisma.systemSetting.findMany(),
@@ -126,15 +126,13 @@ export default async function backupRoutes(app: FastifyInstance) {
                 await tx.auditLog.deleteMany();
                 await tx.notification.deleteMany();
                 await tx.transaction.deleteMany(); // Depends on License, Plan, User
-                await tx.license.deleteMany();     // Depends on Plan, User
-                // Support tickets have messages, need to delete messages first if cascade isn't set, 
-                // but schema usually handles cascade or we delete ticket which cascades.
-                // Assuming cascade or simple delete:
-                await tx.supportMessage.deleteMany();
+                await tx.attachment.deleteMany();
+                await tx.supportReply.deleteMany();
                 await tx.supportTicket.deleteMany();
+                await tx.license.deleteMany();     // Depends on Plan, User
 
                 await tx.planPrice.deleteMany();
-                await tx.subscriptionPlan.deleteMany();
+                await tx.plan.deleteMany();
 
                 await tx.currency.deleteMany();
                 await tx.user.deleteMany();
@@ -157,12 +155,12 @@ export default async function backupRoutes(app: FastifyInstance) {
                 // createMany does NOT support nested relations. We must loop.
                 for (const plan of data.plans || []) {
                     const { prices, ...planData } = plan;
-                    await tx.subscriptionPlan.create({
+                    await tx.plan.create({
                         data: {
                             ...planData,
-                            prices: {
+                            prices: prices?.length ? {
                                 create: prices
-                            }
+                            } : undefined
                         }
                     });
                 }
@@ -181,13 +179,13 @@ export default async function backupRoutes(app: FastifyInstance) {
 
                 // Support Tickets (Loop for nested messages)
                 for (const ticket of data.supportTickets || []) {
-                    const { messages, ...ticketData } = ticket;
+                    const { messages, replies, attachments, ...ticketData } = ticket as any;
+                    const replyData = replies ?? messages;
                     await tx.supportTicket.create({
                         data: {
                             ...ticketData,
-                            messages: {
-                                create: messages
-                            }
+                            replies: replyData?.length ? { create: replyData } : undefined,
+                            attachments: attachments?.length ? { create: attachments } : undefined
                         }
                     });
                 }
@@ -221,7 +219,15 @@ export default async function backupRoutes(app: FastifyInstance) {
     app.get('/download/:filename', { preHandler: [app.authorize([Role.admin])] }, async (request, reply) => {
         const { filename } = request.params as { filename: string };
         const filepath = path.join(BACKUP_DIR, filename);
-        return reply.download(filename, filepath); // Requires fastify-static or manual stream
+        try {
+            await fs.access(filepath);
+        } catch {
+            return reply.code(404).send({ message: 'File not found' });
+        }
+
+        reply.header('Content-Type', 'application/json');
+        reply.header('Content-Disposition', `attachment; filename="${filename}"`);
+        return reply.send(createReadStream(filepath));
     });
 
     // Upload Backup

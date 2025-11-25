@@ -1,18 +1,17 @@
 import fp from 'fastify-plugin';
 import { Role } from '@prisma/client';
 
+declare module '@fastify/jwt' {
+  interface FastifyJWT {
+    payload: { id: string; email: string; role: Role };
+    user: { id: string; email: string; role: Role };
+  }
+}
+
 declare module 'fastify' {
   interface FastifyInstance {
     authenticate: any;
     authorize: (roles?: Role[]) => any;
-  }
-
-  interface FastifyRequest {
-    user?: {
-      id: string;
-      email: string;
-      role: Role;
-    };
   }
 }
 
@@ -20,7 +19,6 @@ export default fp(async (app) => {
   app.decorate('authenticate', async (request: any, reply: any) => {
     try {
       await request.jwtVerify();
-      request.user = request.user as any;
     } catch (err) {
       reply.code(401).send({ message: 'Unauthorized' });
     }
