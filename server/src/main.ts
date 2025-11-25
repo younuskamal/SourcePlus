@@ -17,7 +17,10 @@ const buildServer = () => {
     logger: true
   });
 
-  app.register(cors, { origin: true });
+  app.register(cors, {
+    origin: ['https://sourcef.onrender.com'],
+    credentials: true
+  });
   app.register(sensible);
   app.register(multipart);
   app.register(jwt, {

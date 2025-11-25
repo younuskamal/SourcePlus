@@ -6,6 +6,10 @@ dotenv.config();
 export default defineConfig({
   schema: './prisma/schema.prisma',
   datasource: {
-    url: process.env.DATABASE_URL!,
+    url: (() => {
+      const base = process.env.DATABASE_URL!;
+      if (base.includes('sslmode=')) return base;
+      return base.includes('?') ? `${base}&sslmode=require` : `${base}?sslmode=require`;
+    })(),
   },
 });

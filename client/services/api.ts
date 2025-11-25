@@ -1,6 +1,8 @@
 import { LicenseKey, SubscriptionPlan, CurrencyRate, Notification, SupportRequest, AppVersion, SystemSettings, AuditLog, Transaction, User } from '../types';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  'https://sourceplus.onrender.com';
 
 const getStorage = () => ({
   accessToken: localStorage.getItem('sp_access_token'),
