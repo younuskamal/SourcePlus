@@ -40,6 +40,8 @@ const Endpoint = ({ method, url, description, payload, response }: any) => (
   </div>
 );
 
+const LICENSING_BASE = 'https://sourceplus.onrender.com/api';
+
 const ApiDocs: React.FC<ApiDocsProps> = ({ currentLang }) => {
   const t = translations[currentLang];
 
@@ -50,6 +52,32 @@ const ApiDocs: React.FC<ApiDocsProps> = ({ currentLang }) => {
         <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg">Integration guide for POS clients to connect with SourcePlus Server.</p>
       </div>
 
+      <section className="mb-10">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-6 space-y-4">
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Integration Checklist / تعليمات الربط</h2>
+          <ol className="list-decimal list-inside text-slate-600 dark:text-slate-300 space-y-2 text-sm">
+            <li>
+              <strong>Base URL:</strong> استخدم <code className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">{LICENSING_BASE}</code> ثم أضف أي مسار من القائمة أدناه (مثال: <code className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">{LICENSING_BASE}/license/validate</code>).
+            </li>
+            <li>أرسل كل الطلبات بصيغة JSON مع الترويسة <code className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">Content-Type: application/json</code>.</li>
+            <li>خزن الرقم التسلسلي (serial) و Hardware ID في تطبيقك، واستعملهما في نداءات التحقق والتفعيل.</li>
+            <li>تحقق من حقل <code>forceLogout</code> أو <code>forceUpdate</code> لإجبار المستخدم على الخروج أو التحديث.</li>
+            <li>التزم بمهلة (timeout) قصيرة وأعد المحاولة عند فشل الشبكة لضمان تجربة سلسة.</li>
+          </ol>
+
+          <div>
+            <p className="text-xs uppercase tracking-widest font-bold text-slate-500 dark:text-slate-400 mb-2">Sample Request</p>
+            <pre className="bg-slate-900 text-slate-100 text-xs p-4 rounded-xl overflow-x-auto border border-slate-800">
+{`fetch('${LICENSING_BASE}/license/validate', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ serial: 'SP-2024-XXXX-YYYY' })
+}).then(res => res.json());`}
+            </pre>
+          </div>
+        </div>
+      </section>
+
       <section className="mb-12">
         <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
           <span className="w-8 h-8 rounded-full bg-sky-100 dark:bg-sky-900/50 text-sky-600 dark:text-sky-400 flex items-center justify-center text-sm">1</span>
@@ -58,7 +86,7 @@ const ApiDocs: React.FC<ApiDocsProps> = ({ currentLang }) => {
         
         <Endpoint 
           method="POST"
-          url="/license/validate"
+          url="/api/license/validate"
           description="Check if a serial number exists and is valid. Does not bind the device."
           payload={`{
   "serial": "SP-2024-XXXX-YYYY"
@@ -76,7 +104,7 @@ const ApiDocs: React.FC<ApiDocsProps> = ({ currentLang }) => {
 
         <Endpoint 
           method="POST"
-          url="/license/activate"
+          url="/api/license/activate"
           description="Activates the license on the current device. This locks the license to the Hardware ID (HWID)."
           payload={`{
   "serial": "SP-2024-XXXX-YYYY",
@@ -93,7 +121,7 @@ const ApiDocs: React.FC<ApiDocsProps> = ({ currentLang }) => {
 
         <Endpoint 
            method="GET"
-           url="/subscription/status"
+           url="/api/subscription/status"
            description="Call this on every app startup to verify access permission."
            response={`{
    "status": "active",
@@ -110,7 +138,7 @@ const ApiDocs: React.FC<ApiDocsProps> = ({ currentLang }) => {
         </h2>
         <Endpoint 
           method="GET"
-          url="/app/update?version=1.0.0"
+          url="/api/app/update?version=1.0.0"
           description="Check for new application versions."
           response={`{
   "hasUpdate": true,
@@ -123,7 +151,7 @@ const ApiDocs: React.FC<ApiDocsProps> = ({ currentLang }) => {
 
          <Endpoint 
           method="GET"
-          url="/config/sync"
+          url="/api/config/sync"
           description="Fetch remote configuration keys (Feature flags, maintenance mode)."
           response={`{
   "maintenance_mode": false,
@@ -142,7 +170,7 @@ const ApiDocs: React.FC<ApiDocsProps> = ({ currentLang }) => {
         </h2>
         <Endpoint 
           method="POST"
-          url="/support/request"
+          url="/api/support/request"
           description="Submit a support ticket directly from the POS."
           payload={`{
   "serial": "SP-...",

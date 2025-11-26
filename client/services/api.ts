@@ -77,6 +77,9 @@ export const api = {
   async logout() {
     clearTokens();
   },
+  async ping() {
+    return doRequest<{ healthy: boolean }>('/health', {}, false);
+  },
   getLicenses() {
     return doRequest<(LicenseKey & { plan?: SubscriptionPlan })[]>('/licenses');
   },

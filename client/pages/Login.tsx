@@ -1,8 +1,17 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { User } from '../types';
 import { translations, Language } from '../locales';
-import { Lock, Mail, ArrowRight, Server, AlertCircle } from 'lucide-react';
+import {
+  Lock,
+  Mail,
+  ArrowRight,
+  Server,
+  AlertCircle,
+  Loader2,
+  CheckCircle2,
+  WifiOff
+} from 'lucide-react';
 import { api } from '../services/api';
 
 interface LoginProps {
@@ -12,17 +21,45 @@ interface LoginProps {
 
 const Login: React.FC<LoginProps> = ({ onLogin, currentLang }) => {
   const t = translations[currentLang];
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState('admin@sourceplus.com');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [serverStatus, setServerStatus] = useState<
+    'checking' | 'online' | 'offline'
+  >('checking');
+  const [latency, setLatency] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const pingServer = async () => {
+      try {
+        const started = performance.now();
+        await api.ping();
+        if (cancelled) return;
+        setLatency(Math.round(performance.now() - started));
+        setServerStatus('online');
+      } catch {
+        if (!cancelled) setServerStatus('offline');
+      }
+    };
+    pingServer();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      setIsLoading(true);
+      setError('');
       const user = await api.login(email, password);
       onLogin(user as unknown as User);
     } catch (err: any) {
       setError(err?.message || t.loginError);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -49,7 +86,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, currentLang }) => {
 
           {error && (
             <div className="bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 px-4 py-3 rounded-lg text-sm flex items-center gap-2 border border-rose-100 dark:border-rose-900">
-              <div className="w-2 h-2 rounded-full bg-rose-500"></div>
+              <AlertCircle size={16} />
               {error}
             </div>
           )}
@@ -63,6 +100,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, currentLang }) => {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  autoFocus
                   className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none transition-all"
                   required
                 />
@@ -84,12 +122,51 @@ const Login: React.FC<LoginProps> = ({ onLogin, currentLang }) => {
             </div>
           </div>
 
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+            <div className="flex items-center gap-1.5">
+              {serverStatus === 'online' && (
+                <CheckCircle2 className="text-emerald-500" size={14} />
+              )}
+              {serverStatus === 'checking' && (
+                <Loader2 className="text-sky-500 animate-spin" size={14} />
+              )}
+              {serverStatus === 'offline' && (
+                <WifiOff className="text-rose-500" size={14} />
+              )}
+              <span>
+                {serverStatus === 'online'
+                  ? 'Server connected'
+                  : serverStatus === 'checking'
+                  ? 'Checking server...'
+                  : 'Server offline'}
+              </span>
+            </div>
+            {latency !== null && serverStatus === 'online' && (
+              <span>{latency} ms</span>
+            )}
+          </div>
+
+          <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-900/40 text-xs text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+            <p className="font-semibold mb-1">Default Admin</p>
+            <p>admin@sourceplus.com / Admin12345</p>
+          </div>
+
           <button
             type="submit"
-            className="w-full bg-sky-600 hover:bg-sky-700 text-white font-medium py-2.5 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md shadow-sky-600/20 active:scale-[0.98]"
+            disabled={isLoading}
+            className="w-full bg-sky-600 hover:bg-sky-700 disabled:bg-slate-400 text-white font-medium py-2.5 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md shadow-sky-600/20 active:scale-[0.98] disabled:cursor-not-allowed"
           >
-            <span>{t.loginButton}</span>
-            <ArrowRight size={18} />
+            {isLoading ? (
+              <>
+                <Loader2 className="animate-spin" size={18} />
+                <span>Signing in...</span>
+              </>
+            ) : (
+              <>
+                <span>{t.loginButton}</span>
+                <ArrowRight size={18} />
+              </>
+            )}
           </button>
         </form>
       </div>
