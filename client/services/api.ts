@@ -155,6 +155,9 @@ export const api = {
   resolveTicket(id: string) {
     return doRequest(`/tickets/${id}/resolve`, { method: 'POST' });
   },
+  deleteTicket(id: string) {
+    return doRequest<void>(`/tickets/${id}`, { method: 'DELETE' });
+  },
   getVersions() {
     return doRequest<AppVersion[]>('/versions');
   },

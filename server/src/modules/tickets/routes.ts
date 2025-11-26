@@ -46,6 +46,13 @@ export default async function ticketRoutes(app: FastifyInstance) {
     return reply.send(ticket);
   });
 
+  app.delete('/:id', { preHandler: [app.authorize([Role.admin, Role.developer])]}, async (request, reply) => {
+    const id = (request.params as { id: string }).id;
+    await app.prisma.supportTicket.delete({ where: { id } });
+    await logAudit(app, { userId: request.user?.id, action: 'DELETE_TICKET', details: id, ip: request.ip });
+    return reply.code(204).send();
+  });
+
   // Attachment upload (local disk placeholder)
   app.post('/:id/attachments', { preHandler: [app.authenticate] }, async (request, reply) => {
     const parts = request.parts();

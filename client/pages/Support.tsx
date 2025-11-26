@@ -1,8 +1,9 @@
 
 import React, { useEffect, useState } from 'react';
+import ConfirmModal from '../components/ConfirmModal';
 import { translations, Language } from '../locales';
 import { SupportRequest } from '../types';
-import { MessageSquare, CheckCircle, Monitor, HardDrive, Phone, Clock, Search, Send, User } from 'lucide-react';
+import { MessageSquare, CheckCircle, Monitor, HardDrive, Phone, Clock, Search, Send, User, Trash2 } from 'lucide-react';
 import { api } from '../services/api';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
@@ -16,6 +17,7 @@ const Support: React.FC<SupportProps> = ({ currentLang }) => {
   const [tickets, setTickets] = useState<SupportRequest[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<SupportRequest | null>(null);
   const [replyText, setReplyText] = useState('');
+  const [deleteTicketId, setDeleteTicketId] = useState<string | null>(null);
 
   useEffect(() => {
     api.getTickets().then(setTickets).catch(console.error);
@@ -39,6 +41,23 @@ const Support: React.FC<SupportProps> = ({ currentLang }) => {
         setSelectedTicket(null);
       });
     }
+  };
+
+  const requestDelete = (id: string) => {
+    setDeleteTicketId(id);
+  };
+
+  const confirmDelete = () => {
+    if (!deleteTicketId) return;
+    api.deleteTicket(deleteTicketId).then(async () => {
+      const updated = await api.getTickets();
+      setTickets(updated);
+      requestRefresh();
+      if (selectedTicket?.id === deleteTicketId) {
+        setSelectedTicket(null);
+      }
+      setDeleteTicketId(null);
+    });
   };
 
   const getStatusColor = (status: string) => {
@@ -97,7 +116,26 @@ const Support: React.FC<SupportProps> = ({ currentLang }) => {
                     </td>
                     <td className="px-6 py-4 max-w-xs truncate text-slate-700 dark:text-slate-300">{ticket.description}</td>
                     <td className="px-6 py-4 text-right">
-                       <button className="text-sky-600 dark:text-sky-400 hover:underline text-xs font-bold">View</button>
+                       <div className="flex justify-end gap-3 text-xs">
+                         <button
+                           className="text-sky-600 dark:text-sky-400 hover:underline font-bold"
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             setSelectedTicket(ticket);
+                           }}
+                         >
+                           View
+                         </button>
+                         <button
+                           className="text-rose-600 dark:text-rose-400 hover:underline font-bold flex items-center gap-1"
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             requestDelete(ticket.id);
+                           }}
+                         >
+                           <Trash2 size={12} /> Delete
+                         </button>
+                       </div>
                     </td>
                   </tr>
                 ))
@@ -185,12 +223,18 @@ const Support: React.FC<SupportProps> = ({ currentLang }) => {
                       >
                          <Send size={16} /> {t.reply}
                       </button>
-                      <button 
-                         onClick={() => handleResolve(selectedTicket.id)}
-                         className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-medium flex items-center gap-2"
-                      >
-                         <CheckCircle size={16} /> {t.resolve}
-                      </button>
+                     <button 
+                        onClick={() => handleResolve(selectedTicket.id)}
+                        className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-medium flex items-center gap-2"
+                     >
+                        <CheckCircle size={16} /> {t.resolve}
+                     </button>
+                     <button
+                        onClick={() => requestDelete(selectedTicket.id)}
+                        className="px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 text-sm font-medium flex items-center gap-2"
+                     >
+                        <Trash2 size={16} /> Delete
+                     </button>
                    </div>
                 ) : (
                    <div className="text-center text-sm text-emerald-600 dark:text-emerald-400 font-medium flex items-center justify-center gap-2">
@@ -201,6 +245,16 @@ const Support: React.FC<SupportProps> = ({ currentLang }) => {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={!!deleteTicketId}
+        onClose={() => setDeleteTicketId(null)}
+        onConfirm={confirmDelete}
+        title="Delete Ticket"
+        message="Are you sure you want to permanently remove this support ticket?"
+        confirmText="Delete"
+        type="danger"
+      />
     </div>
   );
 };
