@@ -234,5 +234,15 @@ export const api = {
     const formData = new FormData();
     formData.append('file', file);
     return doRequest<{ message: string; filename: string }>('/backup/upload', { method: 'POST', body: formData });
+  },
+  getTrafficLogs(params?: any) {
+    const queryString = params ? '?' + new URLSearchParams(params).toString() : '';
+    return doRequest<any>(`/traffic${queryString}`);
+  },
+  getTrafficLogDetails(id: string) {
+    return doRequest<any>(`/traffic/${id}`);
+  },
+  clearTrafficLogs() {
+    return doRequest<void>('/traffic/clear', { method: 'POST' });
   }
 };

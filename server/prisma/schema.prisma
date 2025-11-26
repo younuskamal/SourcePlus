@@ -211,6 +211,27 @@ model Config {
   updatedAt         DateTime  @updatedAt
 }
 
+model TrafficLog {
+  id         String   @id @default(uuid())
+  timestamp  DateTime @default(now())
+  method     String
+  endpoint   String
+  status     Int
+  serial     String?
+  hardwareId String?
+  ipAddress  String?
+  userAgent  String?
+  payload    Json?
+  response   Json?
+  durationMs Float?
+
+  @@index([timestamp])
+  @@index([method])
+  @@index([status])
+  @@index([serial])
+  @@index([endpoint])
+}
+
 enum Role {
   admin
   developer

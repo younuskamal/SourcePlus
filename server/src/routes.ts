@@ -13,6 +13,8 @@ import analyticsRoutes from './modules/analytics/routes.js';
 import backupRoutes from './modules/backup/routes.js';
 import clientRoutes from './modules/client/routes.js';
 
+import { trafficRoutes } from './modules/traffic/traffic.routes.js';
+
 export const registerRoutes = (app: FastifyInstance) => {
   app.register(authRoutes, { prefix: '/auth' });
   app.register(userRoutes, { prefix: '/users' });
@@ -27,4 +29,5 @@ export const registerRoutes = (app: FastifyInstance) => {
   app.register(analyticsRoutes, { prefix: '/analytics' });
   app.register(backupRoutes, { prefix: '/backup' });
   app.register(clientRoutes, { prefix: '/client' });
+  app.register(trafficRoutes, { prefix: '/traffic' });
 };
