@@ -69,6 +69,30 @@ const Support: React.FC<SupportProps> = ({ currentLang }) => {
     }
   };
 
+  const ActionButton = ({
+    children,
+    onClick,
+    variant = 'default'
+  }: {
+    children: React.ReactNode;
+    onClick: (event: React.MouseEvent) => void;
+    variant?: 'default' | 'danger';
+  }) => {
+    const colorClasses =
+      variant === 'danger'
+        ? 'text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-900/30 border border-rose-200/70 dark:border-rose-800/50'
+        : 'text-slate-600 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/50 border border-slate-200/70 dark:border-slate-700/70';
+
+    return (
+      <button
+        onClick={onClick}
+        className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${colorClasses}`}
+      >
+        {children}
+      </button>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -106,7 +130,11 @@ const Support: React.FC<SupportProps> = ({ currentLang }) => {
                 </tr>
               ) : (
                 tickets.map((ticket) => (
-                  <tr key={ticket.id} className="hover:bg-sky-50/30 dark:hover:bg-sky-900/10 transition-colors cursor-pointer" onClick={() => setSelectedTicket(ticket)}>
+                  <tr
+                    key={ticket.id}
+                    className="hover:bg-sky-50/30 dark:hover:bg-sky-900/10 transition-colors cursor-pointer"
+                    onClick={() => setSelectedTicket(ticket)}
+                  >
                     <td className="px-6 py-4 font-mono font-medium text-slate-900 dark:text-white">{ticket.serial}</td>
                     <td className="px-6 py-4 font-mono">{ticket.phoneNumber}</td>
                     <td className="px-6 py-4">
@@ -116,25 +144,25 @@ const Support: React.FC<SupportProps> = ({ currentLang }) => {
                     </td>
                     <td className="px-6 py-4 max-w-xs truncate text-slate-700 dark:text-slate-300">{ticket.description}</td>
                     <td className="px-6 py-4 text-right">
-                       <div className="flex justify-end gap-3 text-xs">
-                         <button
-                           className="text-sky-600 dark:text-sky-400 hover:underline font-bold"
+                       <div className="flex justify-end gap-2">
+                         <ActionButton
                            onClick={(e) => {
                              e.stopPropagation();
                              setSelectedTicket(ticket);
                            }}
                          >
+                           <span className="w-1.5 h-1.5 rounded-full bg-sky-500" />
                            View
-                         </button>
-                         <button
-                           className="text-rose-600 dark:text-rose-400 hover:underline font-bold flex items-center gap-1"
+                         </ActionButton>
+                         <ActionButton
+                           variant="danger"
                            onClick={(e) => {
                              e.stopPropagation();
                              requestDelete(ticket.id);
                            }}
                          >
                            <Trash2 size={12} /> Delete
-                         </button>
+                         </ActionButton>
                        </div>
                     </td>
                   </tr>
@@ -223,18 +251,18 @@ const Support: React.FC<SupportProps> = ({ currentLang }) => {
                       >
                          <Send size={16} /> {t.reply}
                       </button>
-                     <button 
+                      <button 
                         onClick={() => handleResolve(selectedTicket.id)}
                         className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-medium flex items-center gap-2"
-                     >
-                        <CheckCircle size={16} /> {t.resolve}
-                     </button>
-                     <button
+                      >
+                         <CheckCircle size={16} /> {t.resolve}
+                      </button>
+                      <button
                         onClick={() => requestDelete(selectedTicket.id)}
                         className="px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 text-sm font-medium flex items-center gap-2"
-                     >
-                        <Trash2 size={16} /> Delete
-                     </button>
+                      >
+                         <Trash2 size={16} /> Delete
+                      </button>
                    </div>
                 ) : (
                    <div className="text-center text-sm text-emerald-600 dark:text-emerald-400 font-medium flex items-center justify-center gap-2">
@@ -251,7 +279,7 @@ const Support: React.FC<SupportProps> = ({ currentLang }) => {
         onClose={() => setDeleteTicketId(null)}
         onConfirm={confirmDelete}
         title="Delete Ticket"
-        message="Are you sure you want to permanently remove this support ticket?"
+        message={`Are you sure you want to delete ticket ${tickets.find((t) => t.id === deleteTicketId)?.serial ?? ''}? This cannot be undone.`}
         confirmText="Delete"
         type="danger"
       />
