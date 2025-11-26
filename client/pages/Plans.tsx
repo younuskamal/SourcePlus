@@ -5,6 +5,7 @@ import { translations, Language } from '../locales';
 import { Check, Edit2, Plus, Trash2, X, Gift, Users, DollarSign, Globe, Coins } from 'lucide-react';
 import { SubscriptionPlan, PlanPrice, LicenseKey, CurrencyRate } from '../types';
 import { api } from '../services/api';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
 interface PlansProps {
   currentLang: Language;
@@ -12,6 +13,7 @@ interface PlansProps {
 
 const Plans: React.FC<PlansProps> = ({ currentLang }) => {
   const t = translations[currentLang];
+  const { tick: autoRefreshTick, requestRefresh } = useAutoRefresh();
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [licenses, setLicenses] = useState<LicenseKey[]>([]);
   const [currencies, setCurrencies] = useState<CurrencyRate[]>([]);
@@ -47,7 +49,7 @@ const Plans: React.FC<PlansProps> = ({ currentLang }) => {
       }
     };
     load();
-  }, []);
+  }, [autoRefreshTick]);
 
   const openCreateModal = () => {
     resetForm();
@@ -117,6 +119,7 @@ const Plans: React.FC<PlansProps> = ({ currentLang }) => {
       }
       const updatedPlans = await api.getPlans();
       setPlans(updatedPlans);
+      requestRefresh();
     } catch (err) {
       console.error(err);
     }
@@ -131,7 +134,10 @@ const Plans: React.FC<PlansProps> = ({ currentLang }) => {
   const confirmDelete = () => {
     if (deletePlanId) {
       api.deletePlan(deletePlanId).then(() => {
-        api.getPlans().then(setPlans);
+        api.getPlans().then((data) => {
+          setPlans(data);
+          requestRefresh();
+        });
         setDeletePlanId(null);
       });
     }

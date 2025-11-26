@@ -5,6 +5,7 @@ import { translations, Language } from '../locales';
 import { Upload, Download, CheckCircle2, GitBranch, Monitor, Calendar, AlertTriangle, Box, ArrowRight, Trash2, Edit2, Save, ToggleLeft, ToggleRight, X } from 'lucide-react';
 import { AppVersion } from '../types';
 import { api } from '../services/api';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
 interface UpdatesProps {
     currentLang: Language;
@@ -12,6 +13,7 @@ interface UpdatesProps {
 
 const Updates: React.FC<UpdatesProps> = ({ currentLang }) => {
     const t = translations[currentLang];
+    const { tick: autoRefreshTick, requestRefresh } = useAutoRefresh();
     const [versions, setVersions] = useState<AppVersion[]>([]);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -27,7 +29,7 @@ const Updates: React.FC<UpdatesProps> = ({ currentLang }) => {
 
     useEffect(() => {
         api.getVersions().then(setVersions).catch(console.error);
-    }, []);
+    }, [autoRefreshTick]);
 
     const latestVersion = versions.filter(v => v.isActive).length > 0 ? versions.filter(v => v.isActive)[0] : null;
 
@@ -70,13 +72,17 @@ const Updates: React.FC<UpdatesProps> = ({ currentLang }) => {
             });
         }
         setVersions(await api.getVersions());
+        requestRefresh();
         setIsFormOpen(false);
         setFormData({ version: '', notes: '', url: '', force: false, isActive: true });
         setEditingId(null);
     };
 
     const handleToggleActive = (id: string, currentStatus: boolean) => {
-        api.updateVersion(id, { isActive: !currentStatus }).then(async () => setVersions(await api.getVersions()));
+        api.updateVersion(id, { isActive: !currentStatus }).then(async () => {
+            setVersions(await api.getVersions());
+            requestRefresh();
+        });
     }
 
     const handleDelete = (id: string) => {
@@ -87,6 +93,7 @@ const Updates: React.FC<UpdatesProps> = ({ currentLang }) => {
         if (deleteVersionId) {
             api.deleteVersion(deleteVersionId).then(async () => {
                 setVersions(await api.getVersions());
+                requestRefresh();
                 if (editingId === deleteVersionId) {
                     setIsFormOpen(false);
                     setEditingId(null);

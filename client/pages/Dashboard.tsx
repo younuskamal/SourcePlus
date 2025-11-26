@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { translations, Language } from '../locales';
 import { ServerHealth, SubscriptionPlan, AuditLog } from '../types';
 import { api } from '../services/api';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import { 
   Users, 
   DollarSign, 
@@ -140,6 +141,7 @@ const QuickActionCard = ({ title, icon: Icon, colorClass, onClick }: any) => (
 
 const Dashboard: React.FC<DashboardProps> = ({ currentLang, setPage }) => {
   const t = translations[currentLang];
+  const { tick: autoRefreshTick } = useAutoRefresh();
   const [stats, setStats] = useState<any>({ activeLicenses: 0, expiredLicenses: 0, totalRevenueUSD: 0, totalCustomers: 0, expiringSoonCount: 0, openTickets: 0 });
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
@@ -188,7 +190,7 @@ const Dashboard: React.FC<DashboardProps> = ({ currentLang, setPage }) => {
       }
     };
     load();
-  }, [chartPeriod]);
+  }, [chartPeriod, autoRefreshTick]);
 
   useEffect(() => {
     setMounted(true);

@@ -5,6 +5,7 @@ import { translations, Language } from '../locales';
 import { api } from '../services/api';
 import { LicenseKey, LicenseStatus, SubscriptionPlan } from '../types';
 import { Plus, Search, Monitor, Shield, Ban, CalendarClock, Download, Trash2, Filter, X, Copy, Check, WifiOff, LockKeyhole, PauseCircle, PlayCircle, Hash, CreditCard, Edit2, AlertTriangle, User, Save } from 'lucide-react';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
 interface LicensesProps {
   currentLang: Language;
@@ -12,6 +13,7 @@ interface LicensesProps {
 
 const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
   const t = translations[currentLang];
+  const { tick: autoRefreshTick, requestRefresh } = useAutoRefresh();
   const [licenses, setLicenses] = useState<LicenseKey[]>([]);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -48,7 +50,7 @@ const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
 
   useEffect(() => {
     refreshAll();
-  }, []);
+  }, [autoRefreshTick]);
 
   const refreshAll = async () => {
     try {
@@ -85,6 +87,7 @@ const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
       setIsCreating(true);
       await api.generateLicense(selectedPlan, newCustomer, quantity);
       await refreshLicenses();
+      requestRefresh();
       setIsModalOpen(false);
       setNewCustomer('');
       setQuantity(1);
@@ -106,13 +109,17 @@ const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
     if (revokeId) {
       api.revoke(revokeId).then(() => {
         refreshLicenses();
+        requestRefresh();
         setRevokeId(null);
       });
     }
   }
 
   const handlePauseToggle = (id: string) => {
-    api.togglePause(id).then(refreshLicenses);
+    api.togglePause(id).then(async () => {
+      await refreshLicenses();
+      requestRefresh();
+    });
   }
 
   const handleDeleteClick = (id: string) => {
@@ -124,6 +131,7 @@ const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
     if (deletingLicenseId) {
       api.deleteLicense(deletingLicenseId).then(async () => {
         await refreshLicenses();
+        requestRefresh();
         setIsDeleteModalOpen(false);
         setDeletingLicenseId(null);
       });
@@ -140,6 +148,7 @@ const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
     if (editingLicense && editName.trim()) {
       await api.updateLicense(editingLicense.id, { customerName: editName });
       await refreshLicenses();
+      requestRefresh();
       setIsEditModalOpen(false);
       setEditingLicense(null);
     }
@@ -154,6 +163,7 @@ const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
     if (selectedLicenseId) {
       await api.renewLicense(selectedLicenseId, renewMonths);
       await refreshLicenses();
+      requestRefresh();
       setIsRenewModalOpen(false);
     }
   }

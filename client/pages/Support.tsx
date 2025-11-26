@@ -4,6 +4,7 @@ import { translations, Language } from '../locales';
 import { SupportRequest } from '../types';
 import { MessageSquare, CheckCircle, Monitor, HardDrive, Phone, Clock, Search, Send, User } from 'lucide-react';
 import { api } from '../services/api';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
 interface SupportProps {
   currentLang: Language;
@@ -11,18 +12,20 @@ interface SupportProps {
 
 const Support: React.FC<SupportProps> = ({ currentLang }) => {
   const t = translations[currentLang];
+  const { tick: autoRefreshTick, requestRefresh } = useAutoRefresh();
   const [tickets, setTickets] = useState<SupportRequest[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<SupportRequest | null>(null);
   const [replyText, setReplyText] = useState('');
 
   useEffect(() => {
     api.getTickets().then(setTickets).catch(console.error);
-  }, []);
+  }, [autoRefreshTick]);
 
   const handleResolve = (id: string) => {
     api.resolveTicket(id).then(async () => {
       const data = await api.getTickets();
       setTickets(data);
+      requestRefresh();
       if (selectedTicket?.id === id) setSelectedTicket(null);
     });
   };
@@ -31,6 +34,7 @@ const Support: React.FC<SupportProps> = ({ currentLang }) => {
     if (selectedTicket && replyText) {
       api.replyTicket(selectedTicket.id, replyText).then(async () => {
         setTickets(await api.getTickets());
+        requestRefresh();
         setReplyText('');
         setSelectedTicket(null);
       });

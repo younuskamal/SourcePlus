@@ -4,6 +4,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import { translations, Language } from '../locales';
 import { Bell, Send, Users, User, CheckCircle2, Trash2, History } from 'lucide-react';
 import { api } from '../services/api';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
 interface NotificationsProps {
     currentLang: Language;
@@ -12,9 +13,10 @@ interface NotificationsProps {
 const Notifications: React.FC<NotificationsProps> = ({ currentLang }) => {
     const t = translations[currentLang] as any;
     const [notifications, setNotifications] = useState<any[]>([]);
+    const { tick: autoRefreshTick, requestRefresh } = useAutoRefresh();
     useEffect(() => {
         api.getNotifications().then(setNotifications).catch(console.error);
-    }, []);
+    }, [autoRefreshTick]);
     const [title, setTitle] = useState('');
     const [body, setBody] = useState('');
     const [targetType, setTargetType] = useState<'broadcast' | 'serial'>('broadcast');
@@ -28,6 +30,7 @@ const Notifications: React.FC<NotificationsProps> = ({ currentLang }) => {
         const payload = targetType === 'serial' ? { title, body, targetSerial } : { title, body };
         api.sendNotification(payload).then(async () => {
             setNotifications(await api.getNotifications());
+            requestRefresh();
         });
 
         // Reset
@@ -43,12 +46,16 @@ const Notifications: React.FC<NotificationsProps> = ({ currentLang }) => {
     const confirmClearHistory = () => {
         api.clearNotifications().then(async () => {
             setNotifications(await api.getNotifications());
+            requestRefresh();
             setIsClearHistoryModalOpen(false);
         });
     };
 
     const handleDeleteOne = (id: string) => {
-        api.deleteNotification(id).then(async () => setNotifications(await api.getNotifications()));
+        api.deleteNotification(id).then(async () => {
+            setNotifications(await api.getNotifications());
+            requestRefresh();
+        });
     };
 
     return (

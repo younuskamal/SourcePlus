@@ -5,6 +5,7 @@ import { translations, Language } from '../locales';
 import { CurrencyRate } from '../types';
 import { api } from '../services/api';
 import { RefreshCw, Save, Plus, Trash2, Loader2, AlertTriangle } from 'lucide-react';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
 interface CurrenciesProps {
   currentLang: Language;
@@ -12,6 +13,7 @@ interface CurrenciesProps {
 
 const Currencies: React.FC<CurrenciesProps> = ({ currentLang }) => {
   const t = translations[currentLang] as any;
+  const { tick: autoRefreshTick, requestRefresh } = useAutoRefresh();
   const [rates, setRates] = useState<CurrencyRate[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [tempRate, setTempRate] = useState<number>(0);
@@ -31,7 +33,7 @@ const Currencies: React.FC<CurrenciesProps> = ({ currentLang }) => {
 
   useEffect(() => {
     api.getCurrencies().then(setRates).catch(console.error);
-  }, []);
+  }, [autoRefreshTick]);
 
   const startEdit = (code: string, currentRate: number) => {
     setEditingId(code);
@@ -50,6 +52,7 @@ const Currencies: React.FC<CurrenciesProps> = ({ currentLang }) => {
       await api.updateCurrency(code, { rate: tempRate });
       const updated = await api.getCurrencies();
       setRates(updated);
+      requestRefresh();
       setEditingId(null);
     } catch (err: any) {
       const errorMsg = err?.response?.data?.issues?.[0]?.message ||
@@ -71,6 +74,7 @@ const Currencies: React.FC<CurrenciesProps> = ({ currentLang }) => {
         await api.deleteCurrency(deleteCode);
         const updated = await api.getCurrencies();
         setRates(updated);
+        requestRefresh();
         setDeleteCode(null);
       } catch (err: any) {
         const errorMsg = err?.response?.data?.message || 'Failed to delete currency';
@@ -102,6 +106,7 @@ const Currencies: React.FC<CurrenciesProps> = ({ currentLang }) => {
       await api.createCurrency({ code: newCode.toUpperCase(), rate: newRate, symbol: newSymbol });
       const updated = await api.getCurrencies();
       setRates(updated);
+      requestRefresh();
       setIsModalOpen(false);
       setNewCode('');
       setNewRate(1);
@@ -121,6 +126,7 @@ const Currencies: React.FC<CurrenciesProps> = ({ currentLang }) => {
     setTimeout(async () => {
       await api.syncCurrencies();
       setRates(await api.getCurrencies());
+      requestRefresh();
       setIsSyncing(false);
     }, 500);
   }

@@ -5,6 +5,7 @@ import { exportToExcel } from '../utils/excelExport';
 import { translations, Language } from '../locales';
 import { ClipboardList, Search, User, Trash2, Download, Filter, Calendar, CheckCircle2 } from 'lucide-react';
 import { api } from '../services/api';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
 interface AuditLogsProps {
   currentLang: Language;
@@ -12,6 +13,7 @@ interface AuditLogsProps {
 
 const AuditLogs: React.FC<AuditLogsProps> = ({ currentLang }) => {
   const t = translations[currentLang];
+  const { tick: autoRefreshTick, requestRefresh } = useAutoRefresh();
   const [logs, setLogs] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [filterAction, setFilterAction] = useState('ALL');
@@ -20,7 +22,7 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ currentLang }) => {
 
   useEffect(() => {
     api.getAuditLogs().then(setLogs).catch(console.error);
-  }, []);
+  }, [autoRefreshTick]);
 
   const handleClearLogs = () => {
     setIsClearModalOpen(true);
@@ -32,6 +34,7 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ currentLang }) => {
     setTimeout(async () => {
       await api.clearAuditLogs();
       setLogs(await api.getAuditLogs());
+      requestRefresh();
       setIsClearing(false);
       setIsClearModalOpen(false);
     }, 800);

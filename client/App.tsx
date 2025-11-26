@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Licenses from './pages/Licenses';
@@ -17,6 +17,7 @@ import Login from './pages/Login';
 import { Language } from './locales';
 import { User } from './types';
 import { api } from './services/api';
+import { AutoRefreshProvider } from './hooks/useAutoRefresh';
 
 // --- Color Utility Functions ---
 const hexToRgb = (hex: string): string | null => {
@@ -90,6 +91,11 @@ function App() {
   const [user, setUser] = useState<User | null>(null);
   const [darkMode, setDarkMode] = useState(false);
   const [loadingUser, setLoadingUser] = useState(true);
+  const [refreshTick, setRefreshTick] = useState(0);
+
+  const requestRefresh = useCallback(() => {
+    setRefreshTick((tick) => tick + 1);
+  }, []);
 
   // Initialize System Settings
   useEffect(() => {
@@ -118,6 +124,30 @@ function App() {
       document.documentElement.classList.remove('dark');
     }
   }, [darkMode]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        setRefreshTick((tick) => tick + 1);
+      }
+    }, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const handleFocus = () => setRefreshTick((tick) => tick + 1);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        handleFocus();
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, []);
 
   // Helper to trigger branding update when settings change
   // We can expose this via Context, but for this structure we'll just rely on the Settings page triggering a re-render or callback if needed.
@@ -158,21 +188,23 @@ function App() {
   };
 
   return (
-    <Layout 
-      currentLang={lang} 
-      setLang={setLang} 
-      currentPage={currentPage} 
-      setPage={setPage}
-      user={user}
-      onLogout={() => {
-        api.logout();
-        setUser(null);
-      }}
-      darkMode={darkMode}
-      setDarkMode={setDarkMode}
-    >
-      {renderPage()}
-    </Layout>
+    <AutoRefreshProvider tick={refreshTick} requestRefresh={requestRefresh}>
+      <Layout 
+        currentLang={lang} 
+        setLang={setLang} 
+        currentPage={currentPage} 
+        setPage={setPage}
+        user={user}
+        onLogout={() => {
+          api.logout();
+          setUser(null);
+        }}
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
+      >
+        {renderPage()}
+      </Layout>
+    </AutoRefreshProvider>
   );
 }
 

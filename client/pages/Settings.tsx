@@ -5,6 +5,7 @@ import { translations, Language } from '../locales';
 import { Save, Terminal, Globe, ToggleLeft, ToggleRight, Mail, HardDrive, Palette, Bell, Check, MessageSquare, Server, Clock, Hash, Database, Shield, Activity, FileText, AlertTriangle, Trash2, Download, Upload, RefreshCw } from 'lucide-react';
 import { api } from '../services/api';
 import { SystemSettings } from '../types';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
 interface SettingsProps {
     currentLang: Language;
@@ -13,6 +14,7 @@ interface SettingsProps {
 
 const Settings: React.FC<SettingsProps> = ({ currentLang, onThemeChange }) => {
     const t = translations[currentLang];
+    const { tick: autoRefreshTick, requestRefresh } = useAutoRefresh();
     const [activeTab, setActiveTab] = useState<'general' | 'server' | 'channels' | 'remote' | 'backup'>('general');
     const [config, setConfig] = useState<any[]>([]);
     const [systemSettings, setSystemSettings] = useState<SystemSettings>({
@@ -159,7 +161,7 @@ const Settings: React.FC<SettingsProps> = ({ currentLang, onThemeChange }) => {
             }
         };
         load();
-    }, []);
+    }, [autoRefreshTick]);
 
     const handleToggleRemote = async (key: string, currentVal: boolean) => {
         const newValue = !currentVal;
@@ -167,6 +169,7 @@ const Settings: React.FC<SettingsProps> = ({ currentLang, onThemeChange }) => {
         setConfig(next);
         try {
             await api.updateRemoteConfig({ [key]: newValue });
+            requestRefresh();
         } catch (err) {
             console.error(err);
             setConfig(config);
@@ -179,6 +182,7 @@ const Settings: React.FC<SettingsProps> = ({ currentLang, onThemeChange }) => {
             if (onThemeChange && systemSettings.primaryColor) {
                 onThemeChange(systemSettings.primaryColor);
             }
+            requestRefresh();
             setIsSaved(true);
             setTimeout(() => setIsSaved(false), 2000);
         } catch (err) {

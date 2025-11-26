@@ -5,6 +5,7 @@ import { translations, Language } from '../locales';
 import { User, UserRole } from '../types';
 import { Plus, Trash2, User as UserIcon, ShieldCheck, Code, Lock } from 'lucide-react';
 import { api } from '../services/api';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
 interface TeamProps {
   currentLang: Language;
@@ -12,6 +13,7 @@ interface TeamProps {
 
 const Team: React.FC<TeamProps> = ({ currentLang }) => {
   const t = translations[currentLang];
+  const { tick: autoRefreshTick, requestRefresh } = useAutoRefresh();
   const [users, setUsers] = useState<User[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [error, setError] = useState('');
@@ -26,7 +28,7 @@ const Team: React.FC<TeamProps> = ({ currentLang }) => {
 
   useEffect(() => {
     api.getUsers().then(setUsers).catch(console.error);
-  }, []);
+  }, [autoRefreshTick]);
 
   const handleAddUser = async () => {
     setError('');
@@ -44,6 +46,7 @@ const Team: React.FC<TeamProps> = ({ currentLang }) => {
       await api.createUser({ name, email, password, role });
       const updatedUsers = await api.getUsers();
       setUsers(updatedUsers);
+      requestRefresh();
       setIsModalOpen(false);
       setName('');
       setEmail('');
@@ -65,6 +68,7 @@ const Team: React.FC<TeamProps> = ({ currentLang }) => {
     if (deleteUserId) {
       api.deleteUser(deleteUserId).then(async () => {
         setUsers(await api.getUsers());
+        requestRefresh();
         setDeleteUserId(null);
       });
     }

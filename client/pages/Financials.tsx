@@ -15,6 +15,7 @@ import {
     CreditCard
 } from 'lucide-react';
 import { api } from '../services/api';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
 interface FinancialsProps {
     currentLang: Language;
@@ -22,6 +23,7 @@ interface FinancialsProps {
 
 const Financials: React.FC<FinancialsProps> = ({ currentLang }) => {
     const t = translations[currentLang];
+    const { tick: autoRefreshTick } = useAutoRefresh();
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [stats, setStats] = useState<any>({ totalRevenue: 0, dailyRevenue: 0, monthlyRevenue: 0 });
     const [search, setSearch] = useState('');
@@ -33,7 +35,7 @@ const Financials: React.FC<FinancialsProps> = ({ currentLang }) => {
             setStats(await api.getFinancialStats());
         };
         load();
-    }, []);
+    }, [autoRefreshTick]);
 
     const handleExport = () => {
         const data = transactions.map(tx => ({
