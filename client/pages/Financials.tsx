@@ -8,11 +8,13 @@ import {
     DollarSign,
     Calendar,
     Download,
-    FileText,
     Search,
     Wallet,
     ArrowUpRight,
-    CreditCard
+    CreditCard,
+    FileText as FileTextIcon,
+    X,
+    Printer
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
@@ -28,6 +30,7 @@ const Financials: React.FC<FinancialsProps> = ({ currentLang }) => {
     const [stats, setStats] = useState<any>({ totalRevenue: 0, dailyRevenue: 0, monthlyRevenue: 0 });
     const [search, setSearch] = useState('');
     const [filterType, setFilterType] = useState('ALL');
+    const [selectedInvoice, setSelectedInvoice] = useState<Transaction | null>(null);
 
     useEffect(() => {
         const load = async () => {
@@ -60,6 +63,63 @@ const Financials: React.FC<FinancialsProps> = ({ currentLang }) => {
     });
 
     const netProfit = stats.totalRevenue * 0.85;
+
+    const formatCurrency = (amount: number) => `$${amount.toFixed(2)}`;
+
+    const handleInvoiceClick = (tx: Transaction) => {
+        setSelectedInvoice(tx);
+    };
+
+    const handleCloseInvoice = () => setSelectedInvoice(null);
+
+    const handlePrintInvoice = () => {
+        if (!selectedInvoice) return;
+        const invoiceHtml = `
+        <html>
+          <head>
+            <title>Invoice ${selectedInvoice.id}</title>
+            <style>
+              body { font-family: Arial, sans-serif; padding: 24px; color: #0f172a; }
+              h1 { margin-bottom: 0; }
+              table { width: 100%; border-collapse: collapse; margin-top: 24px; }
+              td, th { padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+              .total { font-size: 1.25rem; font-weight: bold; }
+            </style>
+          </head>
+          <body>
+            <h1>SourcePlus Invoice</h1>
+            <p>Invoice ID: ${selectedInvoice.id}</p>
+            <p>Date: ${new Date(selectedInvoice.date).toLocaleString()}</p>
+            <p>Customer: ${selectedInvoice.customerName}</p>
+            <p>Plan: ${selectedInvoice.planName}</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Description</th>
+                  <th>Type</th>
+                  <th align="right">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>${selectedInvoice.planName}</td>
+                  <td>${selectedInvoice.type}</td>
+                  <td align="right">${formatCurrency(selectedInvoice.amount)}</td>
+                </tr>
+              </tbody>
+            </table>
+            <p class="total">Total: ${formatCurrency(selectedInvoice.amount)}</p>
+          </body>
+        </html>`;
+
+        const printWindow = window.open('', 'PRINT', 'height=650,width=900,top=100,left=150');
+        if (printWindow) {
+            printWindow.document.write(invoiceHtml);
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.print();
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -133,7 +193,7 @@ const Financials: React.FC<FinancialsProps> = ({ currentLang }) => {
                 <div className="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 flex flex-col md:flex-row gap-4 justify-between items-center">
                     <div className="flex items-center gap-2">
                         <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                            <FileText size={16} className="text-slate-400" /> {t.transactions}
+                            <FileTextIcon size={16} className="text-slate-400" /> {t.transactions}
                         </h2>
                         <span className="text-[10px] bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-full text-slate-600 dark:text-slate-300 font-bold">{filteredTransactions.length}</span>
                     </div>
@@ -203,8 +263,11 @@ const Financials: React.FC<FinancialsProps> = ({ currentLang }) => {
                                         <span className="font-mono font-bold text-slate-900 dark:text-white">${tx.amount.toFixed(2)}</span>
                                     </td>
                                     <td className="px-6 py-4 text-right">
-                                        <button className="text-slate-400 hover:text-primary-600 transition-colors p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded">
-                                            <FileText size={16} />
+                                        <button
+                                            onClick={() => handleInvoiceClick(tx)}
+                                            className="text-slate-400 hover:text-primary-600 transition-colors p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"
+                                        >
+                                            <FileTextIcon size={16} />
                                         </button>
                                     </td>
                                 </tr>
@@ -216,6 +279,77 @@ const Financials: React.FC<FinancialsProps> = ({ currentLang }) => {
                     )}
                 </div>
             </div>
+
+            {selectedInvoice && (
+                <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40">
+                            <div>
+                                <p className="text-xs uppercase tracking-widest font-bold text-slate-400">Invoice</p>
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-white">#{selectedInvoice.id.substring(0, 10)}</h3>
+                            </div>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={handlePrintInvoice}
+                                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary-600 text-white text-sm hover:bg-primary-700 transition-colors"
+                                >
+                                    <Printer size={16} /> Print
+                                </button>
+                                <button
+                                    onClick={handleCloseInvoice}
+                                    className="p-2 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <p className="text-xs font-semibold text-slate-400 uppercase">Customer</p>
+                                    <p className="text-slate-900 dark:text-white font-semibold">{selectedInvoice.customerName}</p>
+                                    <p className="text-slate-500 text-xs">{selectedInvoice.planName}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs font-semibold text-slate-400 uppercase">Date</p>
+                                    <p className="text-slate-900 dark:text-white">
+                                        {new Date(selectedInvoice.date).toLocaleDateString()}
+                                    </p>
+                                    <p className="text-slate-500 text-xs">
+                                        {new Date(selectedInvoice.date).toLocaleTimeString()}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                                <table className="w-full text-sm">
+                                    <thead className="bg-slate-100 dark:bg-slate-900/30 text-slate-500 uppercase tracking-widest text-[10px]">
+                                        <tr>
+                                            <th className="px-4 py-3 text-left">Description</th>
+                                            <th className="px-4 py-3 text-left">Type</th>
+                                            <th className="px-4 py-3 text-right">Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="text-slate-700 dark:text-slate-200">
+                                        <tr>
+                                            <td className="px-4 py-3">{selectedInvoice.planName}</td>
+                                            <td className="px-4 py-3 capitalize">{selectedInvoice.type}</td>
+                                            <td className="px-4 py-3 text-right font-mono font-semibold">
+                                                {formatCurrency(selectedInvoice.amount)}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div className="flex justify-between items-center pt-4 border-t border-dashed border-slate-200 dark:border-slate-700">
+                                <span className="text-sm text-slate-500">Total</span>
+                                <span className="text-2xl font-bold text-slate-900 dark:text-white">
+                                    {formatCurrency(selectedInvoice.amount)}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
