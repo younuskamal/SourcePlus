@@ -12,7 +12,6 @@ import auditRoutes from './modules/audit/routes.js';
 import analyticsRoutes from './modules/analytics/routes.js';
 import backupRoutes from './modules/backup/routes.js';
 import clientRoutes from './modules/client/routes.js';
-import licensingModule from './modules/licensing/index.js';
 
 export const registerRoutes = (app: FastifyInstance) => {
   app.register(authRoutes, { prefix: '/auth' });
@@ -28,5 +27,4 @@ export const registerRoutes = (app: FastifyInstance) => {
   app.register(analyticsRoutes, { prefix: '/analytics' });
   app.register(backupRoutes, { prefix: '/backup' });
   app.register(clientRoutes, { prefix: '/client' });
-  app.register(licensingModule, { prefix: '/api' });
 };
