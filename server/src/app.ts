@@ -9,8 +9,6 @@ import authPlugin from './plugins/auth.js';
 import prismaPlugin from './plugins/prisma.js';
 import clientPlugin from './plugins/client.js';
 import { registerRoutes } from './routes.js';
-import { runSeed } from './seed.js';
-
 dotenv.config();
 
 export const buildApp = () => {
@@ -58,24 +56,4 @@ export const buildApp = () => {
   });
 
   return app;
-};
-
-export const startApp = async () => {
-  const app = buildApp();
-  const port = Number(process.env.PORT) || 3001;
-
-  app.register(import('./modules/licensing/routes.js'), {
-    prefix: '/api'
-  });
-
-  try {
-    await app.ready();
-    await app.prisma.$connect();
-    await runSeed(app);
-    await app.listen({ port, host: '0.0.0.0' });
-    app.log.info(`Server running on port ${port}`);
-  } catch (err) {
-    app.log.error(err);
-    process.exit(1);
-  }
 };

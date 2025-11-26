@@ -14,7 +14,8 @@ const activateLicenseSchema = z.object({
 });
 
 const subscriptionQuerySchema = z.object({
-  serial: z.string().min(1)
+  serial: z.string().optional(),
+  hardwareId: z.string().optional()
 });
 
 const checkUpdateSchema = z.object({
@@ -32,91 +33,94 @@ const supportTicketSchema = z.object({
 });
 
 const formatFeatures = (raw: unknown) => {
-  if (Array.isArray(raw)) {
-    return raw;
-  }
-  if (raw && typeof raw === 'object') {
-    return Object.values(raw);
-  }
+  if (Array.isArray(raw)) return raw;
+  if (raw && typeof raw === 'object') return Object.values(raw);
   return [];
 };
 
 const controller = {
-  validateLicense: async (
-    request: FastifyRequest,
-    reply: FastifyReply
-  ) => {
+  validateLicense: async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const { serial } = validateLicenseSchema.parse(
-        request.body ?? {}
-      );
+      const { serial } = validateLicenseSchema.parse(request.body ?? {});
+      const prisma = request.server.prisma;
 
-      const license =
-        await request.server.prisma.license.findUnique({
-          where: { serial },
-          include: { plan: true }
-        });
+      const license = await prisma.license.findUnique({
+        where: { serial },
+        include: { plan: true }
+      });
 
       if (!license) {
-        return reply
-          .code(404)
-          .send({ error: 'License not found' });
+        return reply.code(404).send({ error: 'License not found' });
       }
 
       return reply.send({
-        valid:
-          license.status === LicenseStatus.active &&
-          !license.isPaused,
+        valid: license.status === LicenseStatus.active && !license.isPaused,
         status: license.status,
         plan: {
           name: license.plan.name,
           features: formatFeatures(license.plan.features)
         },
-        expireDate: license.expireDate
-          ? license.expireDate.toISOString()
-          : null
+        expireDate: license.expireDate ? license.expireDate.toISOString() : null
       });
     } catch (error) {
       request.log.error(error);
       if (error instanceof z.ZodError) {
-        return reply
-          .code(400)
-          .send({ error: 'Invalid request payload' });
+        return reply.code(400).send({ error: 'Invalid request payload' });
       }
-      return reply
-        .code(500)
-        .send({ error: 'Unable to validate license' });
+      return reply.code(500).send({ error: 'Unable to validate license' });
     }
   },
 
-  activateLicense: async (
-    request: FastifyRequest,
-    reply: FastifyReply
-  ) => {
+  activateLicense: async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const body = activateLicenseSchema.parse(request.body ?? {});
+      const prisma = request.server.prisma;
 
-      const existing =
-        await request.server.prisma.license.findUnique({
-          where: { serial: body.serial }
-        });
+      const license = await prisma.license.findUnique({
+        where: { serial: body.serial }
+      });
 
-      if (!existing) {
-        return reply
-          .code(404)
-          .send({ error: 'License not found' });
+      if (!license) {
+        return reply.code(404).send({ error: 'License not found' });
       }
 
       const activationDate = new Date();
 
-      await request.server.prisma.license.update({
-        where: { serial: body.serial },
-        data: {
-          hardwareId: body.hardwareId,
-          activationDate,
-          lastCheckIn: activationDate,
-          status: LicenseStatus.active,
-          activationCount: { increment: 1 }
+      await prisma.$transaction(async (tx) => {
+        await tx.license.update({
+          where: { id: license.id },
+          data: {
+            hardwareId: body.hardwareId,
+            activationDate,
+            lastCheckIn: activationDate,
+            status: LicenseStatus.active,
+            activationCount: { increment: 1 }
+          }
+        });
+
+        const existingDevice = await tx.device.findFirst({
+          where: { licenseId: license.id, hardwareId: body.hardwareId }
+        });
+
+        if (existingDevice) {
+          await tx.device.update({
+            where: { id: existingDevice.id },
+            data: {
+              deviceName: body.deviceName ?? existingDevice.deviceName,
+              appVersion: body.appVersion,
+              lastCheckIn: activationDate,
+              isActive: true
+            }
+          });
+        } else {
+          await tx.device.create({
+            data: {
+              licenseId: license.id,
+              hardwareId: body.hardwareId,
+              deviceName: body.deviceName ?? 'Unknown device',
+              appVersion: body.appVersion
+            }
+          });
         }
       });
 
@@ -128,85 +132,69 @@ const controller = {
     } catch (error) {
       request.log.error(error);
       if (error instanceof z.ZodError) {
-        return reply
-          .code(400)
-          .send({ error: 'Invalid request payload' });
+        return reply.code(400).send({ error: 'Invalid request payload' });
       }
-      return reply
-        .code(500)
-        .send({ error: 'Unable to activate license' });
+      return reply.code(500).send({ error: 'Unable to activate license' });
     }
   },
 
-  subscriptionStatus: async (
-    request: FastifyRequest,
-    reply: FastifyReply
-  ) => {
+  subscriptionStatus: async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const query = subscriptionQuerySchema.parse(
-        request.query ?? {}
-      );
+      const query = subscriptionQuerySchema.parse(request.query ?? {});
+      const serialHeader = request.headers['x-license-serial'];
+      const serial =
+        query.serial ??
+        (Array.isArray(serialHeader) ? serialHeader[0] : serialHeader) ??
+        '';
 
-      const license =
-        await request.server.prisma.license.findUnique({
-          where: { serial: query.serial },
-          select: {
-            expireDate: true,
-            status: true,
-            isPaused: true
-          }
-        });
+      if (!serial) {
+        return reply.code(400).send({ error: 'serial is required' });
+      }
+
+      const prisma = request.server.prisma;
+      const license = await prisma.license.findUnique({
+        where: { serial },
+        select: {
+          expireDate: true,
+          status: true,
+          isPaused: true
+        }
+      });
 
       if (!license) {
-        return reply
-          .code(404)
-          .send({ error: 'License not found' });
+        return reply.code(404).send({ error: 'License not found' });
       }
 
       const remainingDays = license.expireDate
         ? Math.max(
             0,
-            Math.ceil(
-              (license.expireDate.getTime() - Date.now()) /
-                86_400_000
-            )
+            Math.ceil((license.expireDate.getTime() - Date.now()) / 86_400_000)
           )
         : 0;
 
       return reply.send({
         status: license.status,
         remainingDays,
-        forceLogout:
-          license.isPaused ||
-          license.status !== LicenseStatus.active
+        forceLogout: license.isPaused || license.status !== LicenseStatus.active
       });
     } catch (error) {
       request.log.error(error);
       if (error instanceof z.ZodError) {
-        return reply
-          .code(400)
-          .send({ error: 'Invalid query parameters' });
+        return reply.code(400).send({ error: 'Invalid query parameters' });
       }
-      return reply
-        .code(500)
-        .send({ error: 'Unable to fetch subscription status' });
+      return reply.code(500).send({ error: 'Unable to fetch subscription status' });
     }
   },
 
-  checkUpdate: async (
-    request: FastifyRequest,
-    reply: FastifyReply
-  ) => {
+  checkUpdate: async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const { version } = checkUpdateSchema.parse(
-        request.query ?? {}
-      );
+      const { version } = checkUpdateSchema.parse(request.query ?? {});
+      const prisma = request.server.prisma;
 
-      const latest =
-        await request.server.prisma.appVersion.findFirst({
-          where: { isActive: true },
-          orderBy: { releaseDate: 'desc' }
-        });
+      const latest = await prisma.appVersion.findFirst({
+        where: { isActive: true },
+        orderBy: { releaseDate: 'desc' }
+      });
 
       if (!latest) {
         return reply.send({
@@ -227,97 +215,68 @@ const controller = {
       });
     } catch (error) {
       request.log.error(error);
-      return reply
-        .code(500)
-        .send({ error: 'Unable to check for updates' });
+      return reply.code(500).send({ error: 'Unable to check for updates' });
     }
   },
 
-  syncConfig: async (
-    request: FastifyRequest,
-    reply: FastifyReply
-  ) => {
+  syncConfig: async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const settings =
-        await request.server.prisma.systemSetting.findMany({
-          where: {
-            key: {
-              in: ['maintenance_mode', 'support_phone', 'features']
-            }
-          }
-        });
+      const prisma = request.server.prisma;
+      const remoteConfigs = await prisma.remoteConfig.findMany();
 
-      const map = settings.reduce(
-        (acc, setting) => {
-          acc[setting.key] = setting.value;
+      const configMap = remoteConfigs.reduce(
+        (acc, config) => {
+          acc[config.key] = config.value;
           return acc;
         },
         {} as Record<string, unknown>
       );
 
       return reply.send({
-        maintenance_mode:
-          typeof map.maintenance_mode === 'boolean'
-            ? map.maintenance_mode
-            : Boolean(map.maintenance_mode),
+        maintenance_mode: Boolean(configMap.maintenance_mode ?? false),
         support_phone:
-          typeof map.support_phone === 'string'
-            ? map.support_phone
-            : '',
-        features:
-          (map.features as Record<string, unknown>) ?? {}
+          typeof configMap.support_phone === 'string' ? configMap.support_phone : '',
+        features: (configMap.features as Record<string, unknown>) ?? {}
       });
     } catch (error) {
       request.log.error(error);
-      return reply
-        .code(500)
-        .send({ error: 'Unable to sync configuration' });
+      return reply.code(500).send({ error: 'Unable to sync configuration' });
     }
   },
 
-  createSupportTicket: async (
-    request: FastifyRequest,
-    reply: FastifyReply
-  ) => {
+  createSupportTicket: async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const body = supportTicketSchema.parse(request.body ?? {});
+      const prisma = request.server.prisma;
 
-      const license =
-        await request.server.prisma.license.findUnique({
-          where: { serial: body.serial },
-          select: { id: true }
-        });
+      const license = await prisma.license.findUnique({
+        where: { serial: body.serial },
+        select: { id: true }
+      });
 
-      const ticket =
-        await request.server.prisma.supportTicket.create({
-          data: {
-            licenseId: license?.id,
-            serial: body.serial,
-            hardwareId: body.hardwareId,
-            deviceName: body.deviceName ?? 'Unknown device',
-            systemVersion: body.systemVersion ?? 'unknown',
-            phoneNumber: body.phoneNumber ?? 'N/A',
-            appVersion: body.appVersion,
-            description: body.description
-          }
-        });
-
-      const ticketId = `T-${ticket.id.slice(0, 8).toUpperCase()}`;
+      const ticket = await prisma.supportTicket.create({
+        data: {
+          licenseId: license?.id ?? null,
+          serial: body.serial,
+          hardwareId: body.hardwareId,
+          deviceName: body.deviceName ?? 'Unknown device',
+          systemVersion: body.systemVersion ?? 'unknown',
+          phoneNumber: body.phoneNumber ?? '',
+          appVersion: body.appVersion,
+          description: body.description
+        }
+      });
 
       return reply.code(201).send({
-        ticketId,
+        ticketId: `T-${ticket.id.slice(0, 8).toUpperCase()}`,
         status: 'received'
       });
     } catch (error) {
       request.log.error(error);
       if (error instanceof z.ZodError) {
-        return reply
-          .code(400)
-          .send({ error: 'Invalid request payload' });
+        return reply.code(400).send({ error: 'Invalid request payload' });
       }
-      return reply
-        .code(500)
-        .send({ error: 'Unable to create support ticket' });
+      return reply.code(500).send({ error: 'Unable to create support ticket' });
     }
   }
 };
