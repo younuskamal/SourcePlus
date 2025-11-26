@@ -38,19 +38,19 @@ const buildServer = () => {
   registerRoutes(app);
 
   app.setErrorHandler((error, request, reply) => {
+    request.log.error(error);
+
     if (error instanceof ZodError) {
-      const issues = error.issues.map(issue => ({
-        path: issue.path.join('.'),
-        message: issue.message
-      }));
-      return reply.code(400).send({
-        statusCode: 400,
-        error: 'Bad Request',
-        message: 'Validation error',
-        issues
-      });
+      return reply
+        .code(400)
+        .send({ error: 'Invalid request payload' });
     }
-    throw error;
+
+    const status = (error as any)?.statusCode ?? 500;
+    const message =
+      (error as any)?.message ?? 'Internal server error';
+
+    return reply.code(status).send({ error: message });
   });
 
   return app;

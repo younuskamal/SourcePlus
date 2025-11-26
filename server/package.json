@@ -10,7 +10,6 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
-    "prisma:seed": "tsx seed.ts",
     "lint": "eslint . --ext .ts"
   },
   "dependencies": {
@@ -37,5 +36,8 @@
     "ts-node-dev": "^2.0.0",
     "tsx": "^4.7.0",
     "typescript": "^5.8.2"
+  },
+  "prisma": {
+    "seed": "tsx src/seed.ts"
   }
 }

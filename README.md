@@ -1,62 +1,148 @@
 # SourcePlus Licensing Server
 
-This project provides an API for managing licenses and license keys using [SourcePlus](https://github.com/sourceplus). It also includes a React client application that can be used as a standalone licensing system or integrated into other applications.
+Full-stack licensing and subscription server for desktop / POS apps, built with:
 
-## Environment Variables
+- **Backend**: Fastify (TypeScript), Prisma 7, PostgreSQL
+- **Frontend**: React + Vite (TypeScript), TailwindCSS
+- **Deployment target**: Render (Node service for API + Static site for client)
 
-The following environment variables must be defined:
-
-| Variable | Description |
-| --- | --- |
-| SOURCEPLUS_API_KEY | The API key for the SourcePlus instance being used. |
-| SOURCEPLUS_BASE_URL | The base URL of the SourcePlus instance being used. |
-| SOURCEPLUS_LICENSE_ID | The ID of the license being managed by this server. |
-| SOURCEPLUS_LICENSE_NAME | The name of the license being managed by this server. |
-| SOURCEPLUS_LICENSE_DESCRIPTION | A description of the license being managed by this server. |
-| SOURCEPLUS_LICENSE_KEYS | Comma-separated list of license keys associated with the license. |
-| SOURCEPLUS_LICENSE_EXPIRATION_DATE | The expiration date of the license (in ISO format). |
-| SOURCEPLUS_LICENSE_MAX_USERS | The maximum number of users allowed under the license. |
-| SOURCEPLUS_LICENSE_MAX_ACTIVE_SESSIONS | The maximum number of active sessions allowed under the license. |
-| SOURCEPLUS_LICENSE_MAX_STORAGE_SIZE | The maximum storage size allowed under the license (in bytes). |
-| SOURCEPLUS_LICENSE_MAX_CONCURRENT_SESSIONS | The maximum number of concurrent sessions allowed under the license. |
-| SOURCEPLUS_LICENSE_MAX_DATA_TRANSFER_RATE | The maximum data transfer rate allowed under the license (in bits per second). |
-| SOURCEPLUS_LICENSE_MAX_CPU_USAGE | The maximum CPU usage allowed under the license (as a percentage). |
-| SOURCEPLUS_LICENSE_MAX_MEMORY_USAGE | The maximum memory usage allowed under the license (in bytes). |
-| SOURCEPLUS_LICENSE_MAX_DISK_SPACE_USAGE | The maximum disk space usage allowed under the license (in bytes). |
-
-## Run Locally
-
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Ensure any required environment variables are set (see "Environment" above).
-3. Start the development server (client):
-   `npm run dev`
-
-## Run Locally (Server)
-
-1. Change into the `server/` folder and install dependencies:
-   ```powershell
-   Set-Location -Path .\\server
-   npm install
-   ```
-2. Start the server in development mode (project uses TypeScript/Node):
-   `npm run dev`
-
-## Docker / Deploy
-
-See `docker-compose.yml`, `Dockerfile.frontend`, and `server/Dockerfile` for containerized deployment configurations.
-
-## Quick Troubleshooting
-
-- If `npm run dev` fails in `client/`, run `npm install` inside `client/` first.
-- Ensure your Git remote is configured before pushing changes.
-
-## Contributing
-
-If you make changes, please commit with a concise message and push to the appropriate branch. Open a PR if you want review.
+The server exposes REST APIs for license validation, activation, updates, backups and admin dashboards, and the client is an admin panel for managing plans, licenses, customers, updates, support tickets and system settings.
 
 ---
-Updated README to improve clarity and local run instructions.
+
+## Project structure
+
+- `server/` – Fastify API + Prisma schema and migrations
+- `client/` – React admin dashboard (Vite)
+- `docker-compose.yml`, `Dockerfile.frontend`, `server/Dockerfile` – optional container deployment
+
+---
+
+## Backend (server/)
+
+### Tech stack
+
+- Fastify + plugins (`@fastify/jwt`, `@fastify/cors`, `@fastify/multipart`, `@fastify/sensible`)
+- Prisma 7 + `@prisma/adapter-pg` + `pg` (PostgreSQL)
+- bcrypt لتهشير كلمات المرور
+- Zod للتحقق من المدخلات
+
+### Key features
+
+- User auth (JWT access + refresh tokens, sessions table)
+- Role-based access (admin / developer / viewer)
+- License & plan management (plans, prices, currencies, transactions)
+- Licensing APIs for clients (under `/api`):
+  - `/api/license/validate`
+  - `/api/license/activate`
+  - `/api/subscription/status`
+  - `/api/app/update`
+  - `/api/config/sync`
+  - `/api/support/request`
+- Notifications, support tickets, audit logs
+- System settings + remote config
+- Backup module (create/list/download/restore/upload JSON snapshots)
+
+### Environment variables (server)
+
+Set these for local dev in `server/.env` and on Render in the service environment:
+
+| Variable        | Description                                      |
+|-----------------|--------------------------------------------------|
+| `DATABASE_URL`  | PostgreSQL connection string                     |
+| `JWT_SECRET`    | Secret for signing JWT access/refresh tokens     |
+| `PORT`          | Port to bind Fastify (Render uses 10000)         |
+
+Prisma is configured via `server/prisma.config.ts` and always enforces `sslmode=require` when talking to Render’s managed Postgres.
+
+### Running the server locally
+
+```bash
+cd server
+npm install
+npx prisma migrate dev         # أو migrate deploy إذا كانت الـ DB جاهزة
+npx prisma generate
+npm run dev                    # تشغيل Fastify في وضع التطوير
+```
+
+Production build:
+
+```bash
+cd server
+npm run build                  # tsc → dist/
+npm start                      # node dist/main.js
+```
+
+---
+
+## Frontend (client/)
+
+The client is a Vite/React admin panel that talks to the server via `VITE_API_URL`.
+
+### Environment variables (client)
+
+Create `client/.env` (or configure in Render Static site):
+
+```env
+VITE_API_URL=https://sourceplus.onrender.com
+```
+
+### Running the client locally
+
+```bash
+cd client
+npm install
+npm run dev        # http://localhost:5173 by default
+```
+
+Production build (used by Render Static Site):
+
+```bash
+cd client
+npm run build      # outputs to client/build
+```
+
+---
+
+## Deployment on Render (recommended)
+
+### API service (Node)
+
+- **Root directory**: `server`
+- **Build command**:
+  ```bash
+  cd server && npm install && npx prisma migrate deploy && npx prisma generate && npm run build
+  ```
+- **Start command**:
+  ```bash
+  cd server && npm start
+  ```
+- **Environment variables**: `DATABASE_URL`, `JWT_SECRET`, `PORT`
+
+### Admin client (Static site)
+
+- **Root directory**: `client`
+- **Build command**:
+  ```bash
+  npm install && npm run build
+  ```
+- **Publish directory**: `build`
+- **Environment variables**: `VITE_API_URL=https://sourceplus.onrender.com`
+
+---
+
+## Initial admin user
+
+On first boot, the backend seed ensures an admin account exists (idempotent):
+
+- Email: `admin@sourceplus.com`
+- Password: `Admin12345`
+- Role: `admin`
+
+Use these credentials to log in to the admin dashboard, then create additional users and change the password from there.
+
+---
+
+## More details
+
+For a detailed explanation of modules, database models, and request flows (in Arabic), see `SYSTEM_OVERVIEW_AR.md`.

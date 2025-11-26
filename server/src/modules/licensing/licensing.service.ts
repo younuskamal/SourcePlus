@@ -19,21 +19,32 @@ export class LicensingService {
       };
     }
 
-    const isExpired = license.expireDate && new Date(license.expireDate) < new Date();
-    const isValid = license.status === LicenseStatus.active && !isExpired && !license.isPaused;
+    const isExpired =
+      license.expireDate && new Date(license.expireDate) < new Date();
+    const isValid =
+      license.status === LicenseStatus.active &&
+      !isExpired &&
+      !license.isPaused;
 
     return {
       valid: isValid,
       status: license.status,
-      plan: license.plan ? {
-        name: license.plan.name,
-        features: license.plan.features
-      } : null,
+      plan: license.plan
+        ? {
+            name: license.plan.name,
+            features: license.plan.features
+          }
+        : null,
       expireDate: license.expireDate
     };
   }
 
-  async activateLicense(serial: string, hardwareId: string, deviceName: string, appVersion: string) {
+  async activateLicense(
+    serial: string,
+    hardwareId: string,
+    deviceName: string,
+    appVersion: string
+  ) {
     const license = await this.app.prisma.license.findUnique({
       where: { serial }
     });
@@ -234,3 +245,4 @@ export class LicensingService {
     };
   }
 }
+
