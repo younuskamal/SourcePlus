@@ -12,10 +12,18 @@ export default async function authRoutes(app: FastifyInstance) {
   app.post('/login', async (request, reply) => {
     const { email, password } = loginSchema.parse(request.body);
     const user = await app.prisma.user.findUnique({ where: { email } });
-    if (!user) return reply.code(401).send({ message: 'Invalid credentials' });
+    if (!user) {
+      return reply
+        .code(401)
+        .send({ message: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' });
+    }
 
     const valid = await bcrypt.compare(password, user.passwordHash);
-    if (!valid) return reply.code(401).send({ message: 'Invalid credentials' });
+    if (!valid) {
+      return reply
+        .code(401)
+        .send({ message: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' });
+    }
 
     const accessToken = app.jwt.sign(
       { id: user.id, role: user.role, email: user.email },

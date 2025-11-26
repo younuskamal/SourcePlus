@@ -20,7 +20,7 @@ const buildServer = () => {
 
   app.register(cors, {
     origin: ['https://sourcef.onrender.com'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     credentials: true
   });
   app.register(sensible);
