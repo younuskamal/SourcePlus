@@ -111,7 +111,7 @@ export class LicensingService {
     };
   }
 
-  async getSubscriptionStatus(serial: string) {
+  async getSubscriptionStatus(serial: string, hardwareId?: string) {
     const license = await this.app.prisma.license.findUnique({
       where: { serial }
     });
@@ -120,23 +120,46 @@ export class LicensingService {
       throw new Error('License not found');
     }
 
-    const isExpired = license.expireDate && new Date(license.expireDate) < new Date();
-    const status = license.isPaused ? LicenseStatus.paused : 
-                   isExpired ? LicenseStatus.expired : 
-                   license.status;
+    const isExpired =
+      license.expireDate && new Date(license.expireDate) < new Date();
+    const status = license.isPaused
+      ? LicenseStatus.paused
+      : isExpired
+      ? LicenseStatus.expired
+      : license.status;
 
     const remainingDays = license.expireDate
-      ? Math.ceil((new Date(license.expireDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+      ? Math.ceil(
+          (new Date(license.expireDate).getTime() -
+            new Date().getTime()) /
+            (1000 * 60 * 60 * 24)
+        )
       : 0;
+
+    let forceLogout =
+      license.isPaused || status === LicenseStatus.revoked || isExpired;
+
+    if (hardwareId) {
+      const device = await this.app.prisma.device.findFirst({
+        where: {
+          licenseId: license.id,
+          hardwareId
+        }
+      });
+
+      if (!device) {
+        forceLogout = true;
+      }
+    }
 
     return {
       status,
       remainingDays: Math.max(0, remainingDays),
-      forceLogout: license.isPaused || status === LicenseStatus.revoked
+      forceLogout
     };
   }
 
-  async checkUpdate(currentVersion: string) {
+  async checkUpdate(currentVersion?: string) {
     const latest = await this.app.prisma.appVersion.findFirst({
       where: { isActive: true },
       orderBy: { releaseDate: 'desc' }
@@ -207,7 +230,7 @@ export class LicensingService {
 
     return {
       ticketId,
-      status: ticket.status
+      status: 'received'
     };
   }
 }

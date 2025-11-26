@@ -76,13 +76,17 @@ export default async function licensingRoutes(app: FastifyInstance) {
 
   app.get<{ Querystring: { serial: string; hardwareId?: string } }>('/subscription/status', async (request, reply) => {
     try {
-      const serial = request.headers['x-license-serial'] as string || request.query.serial;
-      
+      const serialHeader = request.headers['x-license-serial'];
+      const hardwareHeader = request.headers['x-hardware-id'];
+
+      const serial = (serialHeader && String(serialHeader)) || request.query.serial;
+      const hardwareId = hardwareHeader ? String(hardwareHeader) : request.query.hardwareId;
+
       if (!serial) {
         return reply.code(400).send({ error: 'License serial is required' });
       }
 
-      const result = await service.getSubscriptionStatus(serial);
+      const result = await service.getSubscriptionStatus(serial, hardwareId);
       return reply.send(result);
     } catch (error) {
       if (error instanceof Error && error.message === 'License not found') {
