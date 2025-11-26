@@ -7,6 +7,7 @@ import dotenv from 'dotenv';
 import { ZodError } from 'zod';
 import authPlugin from './plugins/auth.js';
 import prismaPlugin from './plugins/prisma.js';
+import clientPlugin from './plugins/client.js';
 import { registerRoutes } from './routes.js';
 import { runSeed } from './seed.js';
 
@@ -29,6 +30,7 @@ const buildServer = () => {
   });
   app.register(prismaPlugin);
   app.register(authPlugin);
+  app.register(clientPlugin);
 
   app.get('/', async () => ({ status: 'ok' }));
   app.get('/health', async () => ({ healthy: true }));

@@ -83,6 +83,7 @@ model License {
   createdAt       DateTime      @default(now())
   transactions    Transaction[]
   tickets         SupportTicket[]
+  devices         Device[]
 }
 
 model AppVersion {
@@ -182,6 +183,32 @@ model RemoteConfig {
   value     Json
   description String?
   updatedAt DateTime @updatedAt
+}
+
+model Device {
+  id              String    @id @default(uuid())
+  licenseId       String
+  license         License   @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  hardwareId      String
+  deviceName      String
+  appVersion      String
+  systemVersion   String?
+  activationDate  DateTime  @default(now())
+  lastCheckIn     DateTime  @default(now())
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([licenseId, hardwareId])
+  @@index([hardwareId])
+}
+
+model Config {
+  id                String    @id @default(uuid())
+  maintenance_mode  Boolean   @default(false)
+  support_phone     String    @default("+9647700000000")
+  features          Json      @default("{}")
+  updatedAt         DateTime  @updatedAt
 }
 
 enum Role {
