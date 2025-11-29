@@ -10,9 +10,9 @@ import { translations, Language } from '../locales';
 interface Plan {
   id: string;
   name: string;
-  price_monthly: number;
-  price_yearly: number;
-  currency: string;
+  price_monthly: number | null;
+  price_yearly: number | null;
+  currency: string | null;
   features: Record<string, any>;
   limits: Record<string, any>;
   isActive: boolean;
@@ -78,8 +78,8 @@ const Toast: React.FC<{ toast: Toast; onClose: () => void; isRtl: boolean }> = (
     >
       <div
         className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg ${toast.type === 'success'
-            ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800'
-            : 'bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-200 border border-rose-200 dark:border-rose-800'
+          ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800'
+          : 'bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-200 border border-rose-200 dark:border-rose-800'
           }`}
       >
         {toast.type === 'success' ? (
@@ -301,10 +301,12 @@ const Plans: React.FC<{ currentLang: Language }> = ({ currentLang }) => {
     isActive: true
   });
 
-  const formatPrice = (amount: number, currencyCode: string) => {
-    const currency = currencies.find(c => c.code === currencyCode);
-    const symbol = currency?.symbol || currencyCode;
-    return `${symbol} ${amount.toLocaleString()}`;
+  const formatPrice = (amount: number | null | undefined, currencyCode: string | null | undefined) => {
+    const safeAmount = amount ?? 0;
+    const safeCurrencyCode = currencyCode || 'IQD';
+    const currency = currencies.find(c => c.code === safeCurrencyCode);
+    const symbol = currency?.symbol || safeCurrencyCode;
+    return `${symbol} ${safeAmount.toLocaleString()}`;
   };
 
   const fetchData = async () => {
@@ -341,7 +343,7 @@ const Plans: React.FC<{ currentLang: Language }> = ({ currentLang }) => {
         name: plan.name,
         price_monthly: plan.price_monthly || 0,
         price_yearly: plan.price_yearly || 0,
-        currency: plan.currency,
+        currency: plan.currency || 'IQD',
         features: plan.features || {},
         limits: plan.limits || {},
         isActive: plan.isActive
@@ -548,12 +550,12 @@ const Plans: React.FC<{ currentLang: Language }> = ({ currentLang }) => {
                     </h3>
                     <div className="flex gap-2 flex-wrap">
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 text-[10px] font-bold uppercase tracking-wider">
-                        {plan.currency}
+                        {plan.currency || 'IQD'}
                       </span>
                       <span
                         className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${plan.isActive
-                            ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
-                            : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
+                          ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
+                          : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
                           }`}
                       >
                         {plan.isActive ? 'Active' : 'Inactive'}
@@ -626,8 +628,8 @@ const Plans: React.FC<{ currentLang: Language }> = ({ currentLang }) => {
                 <button
                   onClick={() => handleToggleStatus(plan)}
                   className={`flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-colors ${plan.isActive
-                      ? 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600'
-                      : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/30'
+                    ? 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600'
+                    : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/30'
                     }`}
                   title={plan.isActive ? 'Deactivate' : 'Activate'}
                 >
@@ -796,8 +798,8 @@ const Plans: React.FC<{ currentLang: Language }> = ({ currentLang }) => {
             <button
               onClick={() => setFormData({ ...formData, isActive: !formData.isActive })}
               className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${formData.isActive
-                  ? 'bg-emerald-500'
-                  : 'bg-slate-300 dark:bg-slate-600'
+                ? 'bg-emerald-500'
+                : 'bg-slate-300 dark:bg-slate-600'
                 }`}
             >
               <span
