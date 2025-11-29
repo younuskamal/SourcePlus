@@ -1,19 +1,17 @@
-
 import React, { useEffect, useState } from 'react';
 import ConfirmModal from '../components/ConfirmModal';
-import { translations, Language } from '../locales';
-import { Save, Terminal, Globe, ToggleLeft, ToggleRight, Mail, HardDrive, Palette, Bell, Check, MessageSquare, Server, Clock, Hash, Database, Shield, Activity, FileText, AlertTriangle, Trash2, Download, Upload, RefreshCw } from 'lucide-react';
+import { useTranslation } from '../hooks/useTranslation';
+import { Save, Globe, ToggleLeft, ToggleRight, Mail, HardDrive, Palette, Bell, Check, MessageSquare, Server, Clock, Database, Shield, AlertTriangle, Trash2, Download, Upload, RefreshCw } from 'lucide-react';
 import { api } from '../services/api';
 import { SystemSettings } from '../types';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
 interface SettingsProps {
-    currentLang: Language;
     onThemeChange?: (hex: string) => void;
 }
 
-const Settings: React.FC<SettingsProps> = ({ currentLang, onThemeChange }) => {
-    const t = translations[currentLang];
+const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
+    const { t, i18n } = useTranslation();
     const { tick: autoRefreshTick, requestRefresh } = useAutoRefresh();
     const [activeTab, setActiveTab] = useState<'general' | 'server' | 'channels' | 'remote' | 'backup'>('general');
     const [config, setConfig] = useState<any[]>([]);
@@ -163,19 +161,6 @@ const Settings: React.FC<SettingsProps> = ({ currentLang, onThemeChange }) => {
         load();
     }, [autoRefreshTick]);
 
-    const handleToggleRemote = async (key: string, currentVal: boolean) => {
-        const newValue = !currentVal;
-        const next = config.map((item) => (item.key === key ? { ...item, value: newValue } : item));
-        setConfig(next);
-        try {
-            await api.updateRemoteConfig({ [key]: newValue });
-            requestRefresh();
-        } catch (err) {
-            console.error(err);
-            setConfig(config);
-        }
-    };
-
     const handleSaveSettings = async () => {
         try {
             await api.updateSettings(systemSettings);
@@ -192,10 +177,10 @@ const Settings: React.FC<SettingsProps> = ({ currentLang, onThemeChange }) => {
     };
 
     const tabs = [
-        { id: 'general', label: t.tabGeneral, icon: Globe },
-        { id: 'server', label: t.tabServer, icon: Server },
-        { id: 'channels', label: t.tabChannels, icon: Bell },
-        { id: 'backup', label: t.tabBackup, icon: HardDrive },
+        { id: 'general', label: t('settings.general'), icon: Globe },
+        { id: 'server', label: t('settings.server'), icon: Server },
+        { id: 'channels', label: t('settings.channels'), icon: Bell },
+        { id: 'backup', label: t('settings.backup'), icon: HardDrive },
         { id: 'remote', label: 'System Reset', icon: AlertTriangle },
     ];
 
@@ -205,7 +190,7 @@ const Settings: React.FC<SettingsProps> = ({ currentLang, onThemeChange }) => {
         <div className="space-y-5 max-w-6xl mx-auto">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-xl font-bold text-gray-900 dark:text-white">{t.remoteConfig}</h1>
+                    <h1 className="text-xl font-bold text-gray-900 dark:text-white">{t('settings.title')}</h1>
                 </div>
             </div>
 
@@ -234,7 +219,7 @@ const Settings: React.FC<SettingsProps> = ({ currentLang, onThemeChange }) => {
                             <div className="space-y-4">
                                 <h3 className="text-sm font-bold text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-700 pb-2 uppercase tracking-wide opacity-70">Identity & Security</h3>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t.appName}</label>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t('settings.appName')}</label>
                                     <input
                                         value={systemSettings.appName}
                                         onChange={(e) => setSystemSettings({ ...systemSettings, appName: e.target.value })}
@@ -242,7 +227,7 @@ const Settings: React.FC<SettingsProps> = ({ currentLang, onThemeChange }) => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t.supportEmail}</label>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t('settings.supportEmail')}</label>
                                     <input
                                         value={systemSettings.supportEmail}
                                         onChange={(e) => setSystemSettings({ ...systemSettings, supportEmail: e.target.value })}
@@ -252,7 +237,7 @@ const Settings: React.FC<SettingsProps> = ({ currentLang, onThemeChange }) => {
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t.minPassLen}</label>
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t('settings.minPassLen')}</label>
                                         <input
                                             type="number"
                                             value={systemSettings.minPasswordLength}
@@ -261,7 +246,7 @@ const Settings: React.FC<SettingsProps> = ({ currentLang, onThemeChange }) => {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t.sessionTimeout}</label>
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t('settings.sessionTimeout')}</label>
                                         <input
                                             type="number"
                                             value={systemSettings.sessionTimeout}
@@ -276,7 +261,7 @@ const Settings: React.FC<SettingsProps> = ({ currentLang, onThemeChange }) => {
                                 <h3 className="text-sm font-bold text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-700 pb-2 uppercase tracking-wide opacity-70 flex items-center gap-2"><Palette size={16} /> Branding</h3>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">{t.primaryColor}</label>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">{t('settings.primaryColor')}</label>
                                     <div className="grid grid-cols-6 gap-2 mb-4">
                                         {presetColors.map(color => (
                                             <button
@@ -302,7 +287,7 @@ const Settings: React.FC<SettingsProps> = ({ currentLang, onThemeChange }) => {
 
                                 <div className="p-4 bg-amber-50 dark:bg-amber-900/10 rounded-lg border border-amber-100 dark:border-amber-900/30 flex items-center justify-between">
                                     <div>
-                                        <h3 className="font-bold text-sm text-amber-900 dark:text-amber-400">{t.maintenanceMode}</h3>
+                                        <h3 className="font-bold text-sm text-amber-900 dark:text-amber-400">{t('settings.maintenanceMode')}</h3>
                                         <p className="text-xs text-amber-700 dark:text-amber-500/80">Block client access temporarily.</p>
                                     </div>
                                     <button
@@ -328,7 +313,7 @@ const Settings: React.FC<SettingsProps> = ({ currentLang, onThemeChange }) => {
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase">{t.serverHost}</label>
+                                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase">{t('settings.serverHost')}</label>
                                     <input
                                         value={systemSettings.serverHost || '0.0.0.0'}
                                         onChange={(e) => setSystemSettings({ ...systemSettings, serverHost: e.target.value })}
@@ -336,7 +321,7 @@ const Settings: React.FC<SettingsProps> = ({ currentLang, onThemeChange }) => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase">{t.serverPort}</label>
+                                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase">{t('settings.serverPort')}</label>
                                     <input
                                         type="number"
                                         value={systemSettings.serverPort || 3000}
@@ -345,7 +330,7 @@ const Settings: React.FC<SettingsProps> = ({ currentLang, onThemeChange }) => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase">{t.timezone}</label>
+                                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase">{t('settings.timezone')}</label>
                                     <select
                                         value={systemSettings.timezone || 'Asia/Baghdad'}
                                         onChange={(e) => setSystemSettings({ ...systemSettings, timezone: e.target.value })}
@@ -367,11 +352,11 @@ const Settings: React.FC<SettingsProps> = ({ currentLang, onThemeChange }) => {
                         <section>
                             <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-3">
                                 <div className="p-1 bg-sky-100 dark:bg-sky-900/30 rounded text-sky-600"><Database size={14} /></div>
-                                {t.dbConnection}
+                                {t('settings.dbConnection')}
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-50 dark:bg-slate-700/20 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
                                 <div>
-                                    <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t.dbHost}</label>
+                                    <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('settings.dbHost')}</label>
                                     <input
                                         value={systemSettings.dbHost || 'localhost'}
                                         onChange={(e) => setSystemSettings({ ...systemSettings, dbHost: e.target.value })}
@@ -379,7 +364,7 @@ const Settings: React.FC<SettingsProps> = ({ currentLang, onThemeChange }) => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t.dbPort}</label>
+                                    <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('settings.dbPort')}</label>
                                     <input
                                         type="number"
                                         value={systemSettings.dbPort || 5432}
@@ -388,7 +373,7 @@ const Settings: React.FC<SettingsProps> = ({ currentLang, onThemeChange }) => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t.dbName}</label>
+                                    <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('settings.dbName')}</label>
                                     <input
                                         value={systemSettings.dbName || 'sourceplus_db'}
                                         onChange={(e) => setSystemSettings({ ...systemSettings, dbName: e.target.value })}
@@ -396,7 +381,7 @@ const Settings: React.FC<SettingsProps> = ({ currentLang, onThemeChange }) => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t.dbUser}</label>
+                                    <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('settings.dbUser')}</label>
                                     <input
                                         value={systemSettings.dbUser || 'postgres'}
                                         onChange={(e) => setSystemSettings({ ...systemSettings, dbUser: e.target.value })}
@@ -412,13 +397,13 @@ const Settings: React.FC<SettingsProps> = ({ currentLang, onThemeChange }) => {
                         <section>
                             <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-3">
                                 <div className="p-1 bg-emerald-100 dark:bg-emerald-900/30 rounded text-emerald-600"><Shield size={14} /></div>
-                                {t.security}
+                                {t('settings.security')}
                             </h3>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="p-3 bg-white dark:bg-slate-700/30 rounded-lg border border-slate-200 dark:border-slate-600 flex justify-between items-center">
                                     <div>
-                                        <h4 className="font-bold text-slate-900 dark:text-white text-xs">{t.corsEnabled}</h4>
+                                        <h4 className="font-bold text-slate-900 dark:text-white text-xs">{t('settings.corsEnabled')}</h4>
                                         <p className="text-[10px] text-slate-500">Allow external requests.</p>
                                     </div>
                                     <button
@@ -431,7 +416,7 @@ const Settings: React.FC<SettingsProps> = ({ currentLang, onThemeChange }) => {
 
                                 <div className="p-3 bg-white dark:bg-slate-700/30 rounded-lg border border-slate-200 dark:border-slate-600 flex justify-between items-center">
                                     <div>
-                                        <h4 className="font-bold text-slate-900 dark:text-white text-xs">{t.rateLimit}</h4>
+                                        <h4 className="font-bold text-slate-900 dark:text-white text-xs">{t('settings.rateLimit')}</h4>
                                         <p className="text-[10px] text-slate-500">Protect API from abuse.</p>
                                     </div>
                                     <button
@@ -445,7 +430,7 @@ const Settings: React.FC<SettingsProps> = ({ currentLang, onThemeChange }) => {
 
                             <div className="grid grid-cols-2 gap-4 mt-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase">{t.logLevel}</label>
+                                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase">{t('settings.logLevel')}</label>
                                     <select
                                         value={systemSettings.logLevel || 'info'}
                                         onChange={(e) => setSystemSettings({ ...systemSettings, logLevel: e.target.value as any })}
@@ -541,7 +526,7 @@ const Settings: React.FC<SettingsProps> = ({ currentLang, onThemeChange }) => {
                                         <Clock size={24} />
                                     </div>
                                     <div>
-                                        <h3 className="font-bold text-slate-900 dark:text-white text-lg">{t.autoBackup}</h3>
+                                        <h3 className="font-bold text-slate-900 dark:text-white text-lg">{t('settings.autoBackup')}</h3>
                                         <p className="text-sm text-slate-500">Configure automated cloud backups to ensure data safety.</p>
                                     </div>
                                 </div>
@@ -556,7 +541,7 @@ const Settings: React.FC<SettingsProps> = ({ currentLang, onThemeChange }) => {
                             {systemSettings.autoBackup && (
                                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8 animate-in slide-in-from-top-2">
                                     <div>
-                                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-3 uppercase tracking-wider">{t.backupFreq}</label>
+                                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-3 uppercase tracking-wider">{t('settings.backupFreq')}</label>
                                         <div className="flex gap-3">
                                             {['daily', 'weekly', 'monthly'].map(freq => (
                                                 <button
@@ -573,7 +558,7 @@ const Settings: React.FC<SettingsProps> = ({ currentLang, onThemeChange }) => {
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-3 uppercase tracking-wider">{t.retentionDays}</label>
+                                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-3 uppercase tracking-wider">{t('settings.retentionDays')}</label>
                                         <div className="relative">
                                             <input
                                                 type="number"
@@ -731,7 +716,7 @@ const Settings: React.FC<SettingsProps> = ({ currentLang, onThemeChange }) => {
                         className={`flex items-center gap-2 px-6 py-2 rounded-lg transition-colors font-bold text-sm shadow-sm ${activeTab === 'remote' ? 'opacity-0 pointer-events-none' : 'bg-primary-600 hover:bg-primary-700 text-white'}`}
                     >
                         <Save size={16} />
-                        {isSaved ? 'Saved!' : t.save}
+                        {isSaved ? 'Saved!' : t('common.save')}
                     </button>
                 </div>
 

@@ -4,23 +4,43 @@ const API_URL =
   import.meta.env.VITE_API_URL ||
   'https://sourceplus.onrender.com';
 
-const getStorage = () => ({
-  accessToken: localStorage.getItem('sp_access_token'),
-  refreshToken: localStorage.getItem('sp_refresh_token')
-});
+const getStorage = () => {
+  const localAccess = localStorage.getItem('sp_access_token');
+  if (localAccess) {
+    return {
+      accessToken: localAccess,
+      refreshToken: localStorage.getItem('sp_refresh_token'),
+      isLocal: true
+    };
+  }
+  return {
+    accessToken: sessionStorage.getItem('sp_access_token'),
+    refreshToken: sessionStorage.getItem('sp_refresh_token'),
+    isLocal: false
+  };
+};
 
-const setTokens = (access: string, refresh?: string) => {
-  localStorage.setItem('sp_access_token', access);
-  if (refresh) localStorage.setItem('sp_refresh_token', refresh);
+const setTokens = (access: string, refresh?: string | null, remember: boolean = false) => {
+  // Clear both first to ensure no duplicates
+  localStorage.removeItem('sp_access_token');
+  localStorage.removeItem('sp_refresh_token');
+  sessionStorage.removeItem('sp_access_token');
+  sessionStorage.removeItem('sp_refresh_token');
+
+  const storage = remember ? localStorage : sessionStorage;
+  storage.setItem('sp_access_token', access);
+  if (refresh) storage.setItem('sp_refresh_token', refresh);
 };
 
 const clearTokens = () => {
   localStorage.removeItem('sp_access_token');
   localStorage.removeItem('sp_refresh_token');
+  sessionStorage.removeItem('sp_access_token');
+  sessionStorage.removeItem('sp_refresh_token');
 };
 
 const doRequest = async <T>(path: string, options: RequestInit = {}, retry = true): Promise<T> => {
-  const { accessToken, refreshToken } = getStorage();
+  const { accessToken, refreshToken, isLocal } = getStorage();
   const headers: Record<string, string> = {
     ...(options.headers as Record<string, string> | undefined)
   };
@@ -32,22 +52,34 @@ const doRequest = async <T>(path: string, options: RequestInit = {}, retry = tru
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
   const res = await fetch(`${API_URL}${path}`, { ...options, headers });
+
   if (res.status === 401 && refreshToken && retry) {
-    const refreshRes = await fetch(`${API_URL}/auth/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken })
-    });
-    if (refreshRes.ok) {
-      const data = await refreshRes.json();
-      if (data.accessToken) {
-        setTokens(data.accessToken);
-        return doRequest<T>(path, options, false);
+    try {
+      const refreshRes = await fetch(`${API_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken })
+      });
+
+      if (refreshRes.ok) {
+        const data = await refreshRes.json();
+        if (data.accessToken) {
+          // Keep old refresh token if new one not provided
+          const newRefresh = data.refreshToken || refreshToken;
+          setTokens(data.accessToken, newRefresh, isLocal);
+          return doRequest<T>(path, options, false);
+        }
       }
+    } catch (err) {
+      console.error('Token refresh failed:', err);
     }
+
+    // If we get here, refresh failed
     clearTokens();
-    throw new Error('Unauthorized');
+    window.location.href = '/login';
+    throw new Error('Session expired');
   }
+
   if (!res.ok) {
     const text = await res.text();
     try {
@@ -62,13 +94,13 @@ const doRequest = async <T>(path: string, options: RequestInit = {}, retry = tru
 
 export const api = {
   clearTokens,
-  async login(email: string, password: string) {
+  async login(email: string, password: string, rememberMe: boolean = false) {
     const data = await doRequest<{
       accessToken: string;
       refreshToken: string;
       user: User;
     }>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }, false);
-    setTokens(data.accessToken, data.refreshToken);
+    setTokens(data.accessToken, data.refreshToken, rememberMe);
     return data.user;
   },
   async me() {

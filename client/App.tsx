@@ -14,7 +14,7 @@ import Team from './pages/Team';
 import AuditLogs from './pages/AuditLogs';
 import Financials from './pages/Financials'; // New
 import Login from './pages/Login';
-import { Language } from './locales';
+import { useTranslation } from './hooks/useTranslation';
 import { User } from './types';
 import { api } from './services/api';
 import { AutoRefreshProvider } from './hooks/useAutoRefresh';
@@ -86,7 +86,7 @@ const updateThemeColors = (hex: string) => {
 
 
 function App() {
-  const [lang, setLang] = useState<Language>('en');
+  const { i18n } = useTranslation();
   const [currentPage, setPage] = useState('dashboard');
   const [user, setUser] = useState<User | null>(null);
   const [darkMode, setDarkMode] = useState(false);
@@ -150,16 +150,12 @@ function App() {
   }, []);
 
   // Helper to trigger branding update when settings change
-  // We can expose this via Context, but for this structure we'll just rely on the Settings page triggering a re-render or callback if needed.
-  // Actually, since backend is a singleton, we can just poll or listen. 
-  // For now, let's update it whenever the page changes to 'config' or we can add a listener.
-  // A simple way: pass a callback to Settings.
   const handleThemeChange = (hex: string) => {
     updateThemeColors(hex);
   }
 
   if (loadingUser || !user) {
-    return <Login onLogin={setUser} currentLang={lang} />;
+    return <Login onLogin={setUser} />;
   }
 
   const renderPage = () => {
@@ -174,27 +170,25 @@ function App() {
     }
 
     switch (currentPage) {
-      case 'dashboard': return <Dashboard currentLang={lang} setPage={setPage} />;
-      case 'licenses': return <Licenses currentLang={lang} />;
-      case 'plans': return <Plans currentLang={lang} />;
-      case 'financials': return <Financials currentLang={lang} />;
-      case 'updates': return <Updates currentLang={lang} />;
-      case 'notifications': return <Notifications currentLang={lang} />;
-      case 'support': return <Support currentLang={lang} />;
-      case 'currencies': return <Currencies currentLang={lang} />;
-      case 'config': return <Settings currentLang={lang} onThemeChange={handleThemeChange} />;
-      case 'team': return <Team currentLang={lang} />;
-      case 'api': return <ApiDocs currentLang={lang} />;
-      case 'audit-logs': return <AuditLogs currentLang={lang} />;
-      default: return <Dashboard currentLang={lang} setPage={setPage} />;
+      case 'dashboard': return <Dashboard currentLang={i18n.language} setPage={setPage} />;
+      case 'licenses': return <Licenses currentLang={i18n.language} />;
+      case 'plans': return <Plans currentLang={i18n.language} />;
+      case 'financials': return <Financials currentLang={i18n.language} />;
+      case 'updates': return <Updates currentLang={i18n.language} />;
+      case 'notifications': return <Notifications currentLang={i18n.language} />;
+      case 'support': return <Support currentLang={i18n.language} />;
+      case 'currencies': return <Currencies currentLang={i18n.language} />;
+      case 'config': return <Settings currentLang={i18n.language} onThemeChange={handleThemeChange} />;
+      case 'team': return <Team currentLang={i18n.language} />;
+      case 'api': return <ApiDocs currentLang={i18n.language} />;
+      case 'audit-logs': return <AuditLogs currentLang={i18n.language} />;
+      default: return <Dashboard currentLang={i18n.language} setPage={setPage} />;
     }
   };
 
   return (
     <AutoRefreshProvider tick={refreshTick} requestRefresh={requestRefresh}>
       <Layout
-        currentLang={lang}
-        setLang={setLang}
         currentPage={currentPage}
         setPage={setPage}
         user={user}

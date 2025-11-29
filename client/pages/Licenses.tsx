@@ -1,18 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import ConfirmModal from '../components/ConfirmModal';
 import { exportToExcel } from '../utils/excelExport';
-import { translations, Language } from '../locales';
+import { useTranslation } from '../hooks/useTranslation';
 import { api } from '../services/api';
 import { LicenseKey, LicenseStatus, SubscriptionPlan } from '../types';
 import { Plus, Search, Monitor, Shield, Ban, CalendarClock, Download, Trash2, Filter, X, Copy, Check, WifiOff, LockKeyhole, PauseCircle, PlayCircle, Hash, CreditCard, Edit2, AlertTriangle, User, Save } from 'lucide-react';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
-interface LicensesProps {
-  currentLang: Language;
-}
-
-const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
-  const t = translations[currentLang];
+const Licenses: React.FC = () => {
+  const { t } = useTranslation();
   const { tick: autoRefreshTick, requestRefresh } = useAutoRefresh();
   const [licenses, setLicenses] = useState<LicenseKey[]>([]);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
@@ -222,11 +218,21 @@ const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
     }
   };
 
+  const getStatusLabel = (status: LicenseStatus) => {
+    switch (status) {
+      case LicenseStatus.ACTIVE: return t('licenses.active');
+      case LicenseStatus.EXPIRED: return t('licenses.expired');
+      case LicenseStatus.REVOKED: return t('licenses.revoked');
+      case LicenseStatus.PAUSED: return t('licenses.paused');
+      default: return status;
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t.licenses}</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('licenses.title')}</h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Manage, renew, and audit all deployed licenses.</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -235,21 +241,21 @@ const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
             className="flex items-center gap-2 bg-indigo-100 dark:bg-indigo-900/30 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 px-4 py-2 rounded-lg transition-colors shadow-sm text-sm font-bold border border-indigo-200 dark:border-indigo-800"
           >
             <WifiOff size={18} />
-            {t.offlineActivation}
+            {t('licenses.offlineActivation')}
           </button>
           <button
             onClick={handleExport}
             className="flex items-center gap-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-white px-4 py-2 rounded-lg transition-colors shadow-sm text-sm font-medium"
           >
             <Download size={18} />
-            {t.exportCsv}
+            {t('common.export')}
           </button>
           <button
             onClick={() => setIsModalOpen(true)}
             className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors shadow-sm text-sm font-bold"
           >
             <Plus size={18} />
-            {t.create}
+            {t('common.create')}
           </button>
         </div>
       </div>
@@ -262,7 +268,7 @@ const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={t.serial + ' / ' + t.customer + ' / HWID'}
+              placeholder={t('licenses.serial') + ' / ' + t('licenses.customer') + ' / HWID'}
               className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm shadow-sm"
             />
           </div>
@@ -275,11 +281,11 @@ const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
                 className="w-full pl-4 pr-10 py-2.5 rounded-lg border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm appearance-none cursor-pointer shadow-sm font-medium"
               >
                 <option value="ALL">All Statuses</option>
-                <option value={LicenseStatus.ACTIVE}>Active</option>
-                <option value={LicenseStatus.EXPIRED}>Expired</option>
+                <option value={LicenseStatus.ACTIVE}>{t('licenses.active')}</option>
+                <option value={LicenseStatus.EXPIRED}>{t('licenses.expired')}</option>
                 <option value={LicenseStatus.PENDING}>Pending</option>
-                <option value={LicenseStatus.REVOKED}>Revoked</option>
-                <option value={LicenseStatus.PAUSED}>Paused</option>
+                <option value={LicenseStatus.REVOKED}>{t('licenses.revoked')}</option>
+                <option value={LicenseStatus.PAUSED}>{t('licenses.paused')}</option>
               </select>
               <Filter size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             </div>
@@ -314,19 +320,19 @@ const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
           <table className="w-full text-left text-sm text-gray-600 dark:text-slate-400">
             <thead className="bg-gray-50 dark:bg-slate-900/50 text-gray-700 dark:text-slate-300 font-semibold uppercase tracking-wider text-xs border-b border-gray-200 dark:border-slate-700">
               <tr>
-                <th className="px-6 py-4">{t.serial}</th>
-                <th className="px-6 py-4">{t.customer}</th>
-                <th className="px-6 py-4 text-center">{t.status}</th>
-                <th className="px-6 py-4 text-center">{t.activationCount}</th>
+                <th className="px-6 py-4">{t('licenses.serial')}</th>
+                <th className="px-6 py-4">{t('licenses.customer')}</th>
+                <th className="px-6 py-4 text-center">{t('common.status')}</th>
+                <th className="px-6 py-4 text-center">{t('licenses.activations')}</th>
                 <th className="px-6 py-4 text-center">Last Payment</th>
-                <th className="px-6 py-4 text-right">Actions</th>
+                <th className="px-6 py-4 text-right">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-slate-700/50">
               {filteredLicenses.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center py-12 text-slate-400">
-                    No licenses found matching your filters.
+                    {t('common.noData')}
                   </td>
                 </tr>
               ) : (
@@ -356,7 +362,7 @@ const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusColor(license.status)}`}>
-                        {t[license.status as unknown as keyof typeof t] || license.status}
+                        {getStatusLabel(license.status)}
                       </span>
                       {license.expireDate && (
                         <div className="text-[10px] text-slate-400 mt-1">
@@ -381,7 +387,7 @@ const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
                         <button
                           onClick={() => handleEditClick(license)}
                           className="text-sky-600 hover:text-sky-800 dark:text-sky-400 dark:hover:text-sky-300 p-2 hover:bg-sky-50 dark:hover:bg-sky-900/20 rounded-lg transition-colors"
-                          title={t.edit}
+                          title={t('common.edit')}
                         >
                           <Edit2 size={18} />
                         </button>
@@ -390,21 +396,21 @@ const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
                             <button
                               onClick={() => handlePauseToggle(license.id)}
                               className="text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                              title={license.status === LicenseStatus.PAUSED ? t.resume : t.pause}
+                              title={license.status === LicenseStatus.PAUSED ? t('licenses.resume') : t('licenses.pause')}
                             >
                               {license.status === LicenseStatus.PAUSED ? <PlayCircle size={18} /> : <PauseCircle size={18} />}
                             </button>
                             <button
                               onClick={() => openRenewModal(license.id)}
                               className="text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300 p-2 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
-                              title={t.renew}
+                              title={t('licenses.renew')}
                             >
                               <CalendarClock size={18} />
                             </button>
                             <button
                               onClick={() => handleRevoke(license.id)}
                               className="text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300 p-2 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors"
-                              title={t.revoke}
+                              title={t('licenses.revoke')}
                             >
                               <Ban size={18} />
                             </button>
@@ -413,7 +419,7 @@ const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
                         <button
                           onClick={() => handleDeleteClick(license.id)}
                           className="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 p-2 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-colors"
-                          title={t.delete}
+                          title={t('common.delete')}
                         >
                           <Trash2 size={18} />
                         </button>
@@ -433,7 +439,7 @@ const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-md z-10 p-6 space-y-6 border border-gray-100 dark:border-slate-700 animate-in zoom-in-95">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
               <Plus size={24} className="text-primary-500" />
-              {t.newLicense}
+              {t('licenses.add')}
             </h2>
 
             {createError && (
@@ -445,7 +451,7 @@ const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.customer}</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('licenses.customer')}</label>
                 <input
                   type="text"
                   value={newCustomer}
@@ -456,7 +462,7 @@ const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.plan}</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('licenses.plan')}</label>
                 <select
                   value={selectedPlan}
                   onChange={(e) => setSelectedPlan(e.target.value)}
@@ -472,7 +478,7 @@ const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t.quantity} <span className="text-xs text-slate-400 font-normal">(Bulk Generation)</span>
+                  {t('licenses.quantity')} <span className="text-xs text-slate-400 font-normal">(Bulk Generation)</span>
                 </label>
                 <div className="flex items-center gap-3">
                   <div className="relative flex-1">
@@ -496,14 +502,14 @@ const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
                 onClick={() => { setIsModalOpen(false); setCreateError(''); }}
                 className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg font-medium text-sm transition-colors"
               >
-                {t.cancel}
+                {t('common.cancel')}
               </button>
               <button
                 onClick={handleCreate}
                 disabled={!newCustomer.trim() || isCreating}
                 className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm transition-colors shadow-sm"
               >
-                {isCreating ? 'Generating...' : (quantity > 1 ? `${t.bulkGenerate} (${quantity})` : t.generateResponse)}
+                {isCreating ? 'Generating...' : (quantity > 1 ? `${t('licenses.bulkGenerate')} (${quantity})` : t('licenses.generate'))}
               </button>
             </div>
           </div>
@@ -520,14 +526,14 @@ const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
                 <Edit2 size={20} />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white">{t.editLicense}</h2>
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white">{t('licenses.edit')}</h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">{editingLicense.serial}</p>
               </div>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t.customer}</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('licenses.customer')}</label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                   <input
@@ -541,9 +547,9 @@ const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
             </div>
 
             <div className="flex justify-end gap-3 pt-2">
-              <button onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-sm font-medium">{t.cancel}</button>
+              <button onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-sm font-medium">{t('common.cancel')}</button>
               <button onClick={handleSaveEdit} className="px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 text-sm font-bold flex items-center gap-2">
-                <Save size={16} /> {t.save}
+                <Save size={16} /> {t('common.save')}
               </button>
             </div>
           </div>
@@ -559,9 +565,9 @@ const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
               <div className="w-16 h-16 bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-500 rounded-full flex items-center justify-center mb-4">
                 <AlertTriangle size={32} />
               </div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{t.deleteLicenseTitle}</h2>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{t('licenses.deleteConfirm')}</h2>
               <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
-                {t.deleteWarning}
+                {t('licenses.deleteWarning')}
               </p>
             </div>
 
@@ -570,13 +576,13 @@ const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
                 onClick={() => setIsDeleteModalOpen(false)}
                 className="flex-1 px-4 py-3 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-medium hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
               >
-                {t.cancel}
+                {t('common.cancel')}
               </button>
               <button
                 onClick={handleConfirmDelete}
                 className="flex-1 px-4 py-3 bg-rose-600 text-white rounded-xl font-bold hover:bg-rose-700 shadow-lg shadow-rose-600/20 transition-colors"
               >
-                {t.confirmAction}
+                {t('common.confirm')}
               </button>
             </div>
           </div>
@@ -587,11 +593,11 @@ const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsRenewModalOpen(false)} />
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-sm z-10 p-6 space-y-6 border border-gray-100 dark:border-slate-700 animate-in zoom-in-95">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t.renew} License</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('licenses.renew')}</h2>
             <div className="space-y-4">
               <p className="text-sm text-slate-600 dark:text-slate-400">Extend license validity.</p>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.duration}</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('licenses.duration')}</label>
                 <select
                   value={renewMonths}
                   onChange={(e) => setRenewMonths(Number(e.target.value))}
@@ -606,8 +612,8 @@ const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
               </div>
             </div>
             <div className="flex justify-end gap-3 pt-4">
-              <button onClick={() => setIsRenewModalOpen(false)} className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-sm font-medium">{t.cancel}</button>
-              <button onClick={handleRenew} className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-bold">{t.renew}</button>
+              <button onClick={() => setIsRenewModalOpen(false)} className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-sm font-medium">{t('common.cancel')}</button>
+              <button onClick={handleRenew} className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-bold">{t('licenses.renew')}</button>
             </div>
           </div>
         </div>
@@ -622,14 +628,14 @@ const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
                 <LockKeyhole size={20} />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white">{t.offlineActivation}</h2>
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white">{t('licenses.offlineActivation')}</h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400">Generate activation code for offline devices</p>
               </div>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.serial}</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('licenses.serial')}</label>
                 <select
                   value={offlineSelectedSerial}
                   onChange={(e) => setOfflineSelectedSerial(e.target.value)}
@@ -643,7 +649,7 @@ const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.requestString}</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('licenses.requestString')}</label>
                 <input
                   value={offlineRequestCode}
                   onChange={(e) => setOfflineRequestCode(e.target.value.toUpperCase())}
@@ -655,7 +661,7 @@ const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
 
               {offlineResponseCode && (
                 <div className="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-lg border border-emerald-100 dark:border-emerald-800 animate-in fade-in slide-in-from-top-2">
-                  <label className="block text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider mb-2">{t.activationCode}</label>
+                  <label className="block text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider mb-2">{t('licenses.activationCode')}</label>
                   <div className="flex items-center gap-2">
                     <code className="flex-1 font-mono text-lg font-bold text-emerald-900 dark:text-white bg-white dark:bg-slate-900 px-3 py-2 rounded border border-emerald-200 dark:border-emerald-700 select-all">
                       {offlineResponseCode}
@@ -676,14 +682,14 @@ const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
                 onClick={() => { setIsOfflineModalOpen(false); setOfflineResponseCode(''); setOfflineRequestCode(''); }}
                 className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-sm font-medium"
               >
-                {t.cancel}
+                {t('common.cancel')}
               </button>
               <button
                 onClick={handleGenerateOfflineCode}
                 disabled={!offlineRequestCode || !offlineSelectedSerial}
                 className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-bold shadow-md shadow-indigo-500/20"
               >
-                {t.generateResponse}
+                {t('licenses.generate')}
               </button>
             </div>
           </div>
@@ -694,9 +700,9 @@ const Licenses: React.FC<LicensesProps> = ({ currentLang }) => {
         isOpen={!!revokeId}
         onClose={() => setRevokeId(null)}
         onConfirm={confirmRevoke}
-        title={t.revoke + " License"}
+        title={t('licenses.revoke')}
         message="Are you sure you want to revoke this license? It will stop working immediately."
-        confirmText={t.revoke}
+        confirmText={t('licenses.revoke')}
         type="danger"
       />
     </div>

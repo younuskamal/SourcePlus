@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import {
   Plus, Edit2, Trash2, Copy, Check, X, Loader, AlertCircle,
   CheckCircle2, XCircle, Eye, EyeOff, ShieldCheck, Zap, Globe,
-  AlertTriangle
+  AlertTriangle, LayoutTemplate, Save
 } from 'lucide-react';
 import { api } from '../services/api';
 import { CurrencyRate } from '../types';
-import { translations, Language } from '../locales';
+import { useTranslation } from '../hooks/useTranslation';
 
 interface Plan {
   id: string;
@@ -35,7 +35,7 @@ interface FormData {
   isActive: boolean;
 }
 
-const PLAN_TEMPLATES = [
+const DEFAULT_TEMPLATES = [
   {
     name: 'Starter',
     price_monthly: 15000,
@@ -75,7 +75,7 @@ const Toast: React.FC<{ toast: Toast; onClose: () => void; isRtl: boolean }> = (
 
   return (
     <div
-      className={`fixed bottom-6 ${isRtl ? 'left-6' : 'right-6'} z-50 animate-in slide-in-from-bottom-5 duration-300`}
+      className={`fixed bottom-6 ${isRtl ? 'left-6' : 'right-6'} z-[100] animate-in slide-in-from-bottom-5 duration-300`}
     >
       <div
         className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg ${toast.type === 'success'
@@ -313,7 +313,7 @@ const Modal: React.FC<{
       <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 transition-opacity" onClick={onClose} />
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
         <div
-          className={`pointer-events-auto bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-700 flex flex-col`}
+          className={`pointer-events-auto bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-700 flex flex-col`}
           dir={isRtl ? 'rtl' : 'ltr'}
         >
           {/* Header */}
@@ -339,9 +339,9 @@ const Modal: React.FC<{
 };
 
 // ============ Plans Page Component ============
-const Plans: React.FC<{ currentLang: Language }> = ({ currentLang }) => {
-  const t = translations[currentLang];
-  const isRtl = currentLang === 'ar';
+const Plans: React.FC = () => {
+  const { t, i18n } = useTranslation();
+  const isRtl = i18n.language === 'ar';
 
   const [plans, setPlans] = useState<Plan[]>([]);
   const [currencies, setCurrencies] = useState<CurrencyRate[]>([]);
@@ -352,6 +352,7 @@ const Plans: React.FC<{ currentLang: Language }> = ({ currentLang }) => {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<Toast>({ open: false, message: '', type: 'success' });
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string; name: string } | null>(null);
+  const [customTemplates, setCustomTemplates] = useState<any[]>([]);
 
   const [formData, setFormData] = useState<FormData>({
     name: '',
@@ -396,6 +397,14 @@ const Plans: React.FC<{ currentLang: Language }> = ({ currentLang }) => {
 
   useEffect(() => {
     fetchData();
+    const savedTemplates = localStorage.getItem('sourceplus_plan_templates');
+    if (savedTemplates) {
+      try {
+        setCustomTemplates(JSON.parse(savedTemplates));
+      } catch (e) {
+        console.error('Failed to parse templates', e);
+      }
+    }
   }, []);
 
   const handleOpenModal = (plan?: Plan) => {
@@ -430,16 +439,31 @@ const Plans: React.FC<{ currentLang: Language }> = ({ currentLang }) => {
     setEditingPlan(null);
   };
 
-  const handleTemplateSelect = (templateName: string) => {
-    const template = PLAN_TEMPLATES.find(t => t.name === templateName);
-    if (template) {
-      setFormData({
-        ...template,
-        currency: currencies.some(c => c.code === template.currency)
-          ? template.currency
-          : currencies[0]?.code || 'IQD'
-      });
-    }
+  const handleTemplateSelect = (template: any) => {
+    setFormData({
+      ...formData, // Keep current state if needed, but usually we overwrite
+      name: template.name,
+      price_monthly: template.price_monthly,
+      price_yearly: template.price_yearly,
+      currency: currencies.some(c => c.code === template.currency) ? template.currency : (currencies[0]?.code || 'IQD'),
+      features: template.features,
+      limits: template.limits
+    });
+  };
+
+  const handleSaveTemplate = () => {
+    if (!formData.name) return;
+    const newTemplate = { ...formData };
+    const updated = [...customTemplates, newTemplate];
+    setCustomTemplates(updated);
+    localStorage.setItem('sourceplus_plan_templates', JSON.stringify(updated));
+    setToast({ open: true, message: 'Template saved successfully', type: 'success' });
+  };
+
+  const handleDeleteTemplate = (index: number) => {
+    const updated = customTemplates.filter((_, i) => i !== index);
+    setCustomTemplates(updated);
+    localStorage.setItem('sourceplus_plan_templates', JSON.stringify(updated));
   };
 
   const handleSubmit = async () => {
@@ -540,7 +564,7 @@ const Plans: React.FC<{ currentLang: Language }> = ({ currentLang }) => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            {t.plans}
+            {t('plans.title')}
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Manage your subscription tiers, pricing, and features
@@ -550,7 +574,7 @@ const Plans: React.FC<{ currentLang: Language }> = ({ currentLang }) => {
           onClick={() => handleOpenModal()}
           className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg shadow-md shadow-primary-600/20 transition-all active:scale-95 text-sm font-bold"
         >
-          <Plus size={16} /> {t.addPlan}
+          <Plus size={16} /> {t('plans.add')}
         </button>
       </div>
 
@@ -592,7 +616,7 @@ const Plans: React.FC<{ currentLang: Language }> = ({ currentLang }) => {
             className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors"
           >
             <Plus className="w-4 h-4" />
-            Create Plan
+            {t('plans.add')}
           </button>
         </div>
       ) : (
@@ -650,7 +674,7 @@ const Plans: React.FC<{ currentLang: Language }> = ({ currentLang }) => {
                 {/* Features */}
                 <div className="mb-5">
                   <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
-                    Features
+                    {t('plans.features')}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {Object.keys(plan.features || {}).length > 0 ? (
@@ -741,186 +765,305 @@ const Plans: React.FC<{ currentLang: Language }> = ({ currentLang }) => {
       <Modal
         isOpen={modalOpen}
         onClose={handleCloseModal}
-        title={editingPlan ? t.editPlan : t.addPlan}
+        title={editingPlan ? t('plans.edit') : t('plans.add')}
         subtitle={editingPlan ? 'Update plan details and pricing' : 'Set up a new subscription tier'}
         isRtl={isRtl}
       >
-        <div className="space-y-5">
-          {/* Quick Templates */}
-          {!editingPlan && (
-            <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800/50">
-              <p className="text-xs font-bold text-indigo-600 dark:text-indigo-300 mb-3 uppercase tracking-wider flex items-center gap-2">
-                <Zap size={12} /> Quick Start Templates
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {PLAN_TEMPLATES.map((t) => (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Left Column: Form */}
+          <div className="space-y-5">
+            {/* Quick Templates */}
+            {!editingPlan && (
+              <div className="space-y-3">
+                <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800/50">
+                  <p className="text-xs font-bold text-indigo-600 dark:text-indigo-300 mb-3 uppercase tracking-wider flex items-center gap-2">
+                    <Zap size={12} /> {t('plans.quickTemplates')}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {DEFAULT_TEMPLATES.map((t) => (
+                      <button
+                        key={t.name}
+                        onClick={() => handleTemplateSelect(t)}
+                        className="px-3 py-1.5 rounded-lg border border-indigo-200 dark:border-indigo-700 bg-white dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/50 transition-colors text-xs font-bold shadow-sm"
+                      >
+                        {t.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {customTemplates.length > 0 && (
+                  <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-100 dark:border-amber-800/50">
+                    <p className="text-xs font-bold text-amber-600 dark:text-amber-300 mb-3 uppercase tracking-wider flex items-center gap-2">
+                      <LayoutTemplate size={12} /> {t('plans.customTemplates')}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {customTemplates.map((t, idx) => (
+                        <div key={idx} className="group relative inline-flex">
+                          <button
+                            onClick={() => handleTemplateSelect(t)}
+                            className="px-3 py-1.5 rounded-lg border border-amber-200 dark:border-amber-700 bg-white dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/50 transition-colors text-xs font-bold shadow-sm pr-7"
+                          >
+                            {t.name}
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDeleteTemplate(idx); }}
+                            className="absolute right-1 top-1.5 p-0.5 text-amber-400 hover:text-rose-500 rounded-full transition-colors"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Plan Name */}
+            <div>
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+                {t('plans.name')} <span className="text-rose-500">*</span>
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="e.g. Professional Plan"
+                  className="flex-1 px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all"
+                />
+                {!editingPlan && (
                   <button
-                    key={t.name}
-                    onClick={() => handleTemplateSelect(t.name)}
-                    className="px-3 py-1.5 rounded-lg border border-indigo-200 dark:border-indigo-700 bg-white dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/50 transition-colors text-xs font-bold shadow-sm"
+                    onClick={handleSaveTemplate}
+                    disabled={!formData.name}
+                    className="px-3 py-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
+                    title={t('plans.saveAsTemplate')}
                   >
-                    {t.name}
+                    <Save size={18} />
                   </button>
-                ))}
+                )}
               </div>
             </div>
-          )}
 
-          {/* Plan Name */}
-          <div>
-            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-              {t.name} <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="e.g. Professional Plan"
-              className="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all"
-            />
-          </div>
-
-          {/* Pricing */}
-          <div>
-            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-              {t.price}
-            </label>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-[10px] text-slate-400 mb-1 block">Monthly</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-slate-400 text-sm">$</span>
-                  <input
-                    type="number"
-                    value={formData.price_monthly}
-                    onChange={(e) => setFormData({ ...formData, price_monthly: Number(e.target.value) })}
-                    className="w-full pl-7 pr-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all"
-                  />
+            {/* Pricing */}
+            <div>
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+                {t('plans.price')}
+              </label>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] text-slate-400 mb-1 block">Monthly</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-slate-400 text-sm">$</span>
+                    <input
+                      type="number"
+                      value={formData.price_monthly}
+                      onChange={(e) => setFormData({ ...formData, price_monthly: Number(e.target.value) })}
+                      className="w-full pl-7 pr-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all"
+                    />
+                  </div>
                 </div>
-              </div>
-              <div>
-                <label className="text-[10px] text-slate-400 mb-1 block">Yearly</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-slate-400 text-sm">$</span>
-                  <input
-                    type="number"
-                    value={formData.price_yearly}
-                    onChange={(e) => setFormData({ ...formData, price_yearly: Number(e.target.value) })}
-                    className="w-full pl-7 pr-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all"
-                  />
+                <div>
+                  <label className="text-[10px] text-slate-400 mb-1 block">Yearly</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-slate-400 text-sm">$</span>
+                    <input
+                      type="number"
+                      value={formData.price_yearly}
+                      onChange={(e) => setFormData({ ...formData, price_yearly: Number(e.target.value) })}
+                      className="w-full pl-7 pr-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Currency */}
-          <div>
-            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-              Currency <span className="text-rose-500">*</span>
-            </label>
-            <div className="relative">
-              <Globe className="absolute left-3 top-3 text-slate-400 w-4 h-4" />
+            {/* Currency */}
+            <div>
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+                Currency
+              </label>
               <select
                 value={formData.currency}
                 onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all appearance-none"
+                className="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all"
               >
-                {currencies.length > 0 ? (
-                  currencies.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.code} ({c.symbol})
-                    </option>
-                  ))
-                ) : (
-                  <option value="IQD">IQD (د.ع)</option>
-                )}
+                {currencies.map(c => (
+                  <option key={c.code} value={c.code}>{c.code} - {c.name}</option>
+                ))}
               </select>
             </div>
-          </div>
 
-          {/* Features */}
-          <FeatureEditor
-            features={formData.features}
-            onChange={(features) => setFormData({ ...formData, features })}
-            label={t.features}
-            isRtl={isRtl}
-          />
+            {/* Features & Limits */}
+            <FeatureEditor
+              label={t('plans.features')}
+              features={formData.features}
+              onChange={(f) => setFormData({ ...formData, features: f })}
+              isRtl={isRtl}
+            />
 
-          {/* Limits */}
-          <LimitEditor
-            limits={formData.limits}
-            onChange={(limits) => setFormData({ ...formData, limits })}
-            label="Limits"
-            isRtl={isRtl}
-          />
+            <LimitEditor
+              label="Limits"
+              limits={formData.limits}
+              onChange={(l) => setFormData({ ...formData, limits: l })}
+              isRtl={isRtl}
+            />
 
-          {/* Status Toggle */}
-          <div className="p-4 bg-slate-50 dark:bg-slate-700/30 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
-            <div>
-              <p className="font-bold text-slate-900 dark:text-white text-sm">Plan Status</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                {formData.isActive ? 'Visible to customers' : 'Hidden from customers'}
-              </p>
+            {/* Submit Button */}
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-700">
+              <button
+                onClick={handleSubmit}
+                disabled={saving}
+                className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-primary-600/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {saving ? (
+                  <>
+                    <Loader className="animate-spin" size={20} />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Check size={20} />
+                    {editingPlan ? 'Update Plan' : 'Create Plan'}
+                  </>
+                )}
+              </button>
             </div>
-            <button
-              onClick={() => setFormData({ ...formData, isActive: !formData.isActive })}
-              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${formData.isActive
-                ? 'bg-emerald-500'
-                : 'bg-slate-300 dark:bg-slate-600'
-                }`}
-            >
-              <span
-                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${formData.isActive ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-              />
-            </button>
           </div>
 
-          {/* Actions */}
-          <div className="flex gap-3 pt-2">
-            <button
-              onClick={handleCloseModal}
-              disabled={saving}
-              className="flex-1 px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 font-bold transition-colors disabled:opacity-50 text-sm"
-            >
-              {t.cancel}
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={saving || !formData.name || !formData.currency}
-              className="flex-1 px-4 py-2.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-bold transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-2 text-sm shadow-lg shadow-primary-600/20"
-            >
-              {saving ? (
-                <>
-                  <Loader className="w-4 h-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Check className="w-4 h-4" />
-                  {editingPlan ? t.save : t.create}
-                </>
-              )}
-            </button>
+          {/* Right Column: Live Preview */}
+          <div className="hidden lg:block space-y-4">
+            <div className="sticky top-6">
+              <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <Eye size={16} /> {t('plans.livePreview')}
+              </h3>
+
+              <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden flex flex-col transform transition-all duration-300">
+                {/* Status Indicator */}
+                <div className={`h-1 ${formData.isActive ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : 'bg-slate-200 dark:bg-slate-700'}`} />
+
+                {/* Content */}
+                <div className="p-6 flex-1">
+                  {/* Header */}
+                  <div className="flex items-start justify-between gap-3 mb-4">
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
+                        {formData.name || 'Plan Name'}
+                      </h3>
+                      <div className="flex gap-2 flex-wrap">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 text-[10px] font-bold uppercase tracking-wider">
+                          {formData.currency || 'IQD'}
+                        </span>
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${formData.isActive
+                            ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
+                            : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
+                            }`}
+                        >
+                          {formData.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="p-2 bg-primary-50 dark:bg-primary-900/20 rounded-xl text-primary-600 dark:text-primary-400">
+                      <ShieldCheck size={20} />
+                    </div>
+                  </div>
+
+                  {/* Pricing */}
+                  <div className="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-4 mb-5 border border-slate-100 dark:border-slate-700/50">
+                    <div className="flex items-baseline gap-1 mb-1">
+                      <span className="text-2xl font-extrabold text-slate-900 dark:text-white">
+                        {formatPrice(formData.price_monthly, formData.currency)}
+                      </span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">/ month</span>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      or {formatPrice(formData.price_yearly, formData.currency)} / year
+                    </p>
+                  </div>
+
+                  {/* Features */}
+                  <div className="mb-5">
+                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                      {t('plans.features')}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.keys(formData.features || {}).length > 0 ? (
+                        Object.keys(formData.features).map((f) => (
+                          <span
+                            key={f}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-xs font-medium shadow-sm"
+                          >
+                            <Check size={10} className="text-emerald-500" /> {f}
+                          </span>
+                        ))
+                      ) : (
+                        <p className="text-xs text-slate-400 italic">No features defined</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Limits */}
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                      Limits
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.keys(formData.limits || {}).length > 0 ? (
+                        Object.entries(formData.limits).map(([k, v]) => (
+                          <span
+                            key={k}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-xs font-medium shadow-sm"
+                          >
+                            <Zap size={10} className="text-amber-500" /> {k}: {v}
+                          </span>
+                        ))
+                      ) : (
+                        <p className="text-xs text-slate-400 italic">No limits defined</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions Mock */}
+                <div className="p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex gap-2 opacity-50 pointer-events-none">
+                  <button className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-bold bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
+                    <Eye size={14} /> Publish
+                  </button>
+                  <button className="inline-flex items-center justify-center p-2 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 rounded-lg">
+                    <Copy size={14} />
+                  </button>
+                  <button className="inline-flex items-center justify-center p-2 bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 border border-primary-100 dark:border-primary-800 rounded-lg">
+                    <Edit2 size={14} />
+                  </button>
+                  <button className="inline-flex items-center justify-center p-2 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-800 rounded-lg">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </Modal>
 
-      {/* Confirm Dialog */}
       <ConfirmDialog
         isOpen={!!deleteConfirm}
         onClose={() => setDeleteConfirm(null)}
         onConfirm={confirmDelete}
-        title={t.deleteLicenseTitle || "Delete Plan"}
-        message={t.confirmDelete || `Are you sure you want to delete the "${deleteConfirm?.name}" plan?`}
+        title={t('plans.deleteConfirm')}
+        message={`Are you sure you want to delete "${deleteConfirm?.name}"? This action cannot be undone.`}
         isRtl={isRtl}
-        confirmLabel={t.delete}
-        cancelLabel={t.cancel}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
         isDestructive={true}
       />
 
-      {/* Toast */}
-      <Toast toast={toast} onClose={() => setToast({ ...toast, open: false })} isRtl={isRtl} />
+      <Toast
+        toast={toast}
+        onClose={() => setToast({ ...toast, open: false })}
+        isRtl={isRtl}
+      />
     </div>
   );
 };

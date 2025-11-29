@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { User } from '../types';
-import { translations, Language } from '../locales';
+import { useTranslation } from '../hooks/useTranslation';
 import {
   Lock,
   Mail,
@@ -9,7 +9,6 @@ import {
   AlertCircle,
   Loader2,
   CheckCircle2,
-  WifiOff,
   Code2,
   ShieldCheck
 } from 'lucide-react';
@@ -17,11 +16,10 @@ import { api } from '../services/api';
 
 interface LoginProps {
   onLogin: (user: User) => void;
-  currentLang: Language;
 }
 
-const Login: React.FC<LoginProps> = ({ onLogin, currentLang }) => {
-  const t = translations[currentLang];
+const Login: React.FC<LoginProps> = ({ onLogin }) => {
+  const { t, i18n } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -33,8 +31,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, currentLang }) => {
   const [latency, setLatency] = useState<number | null>(null);
 
   useEffect(() => {
-    // Check for saved email
-    const savedEmail = localStorage.getItem('sourceplus_email');
+    // Check for saved email preference (purely for UI convenience, not auth)
+    const savedEmail = localStorage.getItem('sourceplus_email_pref');
     if (savedEmail) {
       setEmail(savedEmail);
       setRememberMe(true);
@@ -66,23 +64,25 @@ const Login: React.FC<LoginProps> = ({ onLogin, currentLang }) => {
       setIsLoading(true);
       setError('');
 
+      // Save email preference if remember me is checked
       if (rememberMe) {
-        localStorage.setItem('sourceplus_email', email);
+        localStorage.setItem('sourceplus_email_pref', email);
       } else {
-        localStorage.removeItem('sourceplus_email');
+        localStorage.removeItem('sourceplus_email_pref');
       }
 
-      const user = await api.login(email, password);
+      // Pass rememberMe to API to decide storage (local vs session)
+      const user = await api.login(email, password, rememberMe);
       onLogin(user as unknown as User);
     } catch (err: any) {
-      setError(err?.message || t.loginError);
+      setError(err?.message || t('login.invalidCredentials'));
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-4 transition-colors relative overflow-hidden" dir={currentLang === 'ar' ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-4 transition-colors relative overflow-hidden" dir={i18n.language === 'ar' ? 'rtl' : 'ltr'}>
 
       {/* Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -101,14 +101,14 @@ const Login: React.FC<LoginProps> = ({ onLogin, currentLang }) => {
             <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
               SOURCE<span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-500 to-indigo-500">PLUS</span>
             </h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm mt-2 font-medium">{t.description}</p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-2 font-medium">{t('messages.description')}</p>
           </div>
         </div>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-8 space-y-6">
           <div className="text-center mb-2">
-            <h2 className="text-xl font-bold text-slate-800 dark:text-white">{t.loginTitle}</h2>
+            <h2 className="text-xl font-bold text-slate-800 dark:text-white">{t('login.title')}</h2>
           </div>
 
           {error && (
@@ -120,9 +120,9 @@ const Login: React.FC<LoginProps> = ({ onLogin, currentLang }) => {
 
           <div className="space-y-5">
             <div>
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 ml-1">{t.email}</label>
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 ml-1">{t('login.email')}</label>
               <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <div className={`absolute inset-y-0 ${i18n.language === 'ar' ? 'right-0 pr-3' : 'left-0 pl-3'} flex items-center pointer-events-none`}>
                   <Mail className="text-slate-400 group-focus-within:text-sky-500 transition-colors" size={18} />
                 </div>
                 <input
@@ -130,7 +130,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, currentLang }) => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoFocus
-                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 outline-none transition-all"
+                  className={`w-full py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 outline-none transition-all ${i18n.language === 'ar' ? 'pr-10 pl-4' : 'pl-10 pr-4'}`}
                   placeholder="name@company.com"
                   required
                 />
@@ -138,16 +138,16 @@ const Login: React.FC<LoginProps> = ({ onLogin, currentLang }) => {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 ml-1">{t.password}</label>
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 ml-1">{t('login.password')}</label>
               <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <div className={`absolute inset-y-0 ${i18n.language === 'ar' ? 'right-0 pr-3' : 'left-0 pl-3'} flex items-center pointer-events-none`}>
                   <Lock className="text-slate-400 group-focus-within:text-sky-500 transition-colors" size={18} />
                 </div>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 outline-none transition-all"
+                  className={`w-full py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 outline-none transition-all ${i18n.language === 'ar' ? 'pr-10 pl-4' : 'pl-10 pr-4'}`}
                   placeholder="••••••••"
                   required
                 />
@@ -167,11 +167,11 @@ const Login: React.FC<LoginProps> = ({ onLogin, currentLang }) => {
                 onChange={(e) => setRememberMe(e.target.checked)}
               />
               <span className="text-sm text-slate-600 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-200 transition-colors select-none">
-                {t.rememberMe || "Remember me"}
+                {t('login.rememberMe')}
               </span>
             </label>
             <a href="#" className="text-sm font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 transition-colors">
-              {t.forgotPassword || "Forgot password?"}
+              {t('login.forgotPassword')}
             </a>
           </div>
 
@@ -183,12 +183,12 @@ const Login: React.FC<LoginProps> = ({ onLogin, currentLang }) => {
             {isLoading ? (
               <>
                 <Loader2 className="animate-spin" size={20} />
-                <span>Signing in...</span>
+                <span>{t('common.loading')}</span>
               </>
             ) : (
               <>
-                <span>{t.loginButton}</span>
-                <ArrowRight size={20} />
+                <span>{t('login.button')}</span>
+                {i18n.language === 'ar' ? <ArrowRight size={20} className="rotate-180" /> : <ArrowRight size={20} />}
               </>
             )}
           </button>
