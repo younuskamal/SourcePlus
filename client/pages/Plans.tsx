@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box, Button, Card, Typography, IconButton, Chip, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, FormControl, InputLabel, Select, MenuItem, Switch,
@@ -8,7 +8,7 @@ import {
 import { TransitionProps } from '@mui/material/transitions';
 import {
   Add, Edit, Delete, CheckCircle, Cancel, ContentCopy,
-  MonetizationOn, Verified, Close, Save, Refresh
+  MonetizationOn, Verified, Close, Save, Zap, LocalFireDepartment
 } from '@mui/icons-material';
 import { api } from '../services/api';
 import { CurrencyRate } from '../types';
@@ -29,37 +29,37 @@ interface Plan {
   price_monthly: number;
   price_yearly: number;
   currency: string;
-  features: any;
-  limits: any;
+  features: Record<string, any>;
+  limits: Record<string, any>;
   isActive: boolean;
 }
 
 // --- Templates ---
 const PLAN_TEMPLATES = [
   {
-    name: 'Starter Plan',
+    name: 'Starter',
     price_monthly: 15000,
     price_yearly: 150000,
     currency: 'IQD',
-    features: ['Basic POS', 'Inventory Management', '1 User'],
+    features: { pos: true, inventory: true },
     limits: { maxUsers: 1, maxProducts: 500, maxBranches: 1 },
     isActive: true
   },
   {
-    name: 'Pro Plan',
+    name: 'Professional',
     price_monthly: 35000,
     price_yearly: 350000,
     currency: 'IQD',
-    features: ['Advanced POS', 'Inventory & Reports', '5 Users', 'Email Support'],
+    features: { pos: true, inventory: true, reports: true, support: true },
     limits: { maxUsers: 5, maxProducts: 5000, maxBranches: 3 },
     isActive: true
   },
   {
-    name: 'Enterprise Plan',
+    name: 'Enterprise',
     price_monthly: 75000,
     price_yearly: 750000,
     currency: 'IQD',
-    features: ['Unlimited POS', 'Advanced Analytics', 'Unlimited Users', 'Priority Support', 'API Access'],
+    features: { pos: true, inventory: true, reports: true, support: true, api: true },
     limits: { maxUsers: 999, maxProducts: 99999, maxBranches: 10 },
     isActive: true
   }
@@ -67,106 +67,154 @@ const PLAN_TEMPLATES = [
 
 // --- Helper Components for List Editing ---
 
-const ListEditor = ({ label, items, onChange, placeholder }: { label: string, items: string[], onChange: (items: string[]) => void, placeholder: string }) => {
-  const [newItem, setNewItem] = useState('');
+const FeatureEditor = ({ features, onChange }: { features: Record<string, any>, onChange: (features: Record<string, any>) => void }) => {
+  const [newFeature, setNewFeature] = useState('');
 
   const handleAdd = () => {
-    if (newItem.trim()) {
-      onChange([...items, newItem.trim()]);
-      setNewItem('');
+    if (newFeature.trim()) {
+      onChange({ ...features, [newFeature.trim()]: true });
+      setNewFeature('');
     }
   };
 
-  const handleDelete = (index: number) => {
-    const newItems = [...items];
-    newItems.splice(index, 1);
-    onChange(newItems);
+  const handleDelete = (key: string) => {
+    const updated = { ...features };
+    delete updated[key];
+    onChange(updated);
   };
 
   return (
     <Box>
-      <Typography variant="subtitle2" gutterBottom color="text.secondary">{label}</Typography>
-      <Stack direction="row" spacing={1} mb={1} flexWrap="wrap" useFlexGap>
-        {items.map((item, index) => (
-          <Chip
-            key={index}
-            label={item}
-            onDelete={() => handleDelete(index)}
-            size="small"
-            color="primary"
-            variant="outlined"
-            sx={{ borderRadius: 1 }}
-          />
-        ))}
+      <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1.5, color: 'text.secondary', fontSize: '0.9rem' }}>
+        Features
+      </Typography>
+      <Stack direction="row" spacing={1} mb={2} flexWrap="wrap" useFlexGap>
+        {Object.keys(features).length > 0 ? (
+          Object.keys(features).map((feature) => (
+            <Chip
+              key={feature}
+              label={feature}
+              onDelete={() => handleDelete(feature)}
+              size="small"
+              color="primary"
+              variant="outlined"
+              sx={{ 
+                borderRadius: 2, 
+                fontWeight: 500,
+                fontSize: '0.8rem'
+              }}
+            />
+          ))
+        ) : (
+          <Typography variant="caption" color="text.disabled">No features yet</Typography>
+        )}
       </Stack>
       <Stack direction="row" spacing={1}>
         <TextField
           size="small"
           fullWidth
-          placeholder={placeholder}
-          value={newItem}
-          onChange={(e) => setNewItem(e.target.value)}
+          placeholder="Add feature (e.g. POS System)"
+          value={newFeature}
+          onChange={(e) => setNewFeature(e.target.value)}
           onKeyPress={(e) => e.key === 'Enter' && handleAdd()}
-          InputProps={{ sx: { borderRadius: 2 } }}
+          variant="outlined"
+          InputProps={{ sx: { borderRadius: 2, fontSize: '0.9rem' } }}
         />
-        <Button variant="contained" size="small" onClick={handleAdd} sx={{ borderRadius: 2, minWidth: 40 }}><Add /></Button>
+        <Button 
+          variant="contained" 
+          size="small" 
+          onClick={handleAdd} 
+          sx={{ 
+            borderRadius: 2, 
+            minWidth: 44,
+            px: 1.5
+          }}
+        >
+          <Add fontSize="small" />
+        </Button>
       </Stack>
     </Box>
   );
 };
 
-const KeyValueEditor = ({ label, items, onChange }: { label: string, items: Record<string, any>, onChange: (items: Record<string, any>) => void }) => {
+const LimitEditor = ({ limits, onChange }: { limits: Record<string, any>, onChange: (limits: Record<string, any>) => void }) => {
   const [newKey, setNewKey] = useState('');
   const [newValue, setNewValue] = useState('');
 
   const handleAdd = () => {
-    if (newKey.trim()) {
-      const val = !isNaN(Number(newValue)) && newValue !== '' ? Number(newValue) : newValue;
-      onChange({ ...items, [newKey.trim()]: val });
+    if (newKey.trim() && newValue.trim()) {
+      const val = !isNaN(Number(newValue)) ? Number(newValue) : newValue;
+      onChange({ ...limits, [newKey.trim()]: val });
       setNewKey('');
       setNewValue('');
     }
   };
 
   const handleDelete = (key: string) => {
-    const newItems = { ...items };
-    delete newItems[key];
-    onChange(newItems);
+    const updated = { ...limits };
+    delete updated[key];
+    onChange(updated);
   };
 
   return (
     <Box>
-      <Typography variant="subtitle2" gutterBottom color="text.secondary">{label}</Typography>
-      <Stack direction="row" spacing={1} mb={1} flexWrap="wrap" useFlexGap>
-        {Object.entries(items).map(([key, value]) => (
-          <Chip
-            key={key}
-            label={`${key}: ${value}`}
-            onDelete={() => handleDelete(key)}
-            size="small"
-            color="secondary"
-            variant="outlined"
-            sx={{ borderRadius: 1 }}
-          />
-        ))}
+      <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1.5, color: 'text.secondary', fontSize: '0.9rem' }}>
+        Limits
+      </Typography>
+      <Stack direction="row" spacing={1} mb={2} flexWrap="wrap" useFlexGap>
+        {Object.keys(limits).length > 0 ? (
+          Object.entries(limits).map(([key, value]) => (
+            <Chip
+              key={key}
+              label={`${key}: ${value}`}
+              onDelete={() => handleDelete(key)}
+              size="small"
+              color="success"
+              variant="outlined"
+              sx={{ 
+                borderRadius: 2, 
+                fontWeight: 500,
+                fontSize: '0.8rem',
+                borderColor: 'success.light',
+                color: 'success.main'
+              }}
+            />
+          ))
+        ) : (
+          <Typography variant="caption" color="text.disabled">No limits set</Typography>
+        )}
       </Stack>
-      <Stack direction="row" spacing={1}>
+      <Stack direction="row" spacing={1} mb={1}>
         <TextField
           size="small"
           placeholder="Key (e.g. maxUsers)"
           value={newKey}
           onChange={(e) => setNewKey(e.target.value)}
-          InputProps={{ sx: { borderRadius: 2 } }}
+          variant="outlined"
+          InputProps={{ sx: { borderRadius: 2, fontSize: '0.9rem' } }}
         />
         <TextField
           size="small"
           placeholder="Value (e.g. 5)"
+          type="number"
           value={newValue}
           onChange={(e) => setNewValue(e.target.value)}
           onKeyPress={(e) => e.key === 'Enter' && handleAdd()}
-          InputProps={{ sx: { borderRadius: 2 } }}
+          variant="outlined"
+          InputProps={{ sx: { borderRadius: 2, fontSize: '0.9rem' } }}
         />
-        <Button variant="contained" size="small" onClick={handleAdd} sx={{ borderRadius: 2, minWidth: 40 }}><Add /></Button>
+        <Button 
+          variant="contained" 
+          size="small" 
+          onClick={handleAdd}
+          sx={{ 
+            borderRadius: 2, 
+            minWidth: 44,
+            px: 1.5
+          }}
+        >
+          <Add fontSize="small" />
+        </Button>
       </Stack>
     </Box>
   );
@@ -193,10 +241,20 @@ const Plans = () => {
     price_monthly: 0,
     price_yearly: 0,
     currency: 'IQD',
-    features: [] as string[],
+    features: {} as Record<string, any>,
     limits: {} as Record<string, any>,
     isActive: true
   });
+
+  const getCurrencySymbol = (code: string) => {
+    const currency = currencies.find(c => c.code === code);
+    return currency?.symbol || code;
+  };
+
+  const formatPrice = (amount: number, currencyCode: string) => {
+    const symbol = getCurrencySymbol(currencyCode);
+    return `${symbol}${amount.toLocaleString()}`;
+  };
 
   const fetchData = async () => {
     try {
@@ -212,7 +270,6 @@ const Plans = () => {
       console.error('Failed to fetch data', err);
       const msg = err.message || 'Failed to load data';
       setError(msg);
-      // Check for specific DB error
       if (msg.includes('price_monthly') || msg.includes('does not exist')) {
         setError('Database Error: Missing columns. Please run "npx prisma db push" on the server.');
       }
@@ -229,19 +286,12 @@ const Plans = () => {
     setSaveError('');
     if (plan) {
       setEditingPlan(plan);
-      let featuresList: string[] = [];
-      if (Array.isArray(plan.features)) {
-        featuresList = plan.features;
-      } else if (typeof plan.features === 'object') {
-        featuresList = Object.keys(plan.features).filter(k => plan.features[k]);
-      }
-
       setFormData({
         name: plan.name,
         price_monthly: plan.price_monthly || 0,
         price_yearly: plan.price_yearly || 0,
         currency: plan.currency,
-        features: featuresList,
+        features: plan.features || {},
         limits: plan.limits || {},
         isActive: plan.isActive
       });
@@ -252,7 +302,7 @@ const Plans = () => {
         price_monthly: 0,
         price_yearly: 0,
         currency: currencies.length > 0 ? currencies[0].code : 'IQD',
-        features: [],
+        features: {},
         limits: {},
         isActive: true
       });
@@ -266,7 +316,7 @@ const Plans = () => {
       setFormData({
         ...template,
         name: template.name,
-        features: [...template.features],
+        features: { ...template.features },
         limits: { ...template.limits },
         currency: currencies.some(c => c.code === template.currency) ? template.currency : (currencies[0]?.code || 'IQD')
       });
@@ -279,14 +329,12 @@ const Plans = () => {
     setSaving(true);
     setSaveError('');
     try {
-      const featuresObj = formData.features.reduce((acc, curr) => ({ ...acc, [curr]: true }), {});
-
       const payload = {
         name: formData.name,
         price_monthly: Number(formData.price_monthly),
         price_yearly: Number(formData.price_yearly),
         currency: formData.currency,
-        features: featuresObj,
+        features: formData.features,
         limits: formData.limits,
         isActive: formData.isActive
       };
@@ -331,7 +379,7 @@ const Plans = () => {
       const action = plan.isActive ? 'deactivate' : 'activate';
       await api.togglePlanStatus(plan.id, action);
       fetchData();
-      setSnackbar({ open: true, message: `Plan ${action}d`, severity: 'success' });
+      setSnackbar({ open: true, message: `Plan ${action}d successfully`, severity: 'success' });
     } catch (err) {
       console.error('Error toggling status', err);
       setSnackbar({ open: true, message: 'Failed to update status', severity: 'error' });
@@ -351,7 +399,7 @@ const Plans = () => {
       };
       await api.createPlan(payload);
       fetchData();
-      setSnackbar({ open: true, message: 'Plan duplicated', severity: 'success' });
+      setSnackbar({ open: true, message: 'Plan duplicated successfully', severity: 'success' });
     } catch (err) {
       console.error('Error duplicating plan', err);
       setSnackbar({ open: true, message: 'Failed to duplicate plan', severity: 'error' });
@@ -366,20 +414,30 @@ const Plans = () => {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        borderRadius: 4,
-        border: '1px solid',
+        borderRadius: 3,
+        border: '2px solid',
         borderColor: 'primary.main',
         position: 'relative',
         overflow: 'visible',
         bgcolor: 'background.paper'
       }}
     >
-      <Box position="absolute" top={-12} right={20} bgcolor="primary.main" color="white" px={2} py={0.5} borderRadius={10} fontSize="0.75rem" fontWeight="bold" boxShadow={2}>
+      <Box position="absolute" top={-14} right={16} bgcolor="primary.main" color="white" px={2.5} py={0.75} borderRadius={2} fontSize="0.7rem" fontWeight="900" boxShadow={3} letterSpacing={1}>
         PREVIEW
       </Box>
       <CardContent sx={{ flexGrow: 1, p: 3 }}>
-        <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
-          <Chip label={data.currency} size="small" sx={{ fontWeight: 'bold', borderRadius: 1.5, bgcolor: 'action.hover' }} />
+        <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={3} gap={2}>
+          <Chip 
+            label={data.currency} 
+            size="small" 
+            sx={{ 
+              fontWeight: 'bold', 
+              borderRadius: 1.5, 
+              bgcolor: 'primary.50',
+              color: 'primary.main',
+              fontSize: '0.75rem'
+            }} 
+          />
           <Chip
             label={data.isActive ? 'Active' : 'Inactive'}
             color={data.isActive ? 'success' : 'default'}
@@ -389,42 +447,96 @@ const Plans = () => {
           />
         </Box>
 
-        <Typography variant="h5" fontWeight="800" gutterBottom>{data.name || 'Plan Name'}</Typography>
+        <Typography variant="h5" fontWeight="900" gutterBottom sx={{ mb: 1, minHeight: 32 }}>
+          {data.name || 'Plan Name'}
+        </Typography>
 
-        <Box mb={3}>
-          <Typography variant="h4" component="span" fontWeight="bold" color="primary.main">
-            {Number(data.price_monthly).toLocaleString()}
+        <Box mb={3} sx={{ background: 'linear-gradient(135deg, rgba(25, 118, 210, 0.05) 0%, rgba(25, 118, 210, 0.02) 100%)', borderRadius: 2, p: 2 }}>
+          <Typography variant="h3" component="div" fontWeight="bold" color="primary.main" gutterBottom>
+            {formatPrice(Number(data.price_monthly), data.currency)}
           </Typography>
-          <Typography variant="body2" component="span" color="text.secondary" ml={1}>
-            / month
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            per month
           </Typography>
-          <Typography variant="body2" color="text.secondary" mt={0.5} display="block">
-            {Number(data.price_yearly).toLocaleString()} / year
+          <Typography variant="body2" color="text.secondary">
+            <span style={{ opacity: 0.7 }}>or {formatPrice(Number(data.price_yearly), data.currency)} annually</span>
           </Typography>
         </Box>
 
-        <Divider sx={{ my: 2, borderStyle: 'dashed' }} />
+        <Divider sx={{ my: 3, borderStyle: 'dashed' }} />
 
-        <Typography variant="subtitle2" fontWeight="bold" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary' }}>
-          <Verified fontSize="small" color="action" /> Features
+        <Typography 
+          variant="subtitle2" 
+          fontWeight="bold" 
+          gutterBottom 
+          sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 1, 
+            color: 'primary.main',
+            mb: 2,
+            fontSize: '0.85rem',
+            textTransform: 'uppercase',
+            letterSpacing: 0.5
+          }}
+        >
+          <Verified fontSize="small" /> Features
         </Typography>
-        <Box display="flex" flexWrap="wrap" gap={0.5} mb={2}>
-          {data.features.length > 0 ? (
-            data.features.map((f, i) => (
-              <Chip key={i} label={f} size="small" sx={{ fontSize: '0.75rem', height: 24, borderRadius: 1 }} />
+        <Box display="flex" flexWrap="wrap" gap={1} mb={3}>
+          {Object.keys(data.features).length > 0 ? (
+            Object.keys(data.features).map((f, i) => (
+              <Chip 
+                key={i} 
+                label={f} 
+                size="small" 
+                variant="outlined"
+                sx={{ 
+                  fontSize: '0.8rem', 
+                  height: 28, 
+                  borderRadius: 2,
+                  borderColor: 'primary.light',
+                  color: 'primary.main'
+                }} 
+              />
             ))
           ) : (
             <Typography variant="caption" color="text.disabled">No features defined</Typography>
           )}
         </Box>
 
-        <Typography variant="subtitle2" fontWeight="bold" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary' }}>
-          <MonetizationOn fontSize="small" color="action" /> Limits
+        <Typography 
+          variant="subtitle2" 
+          fontWeight="bold" 
+          gutterBottom 
+          sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 1, 
+            color: 'primary.main',
+            mb: 2,
+            fontSize: '0.85rem',
+            textTransform: 'uppercase',
+            letterSpacing: 0.5
+          }}
+        >
+          <Zap fontSize="small" /> Limits
         </Typography>
-        <Box display="flex" flexWrap="wrap" gap={0.5}>
+        <Box display="flex" flexWrap="wrap" gap={1}>
           {Object.keys(data.limits).length > 0 ? (
             Object.entries(data.limits).map(([k, v]) => (
-              <Chip key={k} label={`${k}: ${v}`} size="small" variant="outlined" sx={{ fontSize: '0.75rem', height: 24, borderRadius: 1 }} />
+              <Chip 
+                key={k} 
+                label={`${k}: ${v}`} 
+                size="small" 
+                variant="outlined"
+                sx={{ 
+                  fontSize: '0.8rem', 
+                  height: 28, 
+                  borderRadius: 2,
+                  borderColor: 'success.light',
+                  color: 'success.main'
+                }} 
+              />
             ))
           ) : (
             <Typography variant="caption" color="text.disabled">No limits defined</Typography>
@@ -435,38 +547,73 @@ const Plans = () => {
   );
 
   return (
-    <Box p={3}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
+    <Box sx={{ p: 4, minHeight: '100vh', bgcolor: 'background.default' }}>
+      {/* Header */}
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={5}>
         <Box>
-          <Typography variant="h4" fontWeight="bold" gutterBottom>Subscription Plans</Typography>
-          <Typography variant="body1" color="text.secondary">Manage your pricing tiers and limits</Typography>
+          <Typography variant="h4" fontWeight="bold" gutterBottom sx={{ letterSpacing: -0.5 }}>
+            Subscription Plans
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Manage subscription tiers, pricing, and features
+          </Typography>
         </Box>
-        <Box display="flex" gap={2}>
-          <Button
-            variant="outlined"
-            startIcon={<Refresh />}
-            onClick={fetchData}
-            sx={{ borderRadius: 2, textTransform: 'none' }}
-          >
-            Refresh
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<Add />}
-            onClick={() => handleOpen()}
-            sx={{ borderRadius: 2, px: 3, py: 1.5, textTransform: 'none', fontSize: '1rem', boxShadow: 2 }}
-          >
-            Create New Plan
-          </Button>
-        </Box>
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={<Add />}
+          onClick={() => handleOpen()}
+          sx={{ 
+            borderRadius: 3, 
+            px: 3, 
+            py: 1.5, 
+            textTransform: 'none', 
+            fontSize: '1rem', 
+            boxShadow: 3,
+            '&:hover': { boxShadow: 4 }
+          }}
+        >
+          Create New Plan
+        </Button>
       </Box>
 
+      {/* Error Alert */}
       {error && <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>{error}</Alert>}
 
+      {/* Loading State */}
       {loading ? (
-        <Box display="flex" justifyContent="center" p={5}><CircularProgress /></Box>
+        <Box display="flex" justifyContent="center" alignItems="center" p={8}>
+          <CircularProgress size={48} />
+        </Box>
+      ) : plans.length === 0 ? (
+        /* Empty State */
+        <Box 
+          display="flex" 
+          flexDirection="column" 
+          alignItems="center" 
+          justifyContent="center" 
+          p={8}
+          sx={{ minHeight: '400px', backgroundColor: 'action.hover', borderRadius: 3 }}
+        >
+          <MonetizationOn sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            No Plans Yet
+          </Typography>
+          <Typography variant="body2" color="text.disabled" mb={3}>
+            Create your first subscription plan to get started
+          </Typography>
+          <Button 
+            variant="contained" 
+            color="primary" 
+            startIcon={<Add />}
+            onClick={() => handleOpen()}
+            sx={{ borderRadius: 2 }}
+          >
+            Create Your First Plan
+          </Button>
+        </Box>
       ) : (
+        /* Plans Grid */
         <Grid container spacing={3}>
           {plans.map((plan) => (
             <Grid item xs={12} sm={6} lg={4} key={plan.id}>
@@ -477,99 +624,236 @@ const Plans = () => {
                     height: '100%',
                     display: 'flex',
                     flexDirection: 'column',
-                    borderRadius: 4,
+                    borderRadius: 3,
                     border: '1px solid',
                     borderColor: 'divider',
-                    transition: 'all 0.3s ease',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    backgroundColor: 'background.paper',
+                    position: 'relative',
+                    overflow: 'hidden',
                     '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: '0 12px 24px -10px rgba(0,0,0,0.1)',
-                      borderColor: 'primary.main'
+                      transform: 'translateY(-8px)',
+                      boxShadow: '0 20px 40px -10px rgba(0,0,0,0.15)',
+                      borderColor: plan.isActive ? 'primary.main' : 'divider'
                     }
                   }}
                 >
+                  {/* Ribbon for highlighted plans */}
+                  {!plan.isActive && (
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        top: 16,
+                        right: -32,
+                        width: 80,
+                        height: 32,
+                        backgroundColor: 'error.main',
+                        color: 'white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '0.7rem',
+                        fontWeight: 'bold',
+                        transform: 'rotate(45deg)',
+                        zIndex: 1
+                      }}
+                    >
+                      INACTIVE
+                    </Box>
+                  )}
+
                   <CardContent sx={{ flexGrow: 1, p: 3 }}>
-                    <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
+                    {/* Top Section: Currency & Status */}
+                    <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={3} gap={2}>
                       <Chip
                         label={plan.currency}
                         size="small"
-                        sx={{ fontWeight: 'bold', borderRadius: 1.5, bgcolor: 'action.hover' }}
+                        sx={{ 
+                          fontWeight: 'bold', 
+                          borderRadius: 1.5, 
+                          bgcolor: 'primary.50',
+                          color: 'primary.main',
+                          fontSize: '0.75rem'
+                        }}
                       />
                       <Chip
                         label={plan.isActive ? 'Active' : 'Inactive'}
+                        icon={plan.isActive ? <CheckCircle sx={{ fontSize: '0.9rem' }} /> : <Cancel sx={{ fontSize: '0.9rem' }} />}
                         color={plan.isActive ? 'success' : 'default'}
                         size="small"
                         variant={plan.isActive ? 'filled' : 'outlined'}
-                        sx={{ borderRadius: 1.5 }}
+                        sx={{ 
+                          borderRadius: 1.5,
+                          fontSize: '0.8rem'
+                        }}
                       />
                     </Box>
 
-                    <Typography variant="h5" fontWeight="800" gutterBottom>{plan.name}</Typography>
+                    {/* Plan Name */}
+                    <Typography variant="h5" fontWeight="900" gutterBottom sx={{ mb: 2, color: 'text.primary' }}>
+                      {plan.name}
+                    </Typography>
 
-                    <Box mb={3}>
-                      <Typography variant="h4" component="span" fontWeight="bold" color="primary.main">
-                        {plan.price_monthly?.toLocaleString()}
+                    {/* Pricing Box */}
+                    <Box mb={3} sx={{ 
+                      background: 'linear-gradient(135deg, rgba(25, 118, 210, 0.05) 0%, rgba(25, 118, 210, 0.02) 100%)', 
+                      borderRadius: 2, 
+                      p: 2,
+                      borderLeft: '4px solid',
+                      borderLeftColor: 'primary.main'
+                    }}>
+                      <Typography variant="h3" component="div" fontWeight="bold" color="primary.main" gutterBottom>
+                        {formatPrice(plan.price_monthly, plan.currency)}
                       </Typography>
-                      <Typography variant="body2" component="span" color="text.secondary" ml={1}>
-                        / month
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                        monthly
                       </Typography>
-                      <Typography variant="body2" color="text.secondary" mt={0.5} display="block">
-                        {plan.price_yearly?.toLocaleString()} / year
+                      <Typography variant="caption" color="text.secondary" sx={{ opacity: 0.7 }}>
+                        or {formatPrice(plan.price_yearly, plan.currency)} annually
                       </Typography>
                     </Box>
 
-                    <Divider sx={{ my: 2, borderStyle: 'dashed' }} />
+                    <Divider sx={{ my: 2.5, borderStyle: 'dashed' }} />
 
-                    <Typography variant="subtitle2" fontWeight="bold" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary' }}>
-                      <Verified fontSize="small" color="action" /> Features
+                    {/* Features Section */}
+                    <Typography 
+                      variant="subtitle2" 
+                      fontWeight="bold" 
+                      gutterBottom 
+                      sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: 1, 
+                        color: 'primary.main',
+                        mb: 1.5,
+                        fontSize: '0.8rem',
+                        textTransform: 'uppercase',
+                        letterSpacing: 0.5
+                      }}
+                    >
+                      <Verified fontSize="small" /> Features
                     </Typography>
-                    <Box display="flex" flexWrap="wrap" gap={0.5} mb={2}>
+                    <Box display="flex" flexWrap="wrap" gap={1} mb={2.5}>
                       {Object.keys(plan.features || {}).length > 0 ? (
                         Object.keys(plan.features).map((f) => (
-                          <Chip key={f} label={f} size="small" sx={{ fontSize: '0.75rem', height: 24, borderRadius: 1 }} />
+                          <Chip 
+                            key={f} 
+                            label={f} 
+                            size="small" 
+                            variant="outlined"
+                            sx={{ 
+                              fontSize: '0.75rem', 
+                              height: 26, 
+                              borderRadius: 2,
+                              borderColor: 'primary.light',
+                              color: 'primary.main',
+                              fontWeight: 500
+                            }} 
+                          />
                         ))
                       ) : (
-                        <Typography variant="caption" color="text.disabled">No features defined</Typography>
+                        <Typography variant="caption" color="text.disabled">—</Typography>
                       )}
                     </Box>
 
-                    <Typography variant="subtitle2" fontWeight="bold" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary' }}>
-                      <MonetizationOn fontSize="small" color="action" /> Limits
+                    {/* Limits Section */}
+                    <Typography 
+                      variant="subtitle2" 
+                      fontWeight="bold" 
+                      gutterBottom 
+                      sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: 1, 
+                        color: 'success.main',
+                        mb: 1.5,
+                        fontSize: '0.8rem',
+                        textTransform: 'uppercase',
+                        letterSpacing: 0.5
+                      }}
+                    >
+                      <LocalFireDepartment fontSize="small" /> Limits
                     </Typography>
-                    <Box display="flex" flexWrap="wrap" gap={0.5}>
+                    <Box display="flex" flexWrap="wrap" gap={1}>
                       {Object.keys(plan.limits || {}).length > 0 ? (
                         Object.entries(plan.limits).map(([k, v]) => (
-                          <Chip key={k} label={`${k}: ${v}`} size="small" variant="outlined" sx={{ fontSize: '0.75rem', height: 24, borderRadius: 1 }} />
+                          <Chip 
+                            key={k} 
+                            label={`${k}: ${v}`} 
+                            size="small" 
+                            variant="outlined"
+                            sx={{ 
+                              fontSize: '0.75rem', 
+                              height: 26, 
+                              borderRadius: 2,
+                              borderColor: 'success.light',
+                              color: 'success.main',
+                              fontWeight: 500
+                            }} 
+                          />
                         ))
                       ) : (
-                        <Typography variant="caption" color="text.disabled">No limits defined</Typography>
+                        <Typography variant="caption" color="text.disabled">—</Typography>
                       )}
                     </Box>
                   </CardContent>
 
-                  <CardActions sx={{ p: 2, pt: 0, justifyContent: 'flex-end', gap: 1 }}>
-                    <Tooltip title="Toggle Status">
+                  {/* Action Buttons */}
+                  <CardActions sx={{ p: 3, pt: 0, justifyContent: 'flex-end', gap: 1 }}>
+                    <Tooltip title={plan.isActive ? "Deactivate" : "Activate"} arrow>
                       <IconButton
                         size="small"
                         onClick={() => toggleStatus(plan)}
-                        color={plan.isActive ? 'warning' : 'success'}
-                        sx={{ bgcolor: plan.isActive ? 'warning.light' : 'success.light', color: 'white', '&:hover': { bgcolor: plan.isActive ? 'warning.main' : 'success.main' } }}
+                        sx={{ 
+                          bgcolor: plan.isActive ? 'warning.100' : 'success.100',
+                          color: plan.isActive ? 'warning.main' : 'success.main',
+                          '&:hover': { 
+                            bgcolor: plan.isActive ? 'warning.200' : 'success.200'
+                          }
+                        }}
                       >
                         {plan.isActive ? <Cancel fontSize="small" /> : <CheckCircle fontSize="small" />}
                       </IconButton>
                     </Tooltip>
-                    <Tooltip title="Duplicate">
-                      <IconButton size="small" onClick={() => handleDuplicate(plan)} sx={{ bgcolor: 'action.hover' }}>
+                    <Tooltip title="Duplicate Plan" arrow>
+                      <IconButton 
+                        size="small" 
+                        onClick={() => handleDuplicate(plan)} 
+                        sx={{ 
+                          bgcolor: 'action.hover',
+                          color: 'text.secondary',
+                          '&:hover': { 
+                            bgcolor: 'action.selected',
+                            color: 'primary.main'
+                          }
+                        }}
+                      >
                         <ContentCopy fontSize="small" />
                       </IconButton>
                     </Tooltip>
-                    <Tooltip title="Edit">
-                      <IconButton size="small" onClick={() => handleOpen(plan)} color="primary" sx={{ bgcolor: 'primary.50' }}>
+                    <Tooltip title="Edit Plan" arrow>
+                      <IconButton 
+                        size="small" 
+                        onClick={() => handleOpen(plan)} 
+                        sx={{ 
+                          bgcolor: 'primary.100',
+                          color: 'primary.main',
+                          '&:hover': { bgcolor: 'primary.200' }
+                        }}
+                      >
                         <Edit fontSize="small" />
                       </IconButton>
                     </Tooltip>
-                    <Tooltip title="Delete">
-                      <IconButton size="small" onClick={() => handleDelete(plan.id)} color="error" sx={{ bgcolor: 'error.50' }}>
+                    <Tooltip title="Delete Plan" arrow>
+                      <IconButton 
+                        size="small" 
+                        onClick={() => handleDelete(plan.id)} 
+                        sx={{ 
+                          bgcolor: 'error.100',
+                          color: 'error.main',
+                          '&:hover': { bgcolor: 'error.200' }
+                        }}
+                      >
                         <Delete fontSize="small" />
                       </IconButton>
                     </Tooltip>
@@ -581,27 +865,55 @@ const Plans = () => {
         </Grid>
       )}
 
+      {/* Modal Dialog */}
       <Dialog
         open={openModal}
         onClose={handleClose}
         TransitionComponent={Transition}
         maxWidth="md"
         fullWidth
-        PaperProps={{ sx: { borderRadius: 3 } }}
+        PaperProps={{ 
+          sx: { 
+            borderRadius: 3,
+            backgroundImage: 'none'
+          } 
+        }}
       >
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
-          <Typography variant="h5" fontWeight="bold">{editingPlan ? 'Edit Plan' : 'Create New Plan'}</Typography>
-          <IconButton onClick={handleClose}><Close /></IconButton>
+        <DialogTitle sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          pb: 2,
+          pt: 3,
+          px: 3
+        }}>
+          <Box>
+            <Typography variant="h6" fontWeight="bold">
+              {editingPlan ? '✏️ Edit Plan' : '➕ Create New Plan'}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+              {editingPlan ? 'Update plan details and pricing' : 'Set up a new subscription tier'}
+            </Typography>
+          </Box>
+          <IconButton onClick={handleClose} sx={{ color: 'text.secondary' }}>
+            <Close />
+          </IconButton>
         </DialogTitle>
 
-        <DialogContent dividers>
-          <Grid container spacing={4}>
+        <DialogContent dividers sx={{ p: 3 }}>
+          {saveError && (
+            <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>{saveError}</Alert>
+          )}
+
+          <Grid container spacing={3}>
             {/* Left Column: Form */}
             <Grid item xs={12} md={7}>
               {!editingPlan && (
-                <Box mb={3}>
-                  <Typography variant="subtitle2" gutterBottom color="text.secondary">Quick Start with Templates</Typography>
-                  <Stack direction="row" spacing={1}>
+                <Box mb={3} sx={{ p: 2.5, backgroundColor: 'action.hover', borderRadius: 2, borderLeft: '4px solid primary.main' }}>
+                  <Typography variant="subtitle2" gutterBottom fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'primary.main', fontSize: '0.9rem' }}>
+                    <Zap fontSize="small" /> Quick Start with Templates
+                  </Typography>
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                     {PLAN_TEMPLATES.map(t => (
                       <Chip
                         key={t.name}
@@ -610,88 +922,136 @@ const Plans = () => {
                         clickable
                         color="primary"
                         variant="outlined"
-                        sx={{ borderRadius: 1 }}
+                        sx={{ 
+                          borderRadius: 2,
+                          fontSize: '0.85rem',
+                          '&:hover': {
+                            backgroundColor: 'primary.50'
+                          }
+                        }}
                       />
                     ))}
                   </Stack>
                 </Box>
               )}
 
-              {saveError && (
-                <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>{saveError}</Alert>
-              )}
-
               <Grid container spacing={2}>
+                {/* Plan Name */}
                 <Grid item xs={12}>
+                  <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1, color: 'text.secondary', fontSize: '0.9rem' }}>
+                    Plan Name *
+                  </Typography>
                   <TextField
-                    fullWidth label="Plan Name"
+                    fullWidth 
+                    placeholder="e.g., Professional Plan"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     variant="outlined"
-                    InputProps={{ sx: { borderRadius: 2 } }}
+                    size="small"
+                    error={!formData.name && saving}
+                    InputProps={{ sx: { borderRadius: 2, fontSize: '0.9rem' } }}
                   />
                 </Grid>
-                <Grid item xs={12} sm={4}>
-                  <TextField
-                    fullWidth label="Monthly Price" type="number"
-                    value={formData.price_monthly}
-                    onChange={(e) => setFormData({ ...formData, price_monthly: Number(e.target.value) })}
-                    InputProps={{ sx: { borderRadius: 2 } }}
-                  />
+
+                {/* Pricing */}
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1.5, color: 'text.secondary', fontSize: '0.9rem' }}>
+                    Pricing
+                  </Typography>
+                  <Grid container spacing={1.5}>
+                    <Grid item xs={6}>
+                      <TextField
+                        fullWidth 
+                        label="Monthly Price" 
+                        type="number"
+                        placeholder="10000"
+                        value={formData.price_monthly}
+                        onChange={(e) => setFormData({ ...formData, price_monthly: Number(e.target.value) })}
+                        size="small"
+                        InputProps={{ sx: { borderRadius: 2, fontSize: '0.9rem' } }}
+                      />
+                    </Grid>
+                    <Grid item xs={6}>
+                      <TextField
+                        fullWidth 
+                        label="Yearly Price" 
+                        type="number"
+                        placeholder="100000"
+                        value={formData.price_yearly}
+                        onChange={(e) => setFormData({ ...formData, price_yearly: Number(e.target.value) })}
+                        size="small"
+                        InputProps={{ sx: { borderRadius: 2, fontSize: '0.9rem' } }}
+                      />
+                    </Grid>
+                  </Grid>
                 </Grid>
-                <Grid item xs={12} sm={4}>
-                  <TextField
-                    fullWidth label="Yearly Price" type="number"
-                    value={formData.price_yearly}
-                    onChange={(e) => setFormData({ ...formData, price_yearly: Number(e.target.value) })}
-                    InputProps={{ sx: { borderRadius: 2 } }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={4}>
-                  <FormControl fullWidth>
-                    <InputLabel>Currency</InputLabel>
+
+                {/* Currency Selector */}
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1, color: 'text.secondary', fontSize: '0.9rem' }}>
+                    Currency *
+                  </Typography>
+                  <FormControl fullWidth size="small">
                     <Select
                       value={formData.currency}
-                      label="Currency"
                       onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                      sx={{ borderRadius: 2 }}
+                      sx={{ borderRadius: 2, fontSize: '0.9rem' }}
                     >
                       {currencies.length > 0 ? (
                         currencies.map(c => (
-                          <MenuItem key={c.code} value={c.code}>{c.code} ({c.symbol})</MenuItem>
+                          <MenuItem key={c.code} value={c.code}>
+                            {c.symbol} {c.code}
+                          </MenuItem>
                         ))
                       ) : (
-                        <MenuItem value="IQD">IQD</MenuItem>
+                        <MenuItem value="IQD">د.ع IQD</MenuItem>
                       )}
                     </Select>
                   </FormControl>
                 </Grid>
 
                 <Grid item xs={12}>
-                  <Divider sx={{ my: 1 }}>Features & Limits</Divider>
+                  <Divider sx={{ my: 1 }} />
                 </Grid>
 
+                {/* Features Editor */}
                 <Grid item xs={12}>
-                  <ListEditor
-                    label="Features"
-                    items={formData.features}
-                    onChange={(items) => setFormData({ ...formData, features: items })}
-                    placeholder="Add feature (e.g. POS)"
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <KeyValueEditor
-                    label="Limits"
-                    items={formData.limits}
-                    onChange={(items) => setFormData({ ...formData, limits: items })}
+                  <FeatureEditor
+                    features={formData.features}
+                    onChange={(features) => setFormData({ ...formData, features })}
                   />
                 </Grid>
 
+                {/* Limits Editor */}
                 <Grid item xs={12}>
-                  <Paper variant="outlined" sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderRadius: 2 }}>
+                  <LimitEditor
+                    limits={formData.limits}
+                    onChange={(limits) => setFormData({ ...formData, limits })}
+                  />
+                </Grid>
+
+                {/* Status Toggle */}
+                <Grid item xs={12}>
+                  <Paper 
+                    variant="outlined" 
+                    sx={{ 
+                      p: 2.5, 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between', 
+                      borderRadius: 2,
+                      backgroundColor: formData.isActive ? 'success.50' : 'error.50',
+                      borderColor: formData.isActive ? 'success.light' : 'error.light',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
                     <Box>
-                      <Typography variant="subtitle2">Plan Status</Typography>
-                      <Typography variant="caption" color="text.secondary">Active plans are visible to the system</Typography>
+                      <Typography variant="subtitle2" fontWeight="bold" sx={{ fontSize: '0.95rem' }}>
+                        Plan Status
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {formData.isActive ? '✓ Active and available' : '○ Hidden from customers'}
+                      </Typography>
                     </Box>
                     <FormControlLabel
                       control={
@@ -701,7 +1061,8 @@ const Plans = () => {
                           color="success"
                         />
                       }
-                      label={formData.isActive ? "Active" : "Inactive"}
+                      label=""
+                      sx={{ m: 0 }}
                     />
                   </Paper>
                 </Grid>
@@ -711,38 +1072,53 @@ const Plans = () => {
             {/* Right Column: Preview */}
             <Grid item xs={12} md={5}>
               <Box position="sticky" top={20}>
-                <Typography variant="overline" color="text.secondary" gutterBottom>Live Preview</Typography>
+                <Typography variant="subtitle2" fontWeight="bold" color="text.secondary" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: '0.9rem' }}>
+                  👁️ Live Preview
+                </Typography>
                 <PreviewCard data={formData} />
-                <Alert severity="info" sx={{ mt: 2, fontSize: '0.8rem', borderRadius: 2 }}>
-                  This is how the plan will appear in the admin dashboard.
+                <Alert severity="info" sx={{ mt: 2, fontSize: '0.75rem', borderRadius: 2 }}>
+                  Preview updates in real-time as you make changes.
                 </Alert>
               </Box>
             </Grid>
           </Grid>
         </DialogContent>
 
-        <DialogActions sx={{ p: 3 }}>
-          <Button onClick={handleClose} variant="outlined" color="inherit" disabled={saving} sx={{ borderRadius: 2 }}>Cancel</Button>
+        <DialogActions sx={{ p: 3, gap: 1 }}>
+          <Button 
+            onClick={handleClose} 
+            variant="outlined" 
+            color="inherit" 
+            disabled={saving} 
+            sx={{ borderRadius: 2, textTransform: 'none' }}
+          >
+            Cancel
+          </Button>
           <Button
             variant="contained"
             onClick={handleSubmit}
             size="large"
-            sx={{ px: 4, borderRadius: 2 }}
-            disabled={saving}
-            startIcon={saving ? <CircularProgress size={20} /> : <Save />}
+            sx={{ px: 4, borderRadius: 2, textTransform: 'none' }}
+            disabled={saving || !formData.name || !formData.currency}
+            startIcon={saving ? <CircularProgress size={20} color="inherit" /> : <Save />}
           >
-            {saving ? 'Saving...' : (editingPlan ? 'Update Plan' : 'Create & Publish')}
+            {saving ? 'Saving...' : (editingPlan ? 'Update Plan' : 'Create Plan')}
           </Button>
         </DialogActions>
       </Dialog>
 
+      {/* Snackbar for Notifications */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
       >
-        <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: '100%', borderRadius: 2 }}>
+        <Alert 
+          onClose={() => setSnackbar({ ...snackbar, open: false })} 
+          severity={snackbar.severity} 
+          sx={{ width: '100%', borderRadius: 2 }}
+        >
           {snackbar.message}
         </Alert>
       </Snackbar>
