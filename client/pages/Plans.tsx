@@ -3,14 +3,15 @@ import {
   Box, Button, Card, Typography, IconButton, Chip, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, FormControl, InputLabel, Select, MenuItem, Switch,
   FormControlLabel, Grid, Alert, CircularProgress, CardContent, CardActions,
-  Stack, Divider, Tooltip, Fade, Paper, Slide, Snackbar
+  Stack, Divider, Tooltip, Fade, Paper, Slide, Snackbar, useTheme
 } from '@mui/material';
 import { TransitionProps } from '@mui/material/transitions';
 import {
   Add, Edit, Delete, CheckCircle, Cancel, ContentCopy,
-  MonetizationOn, Verified, Close, Save
+  MonetizationOn, Verified, Close, Save, Refresh
 } from '@mui/icons-material';
 import { api } from '../services/api';
+import { CurrencyRate } from '../types';
 
 // Transition for Dialog
 const Transition = React.forwardRef(function Transition(
@@ -84,7 +85,7 @@ const ListEditor = ({ label, items, onChange, placeholder }: { label: string, it
 
   return (
     <Box>
-      <Typography variant="subtitle2" gutterBottom>{label}</Typography>
+      <Typography variant="subtitle2" gutterBottom color="text.secondary">{label}</Typography>
       <Stack direction="row" spacing={1} mb={1} flexWrap="wrap" useFlexGap>
         {items.map((item, index) => (
           <Chip
@@ -94,6 +95,7 @@ const ListEditor = ({ label, items, onChange, placeholder }: { label: string, it
             size="small"
             color="primary"
             variant="outlined"
+            sx={{ borderRadius: 1 }}
           />
         ))}
       </Stack>
@@ -105,8 +107,9 @@ const ListEditor = ({ label, items, onChange, placeholder }: { label: string, it
           value={newItem}
           onChange={(e) => setNewItem(e.target.value)}
           onKeyPress={(e) => e.key === 'Enter' && handleAdd()}
+          InputProps={{ sx: { borderRadius: 2 } }}
         />
-        <Button variant="contained" size="small" onClick={handleAdd}><Add /></Button>
+        <Button variant="contained" size="small" onClick={handleAdd} sx={{ borderRadius: 2, minWidth: 40 }}><Add /></Button>
       </Stack>
     </Box>
   );
@@ -133,7 +136,7 @@ const KeyValueEditor = ({ label, items, onChange }: { label: string, items: Reco
 
   return (
     <Box>
-      <Typography variant="subtitle2" gutterBottom>{label}</Typography>
+      <Typography variant="subtitle2" gutterBottom color="text.secondary">{label}</Typography>
       <Stack direction="row" spacing={1} mb={1} flexWrap="wrap" useFlexGap>
         {Object.entries(items).map(([key, value]) => (
           <Chip
@@ -143,6 +146,7 @@ const KeyValueEditor = ({ label, items, onChange }: { label: string, items: Reco
             size="small"
             color="secondary"
             variant="outlined"
+            sx={{ borderRadius: 1 }}
           />
         ))}
       </Stack>
@@ -152,6 +156,7 @@ const KeyValueEditor = ({ label, items, onChange }: { label: string, items: Reco
           placeholder="Key (e.g. maxUsers)"
           value={newKey}
           onChange={(e) => setNewKey(e.target.value)}
+          InputProps={{ sx: { borderRadius: 2 } }}
         />
         <TextField
           size="small"
@@ -159,8 +164,9 @@ const KeyValueEditor = ({ label, items, onChange }: { label: string, items: Reco
           value={newValue}
           onChange={(e) => setNewValue(e.target.value)}
           onKeyPress={(e) => e.key === 'Enter' && handleAdd()}
+          InputProps={{ sx: { borderRadius: 2 } }}
         />
-        <Button variant="contained" size="small" onClick={handleAdd}><Add /></Button>
+        <Button variant="contained" size="small" onClick={handleAdd} sx={{ borderRadius: 2, minWidth: 40 }}><Add /></Button>
       </Stack>
     </Box>
   );
@@ -168,7 +174,9 @@ const KeyValueEditor = ({ label, items, onChange }: { label: string, items: Reco
 
 
 const Plans = () => {
+  const theme = useTheme();
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [currencies, setCurrencies] = useState<CurrencyRate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [openModal, setOpenModal] = useState(false);
@@ -190,22 +198,31 @@ const Plans = () => {
     isActive: true
   });
 
-  const fetchPlans = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await api.getPlans();
-      setPlans(response);
+      const [plansRes, currenciesRes] = await Promise.all([
+        api.getPlans(),
+        api.getCurrencies()
+      ]);
+      setPlans(plansRes);
+      setCurrencies(currenciesRes);
       setError('');
-    } catch (err) {
-      console.error('Failed to fetch plans', err);
-      setError('Failed to load plans');
+    } catch (err: any) {
+      console.error('Failed to fetch data', err);
+      const msg = err.message || 'Failed to load data';
+      setError(msg);
+      // Check for specific DB error
+      if (msg.includes('price_monthly') || msg.includes('does not exist')) {
+        setError('Database Error: Missing columns. Please run "npx prisma db push" on the server.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchPlans();
+    fetchData();
   }, []);
 
   const handleOpen = (plan?: Plan) => {
@@ -234,7 +251,7 @@ const Plans = () => {
         name: '',
         price_monthly: 0,
         price_yearly: 0,
-        currency: 'IQD',
+        currency: currencies.length > 0 ? currencies[0].code : 'IQD',
         features: [],
         limits: {},
         isActive: true
@@ -250,7 +267,8 @@ const Plans = () => {
         ...template,
         name: template.name,
         features: [...template.features],
-        limits: { ...template.limits }
+        limits: { ...template.limits },
+        currency: currencies.some(c => c.code === template.currency) ? template.currency : (currencies[0]?.code || 'IQD')
       });
     }
   };
@@ -281,12 +299,15 @@ const Plans = () => {
         setSnackbar({ open: true, message: 'Plan created successfully', severity: 'success' });
       }
 
-      fetchPlans();
+      fetchData();
       handleClose();
     } catch (err: any) {
       console.error('Error saving plan', err);
       const msg = err.response?.data?.message || err.message || 'Failed to save plan';
       setSaveError(msg);
+      if (msg.includes('price_monthly') || msg.includes('does not exist')) {
+        setSaveError('Database Error: Missing columns. Please run "npx prisma db push" on the server.');
+      }
     } finally {
       setSaving(false);
     }
@@ -296,7 +317,7 @@ const Plans = () => {
     if (confirm('Are you sure you want to delete this plan?')) {
       try {
         await api.deletePlan(id);
-        fetchPlans();
+        fetchData();
         setSnackbar({ open: true, message: 'Plan deleted', severity: 'success' });
       } catch (err) {
         console.error('Error deleting plan', err);
@@ -309,7 +330,7 @@ const Plans = () => {
     try {
       const action = plan.isActive ? 'deactivate' : 'activate';
       await api.togglePlanStatus(plan.id, action);
-      fetchPlans();
+      fetchData();
       setSnackbar({ open: true, message: `Plan ${action}d`, severity: 'success' });
     } catch (err) {
       console.error('Error toggling status', err);
@@ -329,7 +350,7 @@ const Plans = () => {
         isActive: false
       };
       await api.createPlan(payload);
-      fetchPlans();
+      fetchData();
       setSnackbar({ open: true, message: 'Plan duplicated', severity: 'success' });
     } catch (err) {
       console.error('Error duplicating plan', err);
@@ -340,7 +361,7 @@ const Plans = () => {
   // --- Preview Card Component ---
   const PreviewCard = ({ data }: { data: typeof formData }) => (
     <Card
-      elevation={4}
+      elevation={0}
       sx={{
         height: '100%',
         display: 'flex',
@@ -349,20 +370,22 @@ const Plans = () => {
         border: '1px solid',
         borderColor: 'primary.main',
         position: 'relative',
-        overflow: 'visible'
+        overflow: 'visible',
+        bgcolor: 'background.paper'
       }}
     >
-      <Box position="absolute" top={-12} right={20} bgcolor="primary.main" color="white" px={2} py={0.5} borderRadius={10} fontSize="0.75rem" fontWeight="bold">
+      <Box position="absolute" top={-12} right={20} bgcolor="primary.main" color="white" px={2} py={0.5} borderRadius={10} fontSize="0.75rem" fontWeight="bold" boxShadow={2}>
         PREVIEW
       </Box>
       <CardContent sx={{ flexGrow: 1, p: 3 }}>
         <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
-          <Chip label={data.currency} size="small" sx={{ fontWeight: 'bold', borderRadius: 1, bgcolor: 'action.hover' }} />
+          <Chip label={data.currency} size="small" sx={{ fontWeight: 'bold', borderRadius: 1.5, bgcolor: 'action.hover' }} />
           <Chip
             label={data.isActive ? 'Active' : 'Inactive'}
             color={data.isActive ? 'success' : 'default'}
             size="small"
             variant={data.isActive ? 'filled' : 'outlined'}
+            sx={{ borderRadius: 1.5 }}
           />
         </Box>
 
@@ -375,33 +398,33 @@ const Plans = () => {
           <Typography variant="body2" component="span" color="text.secondary" ml={1}>
             / month
           </Typography>
-          <Typography variant="body2" color="text.secondary" mt={0.5}>
+          <Typography variant="body2" color="text.secondary" mt={0.5} display="block">
             {Number(data.price_yearly).toLocaleString()} / year
           </Typography>
         </Box>
 
-        <Divider sx={{ my: 2 }} />
+        <Divider sx={{ my: 2, borderStyle: 'dashed' }} />
 
-        <Typography variant="subtitle2" fontWeight="bold" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Typography variant="subtitle2" fontWeight="bold" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary' }}>
           <Verified fontSize="small" color="action" /> Features
         </Typography>
         <Box display="flex" flexWrap="wrap" gap={0.5} mb={2}>
           {data.features.length > 0 ? (
             data.features.map((f, i) => (
-              <Chip key={i} label={f} size="small" sx={{ fontSize: '0.75rem', height: 24 }} />
+              <Chip key={i} label={f} size="small" sx={{ fontSize: '0.75rem', height: 24, borderRadius: 1 }} />
             ))
           ) : (
             <Typography variant="caption" color="text.disabled">No features defined</Typography>
           )}
         </Box>
 
-        <Typography variant="subtitle2" fontWeight="bold" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Typography variant="subtitle2" fontWeight="bold" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary' }}>
           <MonetizationOn fontSize="small" color="action" /> Limits
         </Typography>
         <Box display="flex" flexWrap="wrap" gap={0.5}>
           {Object.keys(data.limits).length > 0 ? (
             Object.entries(data.limits).map(([k, v]) => (
-              <Chip key={k} label={`${k}: ${v}`} size="small" variant="outlined" sx={{ fontSize: '0.75rem', height: 24 }} />
+              <Chip key={k} label={`${k}: ${v}`} size="small" variant="outlined" sx={{ fontSize: '0.75rem', height: 24, borderRadius: 1 }} />
             ))
           ) : (
             <Typography variant="caption" color="text.disabled">No limits defined</Typography>
@@ -418,18 +441,28 @@ const Plans = () => {
           <Typography variant="h4" fontWeight="bold" gutterBottom>Subscription Plans</Typography>
           <Typography variant="body1" color="text.secondary">Manage your pricing tiers and limits</Typography>
         </Box>
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<Add />}
-          onClick={() => handleOpen()}
-          sx={{ borderRadius: 2, px: 3, py: 1.5, textTransform: 'none', fontSize: '1rem', boxShadow: 2 }}
-        >
-          Create New Plan
-        </Button>
+        <Box display="flex" gap={2}>
+          <Button
+            variant="outlined"
+            startIcon={<Refresh />}
+            onClick={fetchData}
+            sx={{ borderRadius: 2, textTransform: 'none' }}
+          >
+            Refresh
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<Add />}
+            onClick={() => handleOpen()}
+            sx={{ borderRadius: 2, px: 3, py: 1.5, textTransform: 'none', fontSize: '1rem', boxShadow: 2 }}
+          >
+            Create New Plan
+          </Button>
+        </Box>
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>{error}</Alert>}
 
       {loading ? (
         <Box display="flex" justifyContent="center" p={5}><CircularProgress /></Box>
@@ -460,13 +493,14 @@ const Plans = () => {
                       <Chip
                         label={plan.currency}
                         size="small"
-                        sx={{ fontWeight: 'bold', borderRadius: 1, bgcolor: 'action.hover' }}
+                        sx={{ fontWeight: 'bold', borderRadius: 1.5, bgcolor: 'action.hover' }}
                       />
                       <Chip
                         label={plan.isActive ? 'Active' : 'Inactive'}
                         color={plan.isActive ? 'success' : 'default'}
                         size="small"
                         variant={plan.isActive ? 'filled' : 'outlined'}
+                        sx={{ borderRadius: 1.5 }}
                       />
                     </Box>
 
@@ -479,33 +513,33 @@ const Plans = () => {
                       <Typography variant="body2" component="span" color="text.secondary" ml={1}>
                         / month
                       </Typography>
-                      <Typography variant="body2" color="text.secondary" mt={0.5}>
+                      <Typography variant="body2" color="text.secondary" mt={0.5} display="block">
                         {plan.price_yearly?.toLocaleString()} / year
                       </Typography>
                     </Box>
 
-                    <Divider sx={{ my: 2 }} />
+                    <Divider sx={{ my: 2, borderStyle: 'dashed' }} />
 
-                    <Typography variant="subtitle2" fontWeight="bold" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="subtitle2" fontWeight="bold" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary' }}>
                       <Verified fontSize="small" color="action" /> Features
                     </Typography>
                     <Box display="flex" flexWrap="wrap" gap={0.5} mb={2}>
                       {Object.keys(plan.features || {}).length > 0 ? (
                         Object.keys(plan.features).map((f) => (
-                          <Chip key={f} label={f} size="small" sx={{ fontSize: '0.75rem', height: 24 }} />
+                          <Chip key={f} label={f} size="small" sx={{ fontSize: '0.75rem', height: 24, borderRadius: 1 }} />
                         ))
                       ) : (
                         <Typography variant="caption" color="text.disabled">No features defined</Typography>
                       )}
                     </Box>
 
-                    <Typography variant="subtitle2" fontWeight="bold" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="subtitle2" fontWeight="bold" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary' }}>
                       <MonetizationOn fontSize="small" color="action" /> Limits
                     </Typography>
                     <Box display="flex" flexWrap="wrap" gap={0.5}>
                       {Object.keys(plan.limits || {}).length > 0 ? (
                         Object.entries(plan.limits).map(([k, v]) => (
-                          <Chip key={k} label={`${k}: ${v}`} size="small" variant="outlined" sx={{ fontSize: '0.75rem', height: 24 }} />
+                          <Chip key={k} label={`${k}: ${v}`} size="small" variant="outlined" sx={{ fontSize: '0.75rem', height: 24, borderRadius: 1 }} />
                         ))
                       ) : (
                         <Typography variant="caption" color="text.disabled">No limits defined</Typography>
@@ -566,7 +600,7 @@ const Plans = () => {
             <Grid item xs={12} md={7}>
               {!editingPlan && (
                 <Box mb={3}>
-                  <Typography variant="subtitle2" gutterBottom>Quick Start with Templates</Typography>
+                  <Typography variant="subtitle2" gutterBottom color="text.secondary">Quick Start with Templates</Typography>
                   <Stack direction="row" spacing={1}>
                     {PLAN_TEMPLATES.map(t => (
                       <Chip
@@ -576,6 +610,7 @@ const Plans = () => {
                         clickable
                         color="primary"
                         variant="outlined"
+                        sx={{ borderRadius: 1 }}
                       />
                     ))}
                   </Stack>
@@ -583,7 +618,7 @@ const Plans = () => {
               )}
 
               {saveError && (
-                <Alert severity="error" sx={{ mb: 2 }}>{saveError}</Alert>
+                <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>{saveError}</Alert>
               )}
 
               <Grid container spacing={2}>
@@ -593,6 +628,7 @@ const Plans = () => {
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     variant="outlined"
+                    InputProps={{ sx: { borderRadius: 2 } }}
                   />
                 </Grid>
                 <Grid item xs={12} sm={4}>
@@ -600,6 +636,7 @@ const Plans = () => {
                     fullWidth label="Monthly Price" type="number"
                     value={formData.price_monthly}
                     onChange={(e) => setFormData({ ...formData, price_monthly: Number(e.target.value) })}
+                    InputProps={{ sx: { borderRadius: 2 } }}
                   />
                 </Grid>
                 <Grid item xs={12} sm={4}>
@@ -607,6 +644,7 @@ const Plans = () => {
                     fullWidth label="Yearly Price" type="number"
                     value={formData.price_yearly}
                     onChange={(e) => setFormData({ ...formData, price_yearly: Number(e.target.value) })}
+                    InputProps={{ sx: { borderRadius: 2 } }}
                   />
                 </Grid>
                 <Grid item xs={12} sm={4}>
@@ -616,10 +654,15 @@ const Plans = () => {
                       value={formData.currency}
                       label="Currency"
                       onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                      sx={{ borderRadius: 2 }}
                     >
-                      <MenuItem value="IQD">IQD</MenuItem>
-                      <MenuItem value="USD">USD</MenuItem>
-                      <MenuItem value="EUR">EUR</MenuItem>
+                      {currencies.length > 0 ? (
+                        currencies.map(c => (
+                          <MenuItem key={c.code} value={c.code}>{c.code} ({c.symbol})</MenuItem>
+                        ))
+                      ) : (
+                        <MenuItem value="IQD">IQD</MenuItem>
+                      )}
                     </Select>
                   </FormControl>
                 </Grid>
@@ -645,7 +688,7 @@ const Plans = () => {
                 </Grid>
 
                 <Grid item xs={12}>
-                  <Paper variant="outlined" sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Paper variant="outlined" sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderRadius: 2 }}>
                     <Box>
                       <Typography variant="subtitle2">Plan Status</Typography>
                       <Typography variant="caption" color="text.secondary">Active plans are visible to the system</Typography>
@@ -670,7 +713,7 @@ const Plans = () => {
               <Box position="sticky" top={20}>
                 <Typography variant="overline" color="text.secondary" gutterBottom>Live Preview</Typography>
                 <PreviewCard data={formData} />
-                <Alert severity="info" sx={{ mt: 2, fontSize: '0.8rem' }}>
+                <Alert severity="info" sx={{ mt: 2, fontSize: '0.8rem', borderRadius: 2 }}>
                   This is how the plan will appear in the admin dashboard.
                 </Alert>
               </Box>
@@ -679,12 +722,12 @@ const Plans = () => {
         </DialogContent>
 
         <DialogActions sx={{ p: 3 }}>
-          <Button onClick={handleClose} variant="outlined" color="inherit" disabled={saving}>Cancel</Button>
+          <Button onClick={handleClose} variant="outlined" color="inherit" disabled={saving} sx={{ borderRadius: 2 }}>Cancel</Button>
           <Button
             variant="contained"
             onClick={handleSubmit}
             size="large"
-            sx={{ px: 4 }}
+            sx={{ px: 4, borderRadius: 2 }}
             disabled={saving}
             startIcon={saving ? <CircularProgress size={20} /> : <Save />}
           >
@@ -699,7 +742,7 @@ const Plans = () => {
         onClose={() => setSnackbar({ ...snackbar, open: false })}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
       >
-        <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: '100%' }}>
+        <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: '100%', borderRadius: 2 }}>
           {snackbar.message}
         </Alert>
       </Snackbar>
