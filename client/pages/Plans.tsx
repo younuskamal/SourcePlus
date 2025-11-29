@@ -3,7 +3,7 @@ import {
   Box, Button, Card, Typography, IconButton, Chip, Modal,
   TextField, FormControl, InputLabel, Select, MenuItem, Switch,
   FormControlLabel, Grid, Alert, CircularProgress, CardContent, CardActions,
-  Stack, Divider, Tooltip, Fade
+  Stack, Divider, Tooltip, Fade, Paper
 } from '@mui/material';
 import {
   Add, Edit, Delete, CheckCircle, Cancel, ContentCopy,
@@ -21,6 +21,37 @@ interface Plan {
   limits: any;
   isActive: boolean;
 }
+
+// --- Templates ---
+const PLAN_TEMPLATES = [
+  {
+    name: 'Starter Plan',
+    price_monthly: 15000,
+    price_yearly: 150000,
+    currency: 'IQD',
+    features: ['Basic POS', 'Inventory Management', '1 User'],
+    limits: { maxUsers: 1, maxProducts: 500, maxBranches: 1 },
+    isActive: true
+  },
+  {
+    name: 'Pro Plan',
+    price_monthly: 35000,
+    price_yearly: 350000,
+    currency: 'IQD',
+    features: ['Advanced POS', 'Inventory & Reports', '5 Users', 'Email Support'],
+    limits: { maxUsers: 5, maxProducts: 5000, maxBranches: 3 },
+    isActive: true
+  },
+  {
+    name: 'Enterprise Plan',
+    price_monthly: 75000,
+    price_yearly: 750000,
+    currency: 'IQD',
+    features: ['Unlimited POS', 'Advanced Analytics', 'Unlimited Users', 'Priority Support', 'API Access'],
+    limits: { maxUsers: 999, maxProducts: 99999, maxBranches: 10 },
+    isActive: true
+  }
+];
 
 // --- Helper Components for List Editing ---
 
@@ -199,6 +230,18 @@ const Plans = () => {
     setOpenModal(true);
   };
 
+  const handleTemplateSelect = (templateName: string) => {
+    const template = PLAN_TEMPLATES.find(t => t.name === templateName);
+    if (template) {
+      setFormData({
+        ...template,
+        name: template.name, // Allow user to rename if they want, but start with template name
+        features: [...template.features],
+        limits: { ...template.limits }
+      });
+    }
+  };
+
   const handleClose = () => setOpenModal(false);
 
   const handleSubmit = async () => {
@@ -271,6 +314,80 @@ const Plans = () => {
       alert('Failed to duplicate plan');
     }
   };
+
+  // --- Preview Card Component ---
+  const PreviewCard = ({ data }: { data: typeof formData }) => (
+    <Card
+      elevation={4}
+      sx={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        borderRadius: 4,
+        border: '1px solid',
+        borderColor: 'primary.main',
+        position: 'relative',
+        overflow: 'visible'
+      }}
+    >
+      <Box position="absolute" top={-12} right={20} bgcolor="primary.main" color="white" px={2} py={0.5} borderRadius={10} fontSize="0.75rem" fontWeight="bold">
+        PREVIEW
+      </Box>
+      <CardContent sx={{ flexGrow: 1, p: 3 }}>
+        <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
+          <Chip label={data.currency} size="small" sx={{ fontWeight: 'bold', borderRadius: 1, bgcolor: 'action.hover' }} />
+          <Chip
+            label={data.isActive ? 'Active' : 'Inactive'}
+            color={data.isActive ? 'success' : 'default'}
+            size="small"
+            variant={data.isActive ? 'filled' : 'outlined'}
+          />
+        </Box>
+
+        <Typography variant="h5" fontWeight="800" gutterBottom>{data.name || 'Plan Name'}</Typography>
+
+        <Box mb={3}>
+          <Typography variant="h4" component="span" fontWeight="bold" color="primary.main">
+            {Number(data.price_monthly).toLocaleString()}
+          </Typography>
+          <Typography variant="body2" component="span" color="text.secondary" ml={1}>
+            / month
+          </Typography>
+          <Typography variant="body2" color="text.secondary" mt={0.5}>
+            {Number(data.price_yearly).toLocaleString()} / year
+          </Typography>
+        </Box>
+
+        <Divider sx={{ my: 2 }} />
+
+        <Typography variant="subtitle2" fontWeight="bold" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Verified fontSize="small" color="action" /> Features
+        </Typography>
+        <Box display="flex" flexWrap="wrap" gap={0.5} mb={2}>
+          {data.features.length > 0 ? (
+            data.features.map((f, i) => (
+              <Chip key={i} label={f} size="small" sx={{ fontSize: '0.75rem', height: 24 }} />
+            ))
+          ) : (
+            <Typography variant="caption" color="text.disabled">No features defined</Typography>
+          )}
+        </Box>
+
+        <Typography variant="subtitle2" fontWeight="bold" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <MonetizationOn fontSize="small" color="action" /> Limits
+        </Typography>
+        <Box display="flex" flexWrap="wrap" gap={0.5}>
+          {Object.keys(data.limits).length > 0 ? (
+            Object.entries(data.limits).map(([k, v]) => (
+              <Chip key={k} label={`${k}: ${v}`} size="small" variant="outlined" sx={{ fontSize: '0.75rem', height: 24 }} />
+            ))
+          ) : (
+            <Typography variant="caption" color="text.disabled">No limits defined</Typography>
+          )}
+        </Box>
+      </CardContent>
+    </Card>
+  );
 
   return (
     <Box p={3}>
@@ -412,7 +529,7 @@ const Plans = () => {
         <Fade in={openModal}>
           <Box sx={{
             position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-            width: { xs: '90%', sm: 600 }, bgcolor: 'background.paper', boxShadow: 24, p: 4, borderRadius: 3,
+            width: { xs: '95%', md: 900 }, bgcolor: 'background.paper', boxShadow: 24, p: 4, borderRadius: 3,
             maxHeight: '90vh', overflowY: 'auto'
           }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
@@ -420,88 +537,122 @@ const Plans = () => {
               <IconButton onClick={handleClose}><Close /></IconButton>
             </Box>
 
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth label="Plan Name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  variant="outlined"
-                />
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  fullWidth label="Monthly Price" type="number"
-                  value={formData.price_monthly}
-                  onChange={(e) => setFormData({ ...formData, price_monthly: Number(e.target.value) })}
-                />
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  fullWidth label="Yearly Price" type="number"
-                  value={formData.price_yearly}
-                  onChange={(e) => setFormData({ ...formData, price_yearly: Number(e.target.value) })}
-                />
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <FormControl fullWidth>
-                  <InputLabel>Currency</InputLabel>
-                  <Select
-                    value={formData.currency}
-                    label="Currency"
-                    onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                  >
-                    <MenuItem value="IQD">IQD</MenuItem>
-                    <MenuItem value="USD">USD</MenuItem>
-                    <MenuItem value="EUR">EUR</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-
-              <Grid item xs={12}>
-                <Divider sx={{ my: 1 }}>Features & Limits</Divider>
-              </Grid>
-
-              <Grid item xs={12}>
-                <ListEditor
-                  label="Features"
-                  items={formData.features}
-                  onChange={(items) => setFormData({ ...formData, features: items })}
-                  placeholder="Add feature (e.g. POS)"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <KeyValueEditor
-                  label="Limits"
-                  items={formData.limits}
-                  onChange={(items) => setFormData({ ...formData, limits: items })}
-                />
-              </Grid>
-
-              <Grid item xs={12}>
-                <Paper variant="outlined" sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Box>
-                    <Typography variant="subtitle2">Plan Status</Typography>
-                    <Typography variant="caption" color="text.secondary">Inactive plans are hidden from clients</Typography>
+            <Grid container spacing={4}>
+              {/* Left Column: Form */}
+              <Grid item xs={12} md={7}>
+                {!editingPlan && (
+                  <Box mb={3}>
+                    <Typography variant="subtitle2" gutterBottom>Quick Start with Templates</Typography>
+                    <Stack direction="row" spacing={1}>
+                      {PLAN_TEMPLATES.map(t => (
+                        <Chip
+                          key={t.name}
+                          label={t.name}
+                          onClick={() => handleTemplateSelect(t.name)}
+                          clickable
+                          color="primary"
+                          variant="outlined"
+                        />
+                      ))}
+                    </Stack>
                   </Box>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={formData.isActive}
-                        onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                        color="success"
+                )}
+
+                <Grid container spacing={2}>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth label="Plan Name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      variant="outlined"
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField
+                      fullWidth label="Monthly Price" type="number"
+                      value={formData.price_monthly}
+                      onChange={(e) => setFormData({ ...formData, price_monthly: Number(e.target.value) })}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField
+                      fullWidth label="Yearly Price" type="number"
+                      value={formData.price_yearly}
+                      onChange={(e) => setFormData({ ...formData, price_yearly: Number(e.target.value) })}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <FormControl fullWidth>
+                      <InputLabel>Currency</InputLabel>
+                      <Select
+                        value={formData.currency}
+                        label="Currency"
+                        onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                      >
+                        <MenuItem value="IQD">IQD</MenuItem>
+                        <MenuItem value="USD">USD</MenuItem>
+                        <MenuItem value="EUR">EUR</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <Divider sx={{ my: 1 }}>Features & Limits</Divider>
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <ListEditor
+                      label="Features"
+                      items={formData.features}
+                      onChange={(items) => setFormData({ ...formData, features: items })}
+                      placeholder="Add feature (e.g. POS)"
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <KeyValueEditor
+                      label="Limits"
+                      items={formData.limits}
+                      onChange={(items) => setFormData({ ...formData, limits: items })}
+                    />
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <Paper variant="outlined" sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Box>
+                        <Typography variant="subtitle2">Plan Status</Typography>
+                        <Typography variant="caption" color="text.secondary">Active plans are visible to the system</Typography>
+                      </Box>
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={formData.isActive}
+                            onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                            color="success"
+                          />
+                        }
+                        label={formData.isActive ? "Active" : "Inactive"}
                       />
-                    }
-                    label={formData.isActive ? "Active" : "Inactive"}
-                  />
-                </Paper>
+                    </Paper>
+                  </Grid>
+
+                  <Grid item xs={12} display="flex" justifyContent="flex-end" gap={2} mt={2}>
+                    <Button onClick={handleClose} variant="outlined" color="inherit">Cancel</Button>
+                    <Button variant="contained" onClick={handleSubmit} size="large" sx={{ px: 4 }}>
+                      {editingPlan ? 'Update Plan' : 'Create & Publish'}
+                    </Button>
+                  </Grid>
+                </Grid>
               </Grid>
 
-              <Grid item xs={12} display="flex" justifyContent="flex-end" gap={2} mt={2}>
-                <Button onClick={handleClose} variant="outlined" color="inherit">Cancel</Button>
-                <Button variant="contained" onClick={handleSubmit} size="large" sx={{ px: 4 }}>
-                  {editingPlan ? 'Update Plan' : 'Create Plan'}
-                </Button>
+              {/* Right Column: Preview */}
+              <Grid item xs={12} md={5}>
+                <Box position="sticky" top={0}>
+                  <Typography variant="overline" color="text.secondary" gutterBottom>Live Preview</Typography>
+                  <PreviewCard data={formData} />
+                  <Alert severity="info" sx={{ mt: 2, fontSize: '0.8rem' }}>
+                    This is how the plan will appear in the admin dashboard.
+                  </Alert>
+                </Box>
               </Grid>
             </Grid>
           </Box>
