@@ -531,11 +531,12 @@ const Plans: React.FC<{ currentLang: Language }> = ({ currentLang }) => {
         </div>
       ) : (
         /* Plans Grid */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {plans.map((plan) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          {plans.map((plan, index) => (
             <div
               key={plan.id}
-              className="group relative bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 hover:border-primary-500 dark:hover:border-primary-500 hover:shadow-lg hover:shadow-primary-500/10 transition-all duration-300 overflow-hidden flex flex-col"
+              className="group relative bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 hover:border-primary-500 dark:hover:border-primary-500 hover:shadow-xl hover:shadow-primary-500/10 transition-all duration-300 overflow-hidden flex flex-col"
+              style={{ animationDelay: `${index * 100}ms` }}
             >
               {/* Status Indicator */}
               <div className={`absolute top-0 left-0 right-0 h-1 ${plan.isActive ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : 'bg-slate-200 dark:bg-slate-700'}`} />
