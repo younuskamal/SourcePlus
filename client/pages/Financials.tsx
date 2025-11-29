@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { exportToExcel } from '../utils/excelExport';
-import { translations, Language } from '../locales';
+import { useTranslation } from '../hooks/useTranslation';
 import { Transaction } from '../types';
 import {
     TrendingUp,
@@ -19,12 +19,8 @@ import {
 import { api } from '../services/api';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
-interface FinancialsProps {
-    currentLang: Language;
-}
-
-const Financials: React.FC<FinancialsProps> = ({ currentLang }) => {
-    const t = translations[currentLang];
+const Financials: React.FC = () => {
+    const { t } = useTranslation();
     const { tick: autoRefreshTick } = useAutoRefresh();
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [stats, setStats] = useState<any>({ totalRevenue: 0, dailyRevenue: 0, monthlyRevenue: 0 });
@@ -127,7 +123,7 @@ const Financials: React.FC<FinancialsProps> = ({ currentLang }) => {
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
                         <DollarSign className="text-primary-600" size={32} />
-                        {t.financials}
+                        {t('financials.title')}
                     </h1>
                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                         Detailed revenue tracking and transaction history.
@@ -137,7 +133,7 @@ const Financials: React.FC<FinancialsProps> = ({ currentLang }) => {
                     onClick={handleExport}
                     className="flex items-center gap-2 px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl shadow-lg shadow-primary-600/20 transition-all font-bold text-sm"
                 >
-                    <Download size={18} /> {t.exportCsv}
+                    <Download size={18} /> {t('common.export')}
                 </button>
             </div>
 
@@ -147,7 +143,7 @@ const Financials: React.FC<FinancialsProps> = ({ currentLang }) => {
                         <DollarSign size={140} />
                     </div>
                     <div className="relative z-10">
-                        <p className="text-xs font-bold text-indigo-100 uppercase tracking-wider mb-2">{t.totalRevenue}</p>
+                        <p className="text-xs font-bold text-indigo-100 uppercase tracking-wider mb-2">{t('financials.totalRevenue')}</p>
                         <h3 className="text-3xl font-extrabold">${stats.totalRevenue.toLocaleString()}</h3>
                         <div className="flex items-center gap-1 mt-3 text-indigo-100 text-sm font-medium bg-white/10 w-fit px-2 py-1 rounded-lg backdrop-blur-sm">
                             <TrendingUp size={14} /> +12% growth
@@ -158,7 +154,7 @@ const Financials: React.FC<FinancialsProps> = ({ currentLang }) => {
                 <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 relative overflow-hidden">
                     <div className="relative z-10">
                         <div className="flex justify-between items-start">
-                            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t.monthlyRevenue}</p>
+                            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('financials.monthlyRevenue')}</p>
                             <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg text-emerald-600"><Calendar size={18} /></div>
                         </div>
                         <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-2">${stats.monthlyRevenue.toLocaleString()}</h3>
@@ -169,7 +165,7 @@ const Financials: React.FC<FinancialsProps> = ({ currentLang }) => {
                 <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 relative overflow-hidden">
                     <div className="relative z-10">
                         <div className="flex justify-between items-start">
-                            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t.dailyRevenue}</p>
+                            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('financials.dailyRevenue')}</p>
                             <div className="p-2 bg-sky-50 dark:bg-sky-900/30 rounded-lg text-sky-600"><ArrowUpRight size={18} /></div>
                         </div>
                         <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-2">${stats.dailyRevenue.toLocaleString()}</h3>
@@ -180,7 +176,7 @@ const Financials: React.FC<FinancialsProps> = ({ currentLang }) => {
                 <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 relative overflow-hidden">
                     <div className="relative z-10">
                         <div className="flex justify-between items-start">
-                            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t.netProfit}</p>
+                            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('financials.netProfit')}</p>
                             <div className="p-2 bg-amber-50 dark:bg-amber-900/30 rounded-lg text-amber-600"><Wallet size={18} /></div>
                         </div>
                         <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-2">${netProfit.toLocaleString()}</h3>
@@ -193,7 +189,7 @@ const Financials: React.FC<FinancialsProps> = ({ currentLang }) => {
                 <div className="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 flex flex-col md:flex-row gap-4 justify-between items-center">
                     <div className="flex items-center gap-2">
                         <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                            <FileTextIcon size={16} className="text-slate-400" /> {t.transactions}
+                            <FileTextIcon size={16} className="text-slate-400" /> {t('financials.transactions')}
                         </h2>
                         <span className="text-[10px] bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-full text-slate-600 dark:text-slate-300 font-bold">{filteredTransactions.length}</span>
                     </div>
@@ -253,8 +249,8 @@ const Financials: React.FC<FinancialsProps> = ({ currentLang }) => {
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${tx.type === 'purchase' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
-                                                tx.type === 'renewal' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                                    'bg-slate-100 text-slate-600'
+                                            tx.type === 'renewal' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                                'bg-slate-100 text-slate-600'
                                             }`}>
                                             {tx.type}
                                         </span>

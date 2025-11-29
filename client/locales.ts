@@ -1,3 +1,4 @@
+
 export const translations = {
   en: {
     common: {
@@ -16,7 +17,8 @@ export const translations = {
       no: "No",
       ok: "OK",
       export: "Export CSV",
-      status: "Status"
+      status: "Status",
+      confirmDelete: "Are you sure you want to delete this item?"
     },
     messages: {
       description: "Secure Licensing & Management System"
@@ -127,7 +129,210 @@ export const translations = {
       activations: "Activations",
       resume: "Resume",
       pause: "Pause",
-      quantity: "Quantity",
+      quantity: "Quantity"
+    },
+    team: {
+      title: "Team Management",
+      add: "Add Member",
+      edit: "Edit Member",
+      name: "Name",
+      email: "Email",
+      password: "Password",
+      confirmPassword: "Confirm Password",
+      role: "Role",
+      admin: "Administrator",
+      developer: "Developer",
+      cancel: "Cancel",
+      passwordsDoNotMatch: "Passwords do not match",
+      deleteConfirm: "Are you sure you want to delete this user?"
+    },
+    currencies: {
+      title: "Currencies",
+      addCurrency: "Add Currency",
+      syncRates: "Sync Rates",
+      code: "Currency Code",
+      symbol: "Symbol",
+      rate: "Exchange Rate",
+      lastUpdated: "Last Updated"
+    },
+    support: {
+      title: "Support Tickets",
+      create: "Create Ticket",
+      subject: "Subject",
+      message: "Message",
+      priority: "Priority",
+      status: "Status",
+      open: "Open",
+      closed: "Closed",
+      pending: "Pending",
+      high: "High",
+      medium: "Medium",
+      low: "Low"
+    },
+    notifications: {
+      title: "Notifications",
+      markAllRead: "Mark all as read",
+      clearAll: "Clear all",
+      noNotifications: "No notifications"
+    },
+    financials: {
+      title: "Accounting",
+      revenue: "Revenue",
+      expenses: "Expenses",
+      profit: "Net Profit",
+      transactions: "Transactions",
+      date: "Date",
+      amount: "Amount",
+      type: "Type",
+      description: "Description"
+    },
+    updates: {
+      title: "App Versions",
+      deploy: "Deploy New Build",
+      version: "Version",
+      releaseNotes: "Release Notes",
+      downloadUrl: "Download URL",
+      forceUpdate: "Force Update",
+      isActive: "Active",
+      publish: "Publish Release"
+    }
+  },
+  ar: {
+    common: {
+      save: "حفظ التغييرات",
+      cancel: "إلغاء",
+      delete: "حذف",
+      edit: "تعديل",
+      create: "إنشاء",
+      confirm: "تأكيد",
+      back: "رجوع",
+      loading: "جاري التحميل...",
+      actions: "إجراءات",
+      search: "بحث...",
+      noData: "لا توجد بيانات",
+      yes: "نعم",
+      no: "لا",
+      ok: "موافق",
+      export: "تصدير CSV",
+      status: "الحالة",
+      confirmDelete: "هل أنت متأكد من أنك تريد حذف هذا العنصر؟"
+    },
+    messages: {
+      description: "نظام الترخيص والإدارة الآمن"
+    },
+    login: {
+      title: "تسجيل الدخول إلى SourcePlus",
+      email: "البريد الإلكتروني",
+      password: "كلمة المرور",
+      button: "تسجيل الدخول",
+      rememberMe: "تذكرني",
+      forgotPassword: "نسيت كلمة المرور؟",
+      invalidCredentials: "البريد الإلكتروني أو كلمة المرور غير صحيحة",
+      serverError: "خطأ في الخادم، يرجى المحاولة مرة أخرى",
+      networkError: "خطأ في الشبكة، يرجى التحقق من الاتصال",
+      requiredFields: "يرجى ملء جميع الحقول"
+    },
+    dashboard: {
+      title: "لوحة التحكم",
+      welcome: "مرحباً بك، {{name}}",
+      revenue: "إجمالي الإيرادات",
+      activeLicenses: "التراخيص النشطة",
+      totalCustomers: "إجمالي العملاء",
+      systemHealth: "حالة النظام",
+      uptime: "وقت التشغيل",
+      cpu: "استهلاك المعالج",
+      memory: "استهلاك الذاكرة",
+      storage: "التخزين",
+      network: "حركة الشبكة",
+      revenueTrend: "مؤشر الإيرادات"
+    },
+    nav: {
+      dashboard: "لوحة التحكم",
+      licenses: "التراخيص",
+      plans: "خطط الاشتراك",
+      updates: "إصدارات التطبيق",
+      support: "تذاكر الدعم",
+      currencies: "العملات",
+      settings: "الإعدادات",
+      apiDocs: "وثائق API",
+      team: "إدارة الفريق",
+      notifications: "الإشعارات",
+      auditLogs: "سجلات التدقيق",
+      financials: "المحاسبة",
+      logout: "تسجيل الخروج"
+    },
+    settings: {
+      title: "الإعدادات",
+      general: "عام",
+      server: "إعدادات الخادم",
+      channels: "قنوات الإشعارات",
+      backup: "النسخ الاحتياطي",
+      remote: "إعدادات العميل",
+      language: "اللغة",
+      theme: "المظهر",
+      saveSuccess: "تم حفظ الإعدادات بنجاح",
+      appName: "اسم التطبيق",
+      supportEmail: "بريد الدعم",
+      minPassLen: "الحد الأدنى لطول كلمة المرور",
+      sessionTimeout: "مهلة الجلسة (دقائق)",
+      primaryColor: "اللون الأساسي",
+      maintenanceMode: "وضع الصيانة",
+      serverHost: "مضيف الخادم",
+      serverPort: "منفذ الخادم",
+      timezone: "المنطقة الزمنية",
+      dbConnection: "اتصال قاعدة البيانات",
+      dbHost: "مضيف قاعدة البيانات",
+      dbPort: "منفذ قاعدة البيانات",
+      dbName: "اسم قاعدة البيانات",
+      dbUser: "مستخدم قاعدة البيانات",
+      security: "الأمان",
+      corsEnabled: "تفعيل CORS",
+      rateLimit: "تحديد المعدل",
+      logLevel: "مستوى السجل",
+      autoBackup: "نسخ احتياطي تلقائي",
+      backupFreq: "تكرار النسخ الاحتياطي",
+      retentionDays: "فترة الاحتفاظ (أيام)"
+    },
+    plans: {
+      title: "خطط الاشتراك",
+      add: "إضافة خطة",
+      edit: "تعديل الخطة",
+      name: "اسم الخطة",
+      price: "السعر",
+      duration: "المدة (أشهر)",
+      features: "الميزات",
+      deleteConfirm: "هل أنت متأكد من حذف هذه الخطة؟",
+      livePreview: "معاينة حية",
+      saveAsTemplate: "حفظ كقالب",
+      customTemplates: "قوالبي",
+      quickTemplates: "قوالب جاهزة"
+    },
+    licenses: {
+      title: "التراخيص",
+      add: "ترخيص جديد",
+      edit: "تعديل الترخيص",
+      serial: "المفتاح التسلسلي",
+      customer: "العميل",
+      plan: "خطة الاشتراك",
+      status: "الحالة",
+      active: "نشط",
+      expired: "منتهي",
+      revoked: "ملغى",
+      paused: "موقوف",
+      renew: "تجديد الترخيص",
+      revoke: "إلغاء الترخيص",
+      delete: "حذف الترخيص",
+      offlineActivation: "تفعيل غير متصل",
+      activations: "التفعيلات",
+      resume: "استئناف",
+      pause: "إيقاف مؤقت",
+      quantity: "الكمية"
+    },
+    team: {
+      title: "إدارة الفريق",
+      add: "إضافة عضو",
+      edit: "تعديل عضو",
+      name: "الاسم",
       email: "البريد الإلكتروني",
       password: "كلمة المرور",
       confirmPassword: "تأكيد كلمة المرور",
@@ -137,6 +342,56 @@ export const translations = {
       cancel: "إلغاء",
       passwordsDoNotMatch: "كلمتا المرور غير متطابقتين",
       deleteConfirm: "هل أنت متأكد من حذف هذا المستخدم؟"
+    },
+    currencies: {
+      title: "العملات",
+      addCurrency: "إضافة عملة",
+      syncRates: "مزامنة الأسعار",
+      code: "رمز العملة",
+      symbol: "الرمز",
+      rate: "سعر الصرف",
+      lastUpdated: "آخر تحديث"
+    },
+    support: {
+      title: "تذاكر الدعم",
+      create: "إنشاء تذكرة",
+      subject: "الموضوع",
+      message: "الرسالة",
+      priority: "الأولوية",
+      status: "الحالة",
+      open: "مفتوحة",
+      closed: "مغلقة",
+      pending: "قيد الانتظار",
+      high: "عالية",
+      medium: "متوسطة",
+      low: "منخفضة"
+    },
+    notifications: {
+      title: "الإشعارات",
+      markAllRead: "تحديد الكل كمقروء",
+      clearAll: "مسح الكل",
+      noNotifications: "لا توجد إشعارات"
+    },
+    financials: {
+      title: "المحاسبة",
+      revenue: "الإيرادات",
+      expenses: "المصروفات",
+      profit: "صافي الربح",
+      transactions: "المعاملات",
+      date: "التاريخ",
+      amount: "المبلغ",
+      type: "النوع",
+      description: "الوصف"
+    },
+    updates: {
+      title: "إصدارات التطبيق",
+      deploy: "نشر إصدار جديد",
+      version: "الإصدار",
+      releaseNotes: "ملاحظات الإصدار",
+      downloadUrl: "رابط التحميل",
+      forceUpdate: "تحديث إجباري",
+      isActive: "نشط",
+      publish: "نشر الإصدار"
     }
   }
 };

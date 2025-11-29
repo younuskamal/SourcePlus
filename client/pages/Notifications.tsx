@@ -1,17 +1,13 @@
 
 import React, { useEffect, useState } from 'react';
 import ConfirmModal from '../components/ConfirmModal';
-import { translations, Language } from '../locales';
+import { useTranslation } from '../hooks/useTranslation';
 import { Bell, Send, Users, User, CheckCircle2, Trash2, History } from 'lucide-react';
 import { api } from '../services/api';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
-interface NotificationsProps {
-    currentLang: Language;
-}
-
-const Notifications: React.FC<NotificationsProps> = ({ currentLang }) => {
-    const t = translations[currentLang] as any;
+const Notifications: React.FC = () => {
+    const { t } = useTranslation();
     const [notifications, setNotifications] = useState<any[]>([]);
     const { tick: autoRefreshTick, requestRefresh } = useAutoRefresh();
     useEffect(() => {
@@ -63,7 +59,7 @@ const Notifications: React.FC<NotificationsProps> = ({ currentLang }) => {
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
                     <Bell className="text-sky-600" />
-                    {t.notifications}
+                    {t('notifications.title')}
                 </h1>
             </div>
 
@@ -72,12 +68,12 @@ const Notifications: React.FC<NotificationsProps> = ({ currentLang }) => {
                 <div className="lg:col-span-1 bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 h-fit">
                     <div className="flex items-center gap-2 mb-6 text-sky-600 dark:text-sky-400">
                         <Send size={20} />
-                        <h2 className="font-bold">{t.sendNotification}</h2>
+                        <h2 className="font-bold">{t('notifications.sendNotification')}</h2>
                     </div>
 
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.title}</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('notifications.titleLabel')}</label>
                             <input
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
@@ -87,7 +83,7 @@ const Notifications: React.FC<NotificationsProps> = ({ currentLang }) => {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.message}</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('notifications.messageLabel')}</label>
                             <textarea
                                 value={body}
                                 onChange={(e) => setBody(e.target.value)}
@@ -103,13 +99,13 @@ const Notifications: React.FC<NotificationsProps> = ({ currentLang }) => {
                                     onClick={() => setTargetType('broadcast')}
                                     className={`flex items-center justify-center gap-2 py-2 rounded-lg text-sm border transition-all ${targetType === 'broadcast' ? 'bg-sky-50 dark:bg-sky-900/30 border-sky-500 text-sky-700 dark:text-sky-300 font-bold' : 'border-gray-200 dark:border-slate-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700'}`}
                                 >
-                                    <Users size={16} /> {t.broadcast}
+                                    <Users size={16} /> {t('notifications.broadcast')}
                                 </button>
                                 <button
                                     onClick={() => setTargetType('serial')}
                                     className={`flex items-center justify-center gap-2 py-2 rounded-lg text-sm border transition-all ${targetType === 'serial' ? 'bg-sky-50 dark:bg-sky-900/30 border-sky-500 text-sky-700 dark:text-sky-300 font-bold' : 'border-gray-200 dark:border-slate-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700'}`}
                                 >
-                                    <User size={16} /> {t.target}
+                                    <User size={16} /> {t('notifications.target')}
                                 </button>
                             </div>
                         </div>
@@ -130,7 +126,7 @@ const Notifications: React.FC<NotificationsProps> = ({ currentLang }) => {
                             disabled={!title || !body || (targetType === 'serial' && !targetSerial)}
                             className="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-2.5 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed mt-2"
                         >
-                            Send Push Notification
+                            {t('notifications.sendNotification')}
                         </button>
                     </div>
                 </div>
@@ -145,7 +141,7 @@ const Notifications: React.FC<NotificationsProps> = ({ currentLang }) => {
                                 className="text-xs flex items-center gap-2 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 px-3 py-1.5 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors"
                             >
                                 <Trash2 size={14} />
-                                {t.clearHistory}
+                                {t('notifications.clearHistory')}
                             </button>
                         )}
                     </div>
@@ -199,9 +195,9 @@ const Notifications: React.FC<NotificationsProps> = ({ currentLang }) => {
                 isOpen={isClearHistoryModalOpen}
                 onClose={() => setIsClearHistoryModalOpen(false)}
                 onConfirm={confirmClearHistory}
-                title={t.clearHistory || "Clear History"}
+                title={t('notifications.clearHistory')}
                 message="Are you sure you want to clear the entire notification history?"
-                confirmText={t.clearHistory || "Clear"}
+                confirmText={t('notifications.clearHistory')}
                 type="danger"
             />
         </div >

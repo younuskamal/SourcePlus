@@ -1,18 +1,14 @@
 
 import React, { useEffect, useState } from 'react';
 import ConfirmModal from '../components/ConfirmModal';
-import { translations, Language } from '../locales';
+import { useTranslation } from '../hooks/useTranslation';
 import { Upload, Download, CheckCircle2, GitBranch, Monitor, Calendar, AlertTriangle, Box, ArrowRight, Trash2, Edit2, Save, ToggleLeft, ToggleRight, X } from 'lucide-react';
 import { AppVersion } from '../types';
 import { api } from '../services/api';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
-interface UpdatesProps {
-    currentLang: Language;
-}
-
-const Updates: React.FC<UpdatesProps> = ({ currentLang }) => {
-    const t = translations[currentLang];
+const Updates: React.FC = () => {
+    const { t } = useTranslation();
     const { tick: autoRefreshTick, requestRefresh } = useAutoRefresh();
     const [versions, setVersions] = useState<AppVersion[]>([]);
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -122,7 +118,7 @@ const Updates: React.FC<UpdatesProps> = ({ currentLang }) => {
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
                         <Monitor className="text-primary-600" size={32} />
-                        {t.updates}
+                        {t('nav.updates')}
                     </h1>
                     <p className="text-slate-500 dark:text-slate-400 mt-1">Manage software releases, patches, and deployment channels.</p>
                 </div>
@@ -209,14 +205,14 @@ const Updates: React.FC<UpdatesProps> = ({ currentLang }) => {
                     </div>
 
                     <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-100 dark:border-slate-700">
-                        <button onClick={() => setIsFormOpen(false)} className="px-6 py-2.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg font-medium transition-colors">Cancel</button>
+                        <button onClick={() => setIsFormOpen(false)} className="px-6 py-2.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg font-medium transition-colors">{t('common.cancel')}</button>
                         <button
                             onClick={handleSave}
                             disabled={!formData.version}
                             className={`px-8 py-2.5 text-white rounded-lg font-bold shadow-md disabled:opacity-50 transition-colors flex items-center gap-2 ${editingId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-primary-600 hover:bg-primary-700'}`}
                         >
                             <Save size={18} />
-                            {editingId ? 'Save Changes' : 'Publish Release'}
+                            {editingId ? t('common.save') : 'Publish Release'}
                         </button>
                     </div>
                 </div>
@@ -350,9 +346,9 @@ const Updates: React.FC<UpdatesProps> = ({ currentLang }) => {
                 isOpen={!!deleteVersionId}
                 onClose={() => setDeleteVersionId(null)}
                 onConfirm={confirmDelete}
-                title="Delete Version"
+                title={t('common.delete')}
                 message="Are you sure you want to delete this version?"
-                confirmText="Delete"
+                confirmText={t('common.delete')}
                 type="danger"
             />
         </div>

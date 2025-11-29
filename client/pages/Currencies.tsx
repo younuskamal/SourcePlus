@@ -1,18 +1,14 @@
 
 import React, { useEffect, useState } from 'react';
 import ConfirmModal from '../components/ConfirmModal';
-import { translations, Language } from '../locales';
+import { useTranslation } from '../hooks/useTranslation';
 import { CurrencyRate } from '../types';
 import { api } from '../services/api';
 import { RefreshCw, Save, Plus, Trash2, Loader2, AlertTriangle } from 'lucide-react';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
-interface CurrenciesProps {
-  currentLang: Language;
-}
-
-const Currencies: React.FC<CurrenciesProps> = ({ currentLang }) => {
-  const t = translations[currentLang] as any;
+const Currencies: React.FC = () => {
+  const { t } = useTranslation();
   const { tick: autoRefreshTick, requestRefresh } = useAutoRefresh();
   const [rates, setRates] = useState<CurrencyRate[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -134,14 +130,14 @@ const Currencies: React.FC<CurrenciesProps> = ({ currentLang }) => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t.currencies}</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('currencies.title')}</h1>
         <div className="flex gap-2">
           <button
             onClick={() => setIsModalOpen(true)}
             className="flex items-center gap-2 text-sm text-white bg-sky-600 hover:bg-sky-700 px-3 py-2 rounded-lg transition-colors"
           >
             <Plus size={16} />
-            <span>{t.addCurrency}</span>
+            <span>{t('currencies.addCurrency')}</span>
           </button>
           <button
             onClick={handleSync}
@@ -149,7 +145,7 @@ const Currencies: React.FC<CurrenciesProps> = ({ currentLang }) => {
             className="flex items-center gap-2 text-sm text-sky-600 dark:text-sky-400 hover:text-sky-700 bg-sky-50 dark:bg-slate-800 px-3 py-2 rounded-lg disabled:opacity-50 transition-all"
           >
             {isSyncing ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
-            <span>{isSyncing ? 'Syncing...' : t.syncRates}</span>
+            <span>{isSyncing ? 'Syncing...' : t('currencies.syncRates')}</span>
           </button>
         </div>
       </div>
@@ -217,7 +213,7 @@ const Currencies: React.FC<CurrenciesProps> = ({ currentLang }) => {
                         onClick={() => startEdit(currency.code, currency.rate)}
                         className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-medium"
                       >
-                        {t.edit}
+                        {t('common.edit')}
                       </button>
                     </div>
                   )}
@@ -236,7 +232,7 @@ const Currencies: React.FC<CurrenciesProps> = ({ currentLang }) => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => { setIsModalOpen(false); setCreateError(''); }} />
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-sm z-10 p-6 space-y-6 border border-gray-100 dark:border-slate-700">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t.addCurrency}</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('currencies.addCurrency')}</h2>
 
             {createError && (
               <div className="bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-200 px-4 py-3 rounded-lg text-sm flex items-start gap-2">
@@ -260,7 +256,7 @@ const Currencies: React.FC<CurrenciesProps> = ({ currentLang }) => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.symbol}</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('currencies.symbol')}</label>
                 <input
                   type="text"
                   value={newSymbol}
@@ -272,7 +268,7 @@ const Currencies: React.FC<CurrenciesProps> = ({ currentLang }) => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.rate}</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('currencies.rate')}</label>
                 <input
                   type="number"
                   value={newRate}
@@ -288,7 +284,7 @@ const Currencies: React.FC<CurrenciesProps> = ({ currentLang }) => {
                 onClick={() => { setIsModalOpen(false); setCreateError(''); }}
                 className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg font-medium text-sm transition-colors"
               >
-                {t.cancel}
+                {t('common.cancel')}
               </button>
               <button
                 onClick={handleCreate}
@@ -296,7 +292,7 @@ const Currencies: React.FC<CurrenciesProps> = ({ currentLang }) => {
                 className="px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm transition-colors shadow-sm flex items-center gap-2"
               >
                 {isCreating ? <Loader2 size={14} className="animate-spin" /> : null}
-                {isCreating ? 'Creating...' : t.save}
+                {isCreating ? 'Creating...' : t('common.save')}
               </button>
             </div>
           </div>
@@ -308,9 +304,9 @@ const Currencies: React.FC<CurrenciesProps> = ({ currentLang }) => {
         isOpen={!!deleteCode}
         onClose={() => setDeleteCode(null)}
         onConfirm={confirmDelete}
-        title={t.delete + " Currency"}
-        message={t.confirmDelete || "Delete currency?"}
-        confirmText={t.delete}
+        title={t('common.delete') + " Currency"}
+        message={t('common.confirmDelete') || "Delete currency?"}
+        confirmText={t('common.delete')}
         type="danger"
       />
     </div>

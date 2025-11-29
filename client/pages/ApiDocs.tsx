@@ -1,14 +1,11 @@
+
 import React, { useState } from 'react';
-import { translations, Language } from '../locales';
+import { useTranslation } from '../hooks/useTranslation';
 import {
   Server, Shield, Globe, Terminal, Copy, Check,
   ChevronRight, ChevronDown, Code2, Database, Zap,
   CreditCard, Layout, Activity
 } from 'lucide-react';
-
-interface ApiDocsProps {
-  currentLang: Language;
-}
 
 const LICENSING_BASE = 'https://sourceplus.onrender.com/api';
 const AUTH_BASE = 'https://sourceplus.onrender.com/auth';
@@ -123,9 +120,9 @@ const SectionHeader: React.FC<{ title: string; icon: any; description: string }>
   </div>
 );
 
-const ApiDocs: React.FC<ApiDocsProps> = ({ currentLang }) => {
-  const t = translations[currentLang];
-  const isRtl = currentLang === 'ar';
+const ApiDocs: React.FC = () => {
+  const { t, i18n } = useTranslation();
+  const isRtl = i18n.language === 'ar';
 
   return (
     <div className="max-w-4xl mx-auto pb-20 space-y-12" dir={isRtl ? 'rtl' : 'ltr'}>
@@ -136,7 +133,7 @@ const ApiDocs: React.FC<ApiDocsProps> = ({ currentLang }) => {
           <Server size={32} />
         </div>
         <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-          {t.apiDocs}
+          {t('nav.apiDocs')}
         </h1>
         <p className="text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
           Comprehensive guide to integrating your applications with the SourcePlus Licensing System.
