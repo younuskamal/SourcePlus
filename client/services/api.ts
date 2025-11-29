@@ -70,10 +70,9 @@ const doRequest = async <T>(path: string, options: RequestInit = {}, retry = tru
           return doRequest<T>(path, options, false);
         }
       }
-    } catch (err) {
-      console.error('Token refresh failed:', err);
+    } catch (e) {
+      console.error('Failed to refresh token', e);
     }
-
     // If we get here, refresh failed
     clearTokens();
     window.location.reload();
@@ -82,12 +81,17 @@ const doRequest = async <T>(path: string, options: RequestInit = {}, retry = tru
 
   if (!res.ok) {
     const text = await res.text();
+    let json;
     try {
-      const json = JSON.parse(text);
-      throw new Error(json.message || text);
+      json = JSON.parse(text);
     } catch (e) {
-      throw new Error(text || res.statusText);
+      // ignore
     }
+
+    if (json && json.message) {
+      throw new Error(json.message);
+    }
+    throw new Error(text || res.statusText);
   }
   return res.status === 204 ? (undefined as T) : await res.json();
 };
