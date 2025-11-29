@@ -1,5 +1,4 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { prisma } from '../../utils/prisma.js';
 import { z } from 'zod';
 
 export async function getTrafficLogs(
@@ -49,8 +48,8 @@ export async function getTrafficLogs(
     }
 
     const [total, logs] = await Promise.all([
-        prisma.trafficLog.count({ where }),
-        prisma.trafficLog.findMany({
+        request.server.prisma.trafficLog.count({ where }),
+        request.server.prisma.trafficLog.findMany({
             where,
             orderBy: { timestamp: 'desc' },
             skip,
@@ -74,7 +73,7 @@ export async function getTrafficLogDetails(
     reply: FastifyReply
 ) {
     const { id } = request.params;
-    const log = await prisma.trafficLog.findUnique({
+    const log = await request.server.prisma.trafficLog.findUnique({
         where: { id },
     });
 
@@ -90,10 +89,10 @@ export async function clearTrafficLogs(
     reply: FastifyReply
 ) {
     // Delete all logs
-    await prisma.trafficLog.deleteMany();
+    await request.server.prisma.trafficLog.deleteMany();
 
     // Create audit log
-    await prisma.auditLog.create({
+    await request.server.prisma.auditLog.create({
         data: {
             action: 'TRAFFIC_LOGS_CLEARED',
             details: 'Traffic logs cleared by admin',
