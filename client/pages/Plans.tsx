@@ -1,27 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Box, Button, Card, Typography, IconButton, Chip, Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, FormControl, InputLabel, Select, MenuItem, Switch,
-  FormControlLabel, Grid, Alert, CircularProgress, CardContent, CardActions,
-  Stack, Divider, Tooltip, Fade, Paper, Slide, Snackbar, useTheme
-} from '@mui/material';
-import { TransitionProps } from '@mui/material/transitions';
-import {
-  Add, Edit, Delete, CheckCircle, Cancel, ContentCopy,
-  MonetizationOn, Verified, Close, Save, Zap, LocalFireDepartment
-} from '@mui/icons-material';
+  Plus, Edit2, Trash2, Copy, Check, X, Loader, AlertCircle, 
+  CheckCircle2, XCircle, Eye, EyeOff
+} from 'lucide-react';
 import { api } from '../services/api';
 import { CurrencyRate } from '../types';
-
-// Transition for Dialog
-const Transition = React.forwardRef(function Transition(
-  props: TransitionProps & {
-    children: React.ReactElement<any, any>;
-  },
-  ref: React.Ref<unknown>,
-) {
-  return <Slide direction="up" ref={ref} {...props} />;
-});
+import { translations, Language } from '../locales';
 
 interface Plan {
   id: string;
@@ -34,7 +18,22 @@ interface Plan {
   isActive: boolean;
 }
 
-// --- Templates ---
+interface Toast {
+  open: boolean;
+  message: string;
+  type: 'success' | 'error';
+}
+
+interface FormData {
+  name: string;
+  price_monthly: number;
+  price_yearly: number;
+  currency: string;
+  features: Record<string, any>;
+  limits: Record<string, any>;
+  isActive: boolean;
+}
+
 const PLAN_TEMPLATES = [
   {
     name: 'Starter',
@@ -42,8 +41,7 @@ const PLAN_TEMPLATES = [
     price_yearly: 150000,
     currency: 'IQD',
     features: { pos: true, inventory: true },
-    limits: { maxUsers: 1, maxProducts: 500, maxBranches: 1 },
-    isActive: true
+    limits: { maxUsers: 1, maxProducts: 500, maxBranches: 1 }
   },
   {
     name: 'Professional',
@@ -51,8 +49,7 @@ const PLAN_TEMPLATES = [
     price_yearly: 350000,
     currency: 'IQD',
     features: { pos: true, inventory: true, reports: true, support: true },
-    limits: { maxUsers: 5, maxProducts: 5000, maxBranches: 3 },
-    isActive: true
+    limits: { maxUsers: 5, maxProducts: 5000, maxBranches: 3 }
   },
   {
     name: 'Enterprise',
@@ -60,14 +57,50 @@ const PLAN_TEMPLATES = [
     price_yearly: 750000,
     currency: 'IQD',
     features: { pos: true, inventory: true, reports: true, support: true, api: true },
-    limits: { maxUsers: 999, maxProducts: 99999, maxBranches: 10 },
-    isActive: true
+    limits: { maxUsers: 999, maxProducts: 99999, maxBranches: 10 }
   }
 ];
 
-// --- Helper Components for List Editing ---
+// ============ Toast Component ============
+const Toast: React.FC<{ toast: Toast; onClose: () => void; isRtl: boolean }> = ({ toast, onClose, isRtl }) => {
+  React.useEffect(() => {
+    if (toast.open) {
+      const timer = setTimeout(onClose, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast.open, onClose]);
 
-const FeatureEditor = ({ features, onChange }: { features: Record<string, any>, onChange: (features: Record<string, any>) => void }) => {
+  if (!toast.open) return null;
+
+  return (
+    <div
+      className={`fixed bottom-6 ${isRtl ? 'left-6' : 'right-6'} z-50 animate-in slide-in-from-bottom-5 duration-300`}
+    >
+      <div
+        className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg ${
+          toast.type === 'success'
+            ? 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-200 border border-green-200 dark:border-green-800'
+            : 'bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-200 border border-red-200 dark:border-red-800'
+        }`}
+      >
+        {toast.type === 'success' ? (
+          <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+        ) : (
+          <XCircle className="w-5 h-5 flex-shrink-0" />
+        )}
+        <span className="text-sm font-medium">{toast.message}</span>
+      </div>
+    </div>
+  );
+};
+
+// ============ Feature Editor Component ============
+const FeatureEditor: React.FC<{
+  features: Record<string, any>;
+  onChange: (features: Record<string, any>) => void;
+  label: string;
+  isRtl: boolean;
+}> = ({ features, onChange, label, isRtl }) => {
   const [newFeature, setNewFeature] = useState('');
 
   const handleAdd = () => {
@@ -84,60 +117,58 @@ const FeatureEditor = ({ features, onChange }: { features: Record<string, any>, 
   };
 
   return (
-    <Box>
-      <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1.5, color: 'text.secondary', fontSize: '0.9rem' }}>
-        Features
-      </Typography>
-      <Stack direction="row" spacing={1} mb={2} flexWrap="wrap" useFlexGap>
+    <div>
+      <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-3">
+        {label}
+      </label>
+      <div className={`flex flex-wrap gap-2 mb-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
         {Object.keys(features).length > 0 ? (
           Object.keys(features).map((feature) => (
-            <Chip
+            <div
               key={feature}
-              label={feature}
-              onDelete={() => handleDelete(feature)}
-              size="small"
-              color="primary"
-              variant="outlined"
-              sx={{ 
-                borderRadius: 2, 
-                fontWeight: 500,
-                fontSize: '0.8rem'
-              }}
-            />
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 border border-primary-300 dark:border-primary-700/50"
+            >
+              <span className="text-sm font-medium">{feature}</span>
+              <button
+                onClick={() => handleDelete(feature)}
+                className="hover:text-primary-900 dark:hover:text-primary-100 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           ))
         ) : (
-          <Typography variant="caption" color="text.disabled">No features yet</Typography>
+          <p className="text-sm text-slate-500 dark:text-slate-400 py-2">No features yet</p>
         )}
-      </Stack>
-      <Stack direction="row" spacing={1}>
-        <TextField
-          size="small"
-          fullWidth
-          placeholder="Add feature (e.g. POS System)"
+      </div>
+      <div className={`flex gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
+        <input
+          type="text"
           value={newFeature}
           onChange={(e) => setNewFeature(e.target.value)}
           onKeyPress={(e) => e.key === 'Enter' && handleAdd()}
-          variant="outlined"
-          InputProps={{ sx: { borderRadius: 2, fontSize: '0.9rem' } }}
+          placeholder="Add feature..."
+          className="flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
         />
-        <Button 
-          variant="contained" 
-          size="small" 
-          onClick={handleAdd} 
-          sx={{ 
-            borderRadius: 2, 
-            minWidth: 44,
-            px: 1.5
-          }}
+        <button
+          onClick={handleAdd}
+          className="px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors text-sm flex items-center gap-1.5"
         >
-          <Add fontSize="small" />
-        </Button>
-      </Stack>
-    </Box>
+          <Plus className="w-4 h-4" />
+          Add
+        </button>
+      </div>
+    </div>
   );
 };
 
-const LimitEditor = ({ limits, onChange }: { limits: Record<string, any>, onChange: (limits: Record<string, any>) => void }) => {
+// ============ Limit Editor Component ============
+const LimitEditor: React.FC<{
+  limits: Record<string, any>;
+  onChange: (limits: Record<string, any>) => void;
+  label: string;
+  isRtl: boolean;
+}> = ({ limits, onChange, label, isRtl }) => {
   const [newKey, setNewKey] = useState('');
   const [newValue, setNewValue] = useState('');
 
@@ -157,102 +188,127 @@ const LimitEditor = ({ limits, onChange }: { limits: Record<string, any>, onChan
   };
 
   return (
-    <Box>
-      <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1.5, color: 'text.secondary', fontSize: '0.9rem' }}>
-        Limits
-      </Typography>
-      <Stack direction="row" spacing={1} mb={2} flexWrap="wrap" useFlexGap>
+    <div>
+      <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-3">
+        {label}
+      </label>
+      <div className={`flex flex-wrap gap-2 mb-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
         {Object.keys(limits).length > 0 ? (
           Object.entries(limits).map(([key, value]) => (
-            <Chip
+            <div
               key={key}
-              label={`${key}: ${value}`}
-              onDelete={() => handleDelete(key)}
-              size="small"
-              color="success"
-              variant="outlined"
-              sx={{ 
-                borderRadius: 2, 
-                fontWeight: 500,
-                fontSize: '0.8rem',
-                borderColor: 'success.light',
-                color: 'success.main'
-              }}
-            />
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border border-green-300 dark:border-green-700/50"
+            >
+              <span className="text-sm font-medium">{key}: {value}</span>
+              <button
+                onClick={() => handleDelete(key)}
+                className="hover:text-green-900 dark:hover:text-green-100 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           ))
         ) : (
-          <Typography variant="caption" color="text.disabled">No limits set</Typography>
+          <p className="text-sm text-slate-500 dark:text-slate-400 py-2">No limits yet</p>
         )}
-      </Stack>
-      <Stack direction="row" spacing={1} mb={1}>
-        <TextField
-          size="small"
-          placeholder="Key (e.g. maxUsers)"
+      </div>
+      <div className={`grid grid-cols-3 gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
+        <input
+          type="text"
           value={newKey}
           onChange={(e) => setNewKey(e.target.value)}
-          variant="outlined"
-          InputProps={{ sx: { borderRadius: 2, fontSize: '0.9rem' } }}
+          placeholder="Key (e.g. maxUsers)"
+          className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
         />
-        <TextField
-          size="small"
-          placeholder="Value (e.g. 5)"
+        <input
           type="number"
           value={newValue}
           onChange={(e) => setNewValue(e.target.value)}
           onKeyPress={(e) => e.key === 'Enter' && handleAdd()}
-          variant="outlined"
-          InputProps={{ sx: { borderRadius: 2, fontSize: '0.9rem' } }}
+          placeholder="Value"
+          className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
         />
-        <Button 
-          variant="contained" 
-          size="small" 
+        <button
           onClick={handleAdd}
-          sx={{ 
-            borderRadius: 2, 
-            minWidth: 44,
-            px: 1.5
-          }}
+          className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors text-sm flex items-center justify-center gap-1.5"
         >
-          <Add fontSize="small" />
-        </Button>
-      </Stack>
-    </Box>
+          <Plus className="w-4 h-4" />
+          Add
+        </button>
+      </div>
+    </div>
   );
 };
 
+// ============ Modal Component ============
+const Modal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  subtitle: string;
+  children: React.ReactNode;
+  isRtl: boolean;
+}> = ({ isOpen, onClose, title, subtitle, children, isRtl }) => {
+  if (!isOpen) return null;
 
-const Plans = () => {
-  const theme = useTheme();
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} />
+      <div className={`fixed inset-0 z-50 flex items-center justify-center pointer-events-none`}>
+        <div
+          className={`pointer-events-auto bg-white dark:bg-slate-800 rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto animate-in fade-in duration-300 ${
+            isRtl ? 'text-right' : 'text-left'
+          }`}
+          dir={isRtl ? 'rtl' : 'ltr'}
+        >
+          {/* Header */}
+          <div className="sticky top-0 bg-gradient-to-b from-slate-50 to-white dark:from-slate-750 dark:to-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4 flex items-center justify-between z-10">
+            <div>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">{title}</h2>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{subtitle}</p>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="p-6">{children}</div>
+        </div>
+      </div>
+    </>
+  );
+};
+
+// ============ Plans Page Component ============
+const Plans: React.FC<{ currentLang: Language }> = ({ currentLang }) => {
+  const t = translations[currentLang];
+  const isRtl = currentLang === 'ar';
+
   const [plans, setPlans] = useState<Plan[]>([]);
   const [currencies, setCurrencies] = useState<CurrencyRate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [openModal, setOpenModal] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
-
-  // Feedback State
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState('');
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
-
-  // Form State
-  const [formData, setFormData] = useState({
+  const [toast, setToast] = useState<Toast>({ open: false, message: '', type: 'success' });
+  const [formData, setFormData] = useState<FormData>({
     name: '',
     price_monthly: 0,
     price_yearly: 0,
     currency: 'IQD',
-    features: {} as Record<string, any>,
-    limits: {} as Record<string, any>,
+    features: {},
+    limits: {},
     isActive: true
   });
 
-  const getCurrencySymbol = (code: string) => {
-    const currency = currencies.find(c => c.code === code);
-    return currency?.symbol || code;
-  };
-
   const formatPrice = (amount: number, currencyCode: string) => {
-    const symbol = getCurrencySymbol(currencyCode);
+    const currency = currencies.find(c => c.code === currencyCode);
+    const symbol = currency?.symbol || currencyCode;
     return `${symbol}${amount.toLocaleString()}`;
   };
 
@@ -268,11 +324,9 @@ const Plans = () => {
       setError('');
     } catch (err: any) {
       console.error('Failed to fetch data', err);
-      const msg = err.message || 'Failed to load data';
+      const msg = err.message || 'Failed to load plans';
       setError(msg);
-      if (msg.includes('price_monthly') || msg.includes('does not exist')) {
-        setError('Database Error: Missing columns. Please run "npx prisma db push" on the server.');
-      }
+      setToast({ open: true, message: msg, type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -282,8 +336,7 @@ const Plans = () => {
     fetchData();
   }, []);
 
-  const handleOpen = (plan?: Plan) => {
-    setSaveError('');
+  const handleOpenModal = (plan?: Plan) => {
     if (plan) {
       setEditingPlan(plan);
       setFormData({
@@ -307,7 +360,12 @@ const Plans = () => {
         isActive: true
       });
     }
-    setOpenModal(true);
+    setModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    setEditingPlan(null);
   };
 
   const handleTemplateSelect = (templateName: string) => {
@@ -315,19 +373,20 @@ const Plans = () => {
     if (template) {
       setFormData({
         ...template,
-        name: template.name,
-        features: { ...template.features },
-        limits: { ...template.limits },
-        currency: currencies.some(c => c.code === template.currency) ? template.currency : (currencies[0]?.code || 'IQD')
+        currency: currencies.some(c => c.code === template.currency)
+          ? template.currency
+          : currencies[0]?.code || 'IQD'
       });
     }
   };
 
-  const handleClose = () => setOpenModal(false);
-
   const handleSubmit = async () => {
+    if (!formData.name.trim() || !formData.currency) {
+      setToast({ open: true, message: 'Please fill in all required fields', type: 'error' });
+      return;
+    }
+
     setSaving(true);
-    setSaveError('');
     try {
       const payload = {
         name: formData.name,
@@ -341,48 +400,48 @@ const Plans = () => {
 
       if (editingPlan) {
         await api.updatePlan(editingPlan.id, payload);
-        setSnackbar({ open: true, message: 'Plan updated successfully', severity: 'success' });
+        setToast({ open: true, message: 'Plan updated successfully', type: 'success' });
       } else {
         await api.createPlan(payload);
-        setSnackbar({ open: true, message: 'Plan created successfully', severity: 'success' });
+        setToast({ open: true, message: 'Plan created successfully', type: 'success' });
       }
 
-      fetchData();
-      handleClose();
+      await fetchData();
+      handleCloseModal();
     } catch (err: any) {
-      console.error('Error saving plan', err);
       const msg = err.response?.data?.message || err.message || 'Failed to save plan';
-      setSaveError(msg);
-      if (msg.includes('price_monthly') || msg.includes('does not exist')) {
-        setSaveError('Database Error: Missing columns. Please run "npx prisma db push" on the server.');
-      }
+      setToast({ open: true, message: msg, type: 'error' });
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this plan?')) {
-      try {
-        await api.deletePlan(id);
-        fetchData();
-        setSnackbar({ open: true, message: 'Plan deleted', severity: 'success' });
-      } catch (err) {
-        console.error('Error deleting plan', err);
-        setSnackbar({ open: true, message: 'Failed to delete plan', severity: 'error' });
-      }
+  const handleDelete = async (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to delete the "${name}" plan?`)) return;
+
+    try {
+      await api.deletePlan(id);
+      setToast({ open: true, message: 'Plan deleted successfully', type: 'success' });
+      await fetchData();
+    } catch (err: any) {
+      const msg = err.message || 'Failed to delete plan';
+      setToast({ open: true, message: msg, type: 'error' });
     }
   };
 
-  const toggleStatus = async (plan: Plan) => {
+  const handleToggleStatus = async (plan: Plan) => {
     try {
       const action = plan.isActive ? 'deactivate' : 'activate';
       await api.togglePlanStatus(plan.id, action);
-      fetchData();
-      setSnackbar({ open: true, message: `Plan ${action}d successfully`, severity: 'success' });
-    } catch (err) {
-      console.error('Error toggling status', err);
-      setSnackbar({ open: true, message: 'Failed to update status', severity: 'error' });
+      setToast({
+        open: true,
+        message: `Plan ${action === 'activate' ? 'activated' : 'deactivated'} successfully`,
+        type: 'success'
+      });
+      await fetchData();
+    } catch (err: any) {
+      const msg = err.message || 'Failed to update plan status';
+      setToast({ open: true, message: msg, type: 'error' });
     }
   };
 
@@ -398,731 +457,392 @@ const Plans = () => {
         isActive: false
       };
       await api.createPlan(payload);
-      fetchData();
-      setSnackbar({ open: true, message: 'Plan duplicated successfully', severity: 'success' });
-    } catch (err) {
-      console.error('Error duplicating plan', err);
-      setSnackbar({ open: true, message: 'Failed to duplicate plan', severity: 'error' });
+      setToast({ open: true, message: 'Plan duplicated successfully', type: 'success' });
+      await fetchData();
+    } catch (err: any) {
+      const msg = err.message || 'Failed to duplicate plan';
+      setToast({ open: true, message: msg, type: 'error' });
     }
   };
 
-  // --- Preview Card Component ---
-  const PreviewCard = ({ data }: { data: typeof formData }) => (
-    <Card
-      elevation={0}
-      sx={{
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        borderRadius: 3,
-        border: '2px solid',
-        borderColor: 'primary.main',
-        position: 'relative',
-        overflow: 'visible',
-        bgcolor: 'background.paper'
-      }}
-    >
-      <Box position="absolute" top={-14} right={16} bgcolor="primary.main" color="white" px={2.5} py={0.75} borderRadius={2} fontSize="0.7rem" fontWeight="900" boxShadow={3} letterSpacing={1}>
-        PREVIEW
-      </Box>
-      <CardContent sx={{ flexGrow: 1, p: 3 }}>
-        <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={3} gap={2}>
-          <Chip 
-            label={data.currency} 
-            size="small" 
-            sx={{ 
-              fontWeight: 'bold', 
-              borderRadius: 1.5, 
-              bgcolor: 'primary.50',
-              color: 'primary.main',
-              fontSize: '0.75rem'
-            }} 
-          />
-          <Chip
-            label={data.isActive ? 'Active' : 'Inactive'}
-            color={data.isActive ? 'success' : 'default'}
-            size="small"
-            variant={data.isActive ? 'filled' : 'outlined'}
-            sx={{ borderRadius: 1.5 }}
-          />
-        </Box>
-
-        <Typography variant="h5" fontWeight="900" gutterBottom sx={{ mb: 1, minHeight: 32 }}>
-          {data.name || 'Plan Name'}
-        </Typography>
-
-        <Box mb={3} sx={{ background: 'linear-gradient(135deg, rgba(25, 118, 210, 0.05) 0%, rgba(25, 118, 210, 0.02) 100%)', borderRadius: 2, p: 2 }}>
-          <Typography variant="h3" component="div" fontWeight="bold" color="primary.main" gutterBottom>
-            {formatPrice(Number(data.price_monthly), data.currency)}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            per month
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            <span style={{ opacity: 0.7 }}>or {formatPrice(Number(data.price_yearly), data.currency)} annually</span>
-          </Typography>
-        </Box>
-
-        <Divider sx={{ my: 3, borderStyle: 'dashed' }} />
-
-        <Typography 
-          variant="subtitle2" 
-          fontWeight="bold" 
-          gutterBottom 
-          sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: 1, 
-            color: 'primary.main',
-            mb: 2,
-            fontSize: '0.85rem',
-            textTransform: 'uppercase',
-            letterSpacing: 0.5
-          }}
-        >
-          <Verified fontSize="small" /> Features
-        </Typography>
-        <Box display="flex" flexWrap="wrap" gap={1} mb={3}>
-          {Object.keys(data.features).length > 0 ? (
-            Object.keys(data.features).map((f, i) => (
-              <Chip 
-                key={i} 
-                label={f} 
-                size="small" 
-                variant="outlined"
-                sx={{ 
-                  fontSize: '0.8rem', 
-                  height: 28, 
-                  borderRadius: 2,
-                  borderColor: 'primary.light',
-                  color: 'primary.main'
-                }} 
-              />
-            ))
-          ) : (
-            <Typography variant="caption" color="text.disabled">No features defined</Typography>
-          )}
-        </Box>
-
-        <Typography 
-          variant="subtitle2" 
-          fontWeight="bold" 
-          gutterBottom 
-          sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: 1, 
-            color: 'primary.main',
-            mb: 2,
-            fontSize: '0.85rem',
-            textTransform: 'uppercase',
-            letterSpacing: 0.5
-          }}
-        >
-          <Zap fontSize="small" /> Limits
-        </Typography>
-        <Box display="flex" flexWrap="wrap" gap={1}>
-          {Object.keys(data.limits).length > 0 ? (
-            Object.entries(data.limits).map(([k, v]) => (
-              <Chip 
-                key={k} 
-                label={`${k}: ${v}`} 
-                size="small" 
-                variant="outlined"
-                sx={{ 
-                  fontSize: '0.8rem', 
-                  height: 28, 
-                  borderRadius: 2,
-                  borderColor: 'success.light',
-                  color: 'success.main'
-                }} 
-              />
-            ))
-          ) : (
-            <Typography variant="caption" color="text.disabled">No limits defined</Typography>
-          )}
-        </Box>
-      </CardContent>
-    </Card>
-  );
-
   return (
-    <Box sx={{ p: 4, minHeight: '100vh', bgcolor: 'background.default' }}>
+    <div className={`min-h-screen bg-slate-50 dark:bg-slate-900 p-4 sm:p-8 ${isRtl ? 'rtl' : 'ltr'}`} dir={isRtl ? 'rtl' : 'ltr'}>
       {/* Header */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={5}>
-        <Box>
-          <Typography variant="h4" fontWeight="bold" gutterBottom sx={{ letterSpacing: -0.5 }}>
-            Subscription Plans
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Manage subscription tiers, pricing, and features
-          </Typography>
-        </Box>
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<Add />}
-          onClick={() => handleOpen()}
-          sx={{ 
-            borderRadius: 3, 
-            px: 3, 
-            py: 1.5, 
-            textTransform: 'none', 
-            fontSize: '1rem', 
-            boxShadow: 3,
-            '&:hover': { boxShadow: 4 }
-          }}
+      <div className={`mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 ${isRtl ? 'flex-row-reverse' : ''}`}>
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+            {t.plans}
+          </h1>
+          <p className="text-slate-600 dark:text-slate-400 mt-2">
+            Manage your subscription tiers, pricing, and features
+          </p>
+        </div>
+        <button
+          onClick={() => handleOpenModal()}
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-semibold transition-colors shadow-md hover:shadow-lg"
         >
-          Create New Plan
-        </Button>
-      </Box>
+          <Plus className="w-5 h-5" />
+          {t.addPlan}
+        </button>
+      </div>
 
       {/* Error Alert */}
-      {error && <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>{error}</Alert>}
+      {error && (
+        <div className="mb-6 p-4 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 flex gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-red-900 dark:text-red-200">{error}</p>
+            {error.includes('column') && (
+              <p className="text-xs text-red-800 dark:text-red-300 mt-1">
+                Run "npx prisma db push" on the server to fix this.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Loading State */}
       {loading ? (
-        <Box display="flex" justifyContent="center" alignItems="center" p={8}>
-          <CircularProgress size={48} />
-        </Box>
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <Loader className="w-10 h-10 text-primary-600 dark:text-primary-400 mx-auto animate-spin mb-3" />
+            <p className="text-slate-600 dark:text-slate-400">Loading plans...</p>
+          </div>
+        </div>
       ) : plans.length === 0 ? (
         /* Empty State */
-        <Box 
-          display="flex" 
-          flexDirection="column" 
-          alignItems="center" 
-          justifyContent="center" 
-          p={8}
-          sx={{ minHeight: '400px', backgroundColor: 'action.hover', borderRadius: 3 }}
-        >
-          <MonetizationOn sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-          <Typography variant="h6" color="text.secondary" gutterBottom>
+        <div className="text-center py-16 bg-white dark:bg-slate-800 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700">
+          <div className="inline-block p-3 bg-slate-100 dark:bg-slate-700 rounded-full mb-4">
+            <AlertCircle className="w-8 h-8 text-slate-600 dark:text-slate-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
             No Plans Yet
-          </Typography>
-          <Typography variant="body2" color="text.disabled" mb={3}>
+          </h3>
+          <p className="text-slate-600 dark:text-slate-400 mb-6">
             Create your first subscription plan to get started
-          </Typography>
-          <Button 
-            variant="contained" 
-            color="primary" 
-            startIcon={<Add />}
-            onClick={() => handleOpen()}
-            sx={{ borderRadius: 2 }}
+          </p>
+          <button
+            onClick={() => handleOpenModal()}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors"
           >
-            Create Your First Plan
-          </Button>
-        </Box>
+            <Plus className="w-4 h-4" />
+            Create Plan
+          </button>
+        </div>
       ) : (
         /* Plans Grid */
-        <Grid container spacing={3}>
+        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 ${isRtl ? 'flex-row-reverse' : ''}`}>
           {plans.map((plan) => (
-            <Grid item xs={12} sm={6} lg={4} key={plan.id}>
-              <Fade in timeout={500}>
-                <Card
-                  elevation={0}
-                  sx={{
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    borderRadius: 3,
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                    backgroundColor: 'background.paper',
-                    position: 'relative',
-                    overflow: 'hidden',
-                    '&:hover': {
-                      transform: 'translateY(-8px)',
-                      boxShadow: '0 20px 40px -10px rgba(0,0,0,0.15)',
-                      borderColor: plan.isActive ? 'primary.main' : 'divider'
-                    }
-                  }}
-                >
-                  {/* Ribbon for highlighted plans */}
-                  {!plan.isActive && (
-                    <Box
-                      sx={{
-                        position: 'absolute',
-                        top: 16,
-                        right: -32,
-                        width: 80,
-                        height: 32,
-                        backgroundColor: 'error.main',
-                        color: 'white',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '0.7rem',
-                        fontWeight: 'bold',
-                        transform: 'rotate(45deg)',
-                        zIndex: 1
-                      }}
-                    >
-                      INACTIVE
-                    </Box>
-                  )}
+            <div
+              key={plan.id}
+              className="group relative bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-primary-400 dark:hover:border-primary-600 hover:shadow-lg transition-all duration-300 overflow-hidden"
+            >
+              {/* Status Indicator */}
+              <div className={`absolute top-0 ${isRtl ? 'left-0' : 'right-0'} w-1 h-full bg-gradient-to-b ${plan.isActive ? 'from-green-500 to-green-400' : 'from-slate-400 to-slate-300'}`} />
 
-                  <CardContent sx={{ flexGrow: 1, p: 3 }}>
-                    {/* Top Section: Currency & Status */}
-                    <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={3} gap={2}>
-                      <Chip
-                        label={plan.currency}
-                        size="small"
-                        sx={{ 
-                          fontWeight: 'bold', 
-                          borderRadius: 1.5, 
-                          bgcolor: 'primary.50',
-                          color: 'primary.main',
-                          fontSize: '0.75rem'
-                        }}
-                      />
-                      <Chip
-                        label={plan.isActive ? 'Active' : 'Inactive'}
-                        icon={plan.isActive ? <CheckCircle sx={{ fontSize: '0.9rem' }} /> : <Cancel sx={{ fontSize: '0.9rem' }} />}
-                        color={plan.isActive ? 'success' : 'default'}
-                        size="small"
-                        variant={plan.isActive ? 'filled' : 'outlined'}
-                        sx={{ 
-                          borderRadius: 1.5,
-                          fontSize: '0.8rem'
-                        }}
-                      />
-                    </Box>
-
-                    {/* Plan Name */}
-                    <Typography variant="h5" fontWeight="900" gutterBottom sx={{ mb: 2, color: 'text.primary' }}>
+              {/* Content */}
+              <div className="p-6">
+                {/* Header */}
+                <div className={`flex items-start justify-between gap-3 mb-4 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
                       {plan.name}
-                    </Typography>
-
-                    {/* Pricing Box */}
-                    <Box mb={3} sx={{ 
-                      background: 'linear-gradient(135deg, rgba(25, 118, 210, 0.05) 0%, rgba(25, 118, 210, 0.02) 100%)', 
-                      borderRadius: 2, 
-                      p: 2,
-                      borderLeft: '4px solid',
-                      borderLeftColor: 'primary.main'
-                    }}>
-                      <Typography variant="h3" component="div" fontWeight="bold" color="primary.main" gutterBottom>
-                        {formatPrice(plan.price_monthly, plan.currency)}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                        monthly
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ opacity: 0.7 }}>
-                        or {formatPrice(plan.price_yearly, plan.currency)} annually
-                      </Typography>
-                    </Box>
-
-                    <Divider sx={{ my: 2.5, borderStyle: 'dashed' }} />
-
-                    {/* Features Section */}
-                    <Typography 
-                      variant="subtitle2" 
-                      fontWeight="bold" 
-                      gutterBottom 
-                      sx={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: 1, 
-                        color: 'primary.main',
-                        mb: 1.5,
-                        fontSize: '0.8rem',
-                        textTransform: 'uppercase',
-                        letterSpacing: 0.5
-                      }}
-                    >
-                      <Verified fontSize="small" /> Features
-                    </Typography>
-                    <Box display="flex" flexWrap="wrap" gap={1} mb={2.5}>
-                      {Object.keys(plan.features || {}).length > 0 ? (
-                        Object.keys(plan.features).map((f) => (
-                          <Chip 
-                            key={f} 
-                            label={f} 
-                            size="small" 
-                            variant="outlined"
-                            sx={{ 
-                              fontSize: '0.75rem', 
-                              height: 26, 
-                              borderRadius: 2,
-                              borderColor: 'primary.light',
-                              color: 'primary.main',
-                              fontWeight: 500
-                            }} 
-                          />
-                        ))
-                      ) : (
-                        <Typography variant="caption" color="text.disabled">—</Typography>
-                      )}
-                    </Box>
-
-                    {/* Limits Section */}
-                    <Typography 
-                      variant="subtitle2" 
-                      fontWeight="bold" 
-                      gutterBottom 
-                      sx={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: 1, 
-                        color: 'success.main',
-                        mb: 1.5,
-                        fontSize: '0.8rem',
-                        textTransform: 'uppercase',
-                        letterSpacing: 0.5
-                      }}
-                    >
-                      <LocalFireDepartment fontSize="small" /> Limits
-                    </Typography>
-                    <Box display="flex" flexWrap="wrap" gap={1}>
-                      {Object.keys(plan.limits || {}).length > 0 ? (
-                        Object.entries(plan.limits).map(([k, v]) => (
-                          <Chip 
-                            key={k} 
-                            label={`${k}: ${v}`} 
-                            size="small" 
-                            variant="outlined"
-                            sx={{ 
-                              fontSize: '0.75rem', 
-                              height: 26, 
-                              borderRadius: 2,
-                              borderColor: 'success.light',
-                              color: 'success.main',
-                              fontWeight: 500
-                            }} 
-                          />
-                        ))
-                      ) : (
-                        <Typography variant="caption" color="text.disabled">—</Typography>
-                      )}
-                    </Box>
-                  </CardContent>
-
-                  {/* Action Buttons */}
-                  <CardActions sx={{ p: 3, pt: 0, justifyContent: 'flex-end', gap: 1 }}>
-                    <Tooltip title={plan.isActive ? "Deactivate" : "Activate"} arrow>
-                      <IconButton
-                        size="small"
-                        onClick={() => toggleStatus(plan)}
-                        sx={{ 
-                          bgcolor: plan.isActive ? 'warning.100' : 'success.100',
-                          color: plan.isActive ? 'warning.main' : 'success.main',
-                          '&:hover': { 
-                            bgcolor: plan.isActive ? 'warning.200' : 'success.200'
-                          }
-                        }}
+                    </h3>
+                    <div className="flex gap-2 flex-wrap">
+                      <span className="inline-block px-2.5 py-0.5 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-xs font-semibold">
+                        {plan.currency}
+                      </span>
+                      <span
+                        className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold flex items-center gap-1 ${
+                          plan.isActive
+                            ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                            : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                        }`}
                       >
-                        {plan.isActive ? <Cancel fontSize="small" /> : <CheckCircle fontSize="small" />}
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Duplicate Plan" arrow>
-                      <IconButton 
-                        size="small" 
-                        onClick={() => handleDuplicate(plan)} 
-                        sx={{ 
-                          bgcolor: 'action.hover',
-                          color: 'text.secondary',
-                          '&:hover': { 
-                            bgcolor: 'action.selected',
-                            color: 'primary.main'
-                          }
-                        }}
-                      >
-                        <ContentCopy fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Edit Plan" arrow>
-                      <IconButton 
-                        size="small" 
-                        onClick={() => handleOpen(plan)} 
-                        sx={{ 
-                          bgcolor: 'primary.100',
-                          color: 'primary.main',
-                          '&:hover': { bgcolor: 'primary.200' }
-                        }}
-                      >
-                        <Edit fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Delete Plan" arrow>
-                      <IconButton 
-                        size="small" 
-                        onClick={() => handleDelete(plan.id)} 
-                        sx={{ 
-                          bgcolor: 'error.100',
-                          color: 'error.main',
-                          '&:hover': { bgcolor: 'error.200' }
-                        }}
-                      >
-                        <Delete fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  </CardActions>
-                </Card>
-              </Fade>
-            </Grid>
-          ))}
-        </Grid>
-      )}
-
-      {/* Modal Dialog */}
-      <Dialog
-        open={openModal}
-        onClose={handleClose}
-        TransitionComponent={Transition}
-        maxWidth="md"
-        fullWidth
-        PaperProps={{ 
-          sx: { 
-            borderRadius: 3,
-            backgroundImage: 'none'
-          } 
-        }}
-      >
-        <DialogTitle sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          pb: 2,
-          pt: 3,
-          px: 3
-        }}>
-          <Box>
-            <Typography variant="h6" fontWeight="bold">
-              {editingPlan ? '✏️ Edit Plan' : '➕ Create New Plan'}
-            </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-              {editingPlan ? 'Update plan details and pricing' : 'Set up a new subscription tier'}
-            </Typography>
-          </Box>
-          <IconButton onClick={handleClose} sx={{ color: 'text.secondary' }}>
-            <Close />
-          </IconButton>
-        </DialogTitle>
-
-        <DialogContent dividers sx={{ p: 3 }}>
-          {saveError && (
-            <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>{saveError}</Alert>
-          )}
-
-          <Grid container spacing={3}>
-            {/* Left Column: Form */}
-            <Grid item xs={12} md={7}>
-              {!editingPlan && (
-                <Box mb={3} sx={{ p: 2.5, backgroundColor: 'action.hover', borderRadius: 2, borderLeft: '4px solid primary.main' }}>
-                  <Typography variant="subtitle2" gutterBottom fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'primary.main', fontSize: '0.9rem' }}>
-                    <Zap fontSize="small" /> Quick Start with Templates
-                  </Typography>
-                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                    {PLAN_TEMPLATES.map(t => (
-                      <Chip
-                        key={t.name}
-                        label={t.name}
-                        onClick={() => handleTemplateSelect(t.name)}
-                        clickable
-                        color="primary"
-                        variant="outlined"
-                        sx={{ 
-                          borderRadius: 2,
-                          fontSize: '0.85rem',
-                          '&:hover': {
-                            backgroundColor: 'primary.50'
-                          }
-                        }}
-                      />
-                    ))}
-                  </Stack>
-                </Box>
-              )}
-
-              <Grid container spacing={2}>
-                {/* Plan Name */}
-                <Grid item xs={12}>
-                  <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1, color: 'text.secondary', fontSize: '0.9rem' }}>
-                    Plan Name *
-                  </Typography>
-                  <TextField
-                    fullWidth 
-                    placeholder="e.g., Professional Plan"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    variant="outlined"
-                    size="small"
-                    error={!formData.name && saving}
-                    InputProps={{ sx: { borderRadius: 2, fontSize: '0.9rem' } }}
-                  />
-                </Grid>
+                        {plan.isActive ? (
+                          <>
+                            <Check className="w-3 h-3" />
+                            Active
+                          </>
+                        ) : (
+                          <>
+                            <X className="w-3 h-3" />
+                            Inactive
+                          </>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </div>
 
                 {/* Pricing */}
-                <Grid item xs={12}>
-                  <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1.5, color: 'text.secondary', fontSize: '0.9rem' }}>
-                    Pricing
-                  </Typography>
-                  <Grid container spacing={1.5}>
-                    <Grid item xs={6}>
-                      <TextField
-                        fullWidth 
-                        label="Monthly Price" 
-                        type="number"
-                        placeholder="10000"
-                        value={formData.price_monthly}
-                        onChange={(e) => setFormData({ ...formData, price_monthly: Number(e.target.value) })}
-                        size="small"
-                        InputProps={{ sx: { borderRadius: 2, fontSize: '0.9rem' } }}
-                      />
-                    </Grid>
-                    <Grid item xs={6}>
-                      <TextField
-                        fullWidth 
-                        label="Yearly Price" 
-                        type="number"
-                        placeholder="100000"
-                        value={formData.price_yearly}
-                        onChange={(e) => setFormData({ ...formData, price_yearly: Number(e.target.value) })}
-                        size="small"
-                        InputProps={{ sx: { borderRadius: 2, fontSize: '0.9rem' } }}
-                      />
-                    </Grid>
-                  </Grid>
-                </Grid>
+                <div className="bg-gradient-to-br from-primary-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-900/10 rounded-lg p-4 mb-4 border border-primary-200 dark:border-primary-800">
+                  <p className="text-xs font-semibold text-primary-600 dark:text-primary-400 mb-1">
+                    Monthly
+                  </p>
+                  <p className="text-2xl font-bold text-primary-700 dark:text-primary-300 mb-3">
+                    {formatPrice(plan.price_monthly, plan.currency)}
+                  </p>
+                  <p className="text-sm text-primary-600 dark:text-primary-400">
+                    or {formatPrice(plan.price_yearly, plan.currency)} / year
+                  </p>
+                </div>
 
-                {/* Currency Selector */}
-                <Grid item xs={12}>
-                  <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1, color: 'text.secondary', fontSize: '0.9rem' }}>
-                    Currency *
-                  </Typography>
-                  <FormControl fullWidth size="small">
-                    <Select
-                      value={formData.currency}
-                      onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                      sx={{ borderRadius: 2, fontSize: '0.9rem' }}
-                    >
-                      {currencies.length > 0 ? (
-                        currencies.map(c => (
-                          <MenuItem key={c.code} value={c.code}>
-                            {c.symbol} {c.code}
-                          </MenuItem>
-                        ))
-                      ) : (
-                        <MenuItem value="IQD">د.ع IQD</MenuItem>
-                      )}
-                    </Select>
-                  </FormControl>
-                </Grid>
+                {/* Features */}
+                <div className="mb-4">
+                  <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2 uppercase tracking-wide">
+                    Features
+                  </p>
+                  <div className={`flex flex-wrap gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                    {Object.keys(plan.features || {}).length > 0 ? (
+                      Object.keys(plan.features).map((f) => (
+                        <span
+                          key={f}
+                          className="inline-block px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium"
+                        >
+                          ✓ {f}
+                        </span>
+                      ))
+                    ) : (
+                      <p className="text-xs text-slate-500 dark:text-slate-400">—</p>
+                    )}
+                  </div>
+                </div>
 
-                <Grid item xs={12}>
-                  <Divider sx={{ my: 1 }} />
-                </Grid>
+                {/* Limits */}
+                <div className="mb-6">
+                  <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2 uppercase tracking-wide">
+                    Limits
+                  </p>
+                  <div className={`flex flex-wrap gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                    {Object.keys(plan.limits || {}).length > 0 ? (
+                      Object.entries(plan.limits).map(([k, v]) => (
+                        <span
+                          key={k}
+                          className="inline-block px-2.5 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs font-medium"
+                        >
+                          {k}: {v}
+                        </span>
+                      ))
+                    ) : (
+                      <p className="text-xs text-slate-500 dark:text-slate-400">—</p>
+                    )}
+                  </div>
+                </div>
 
-                {/* Features Editor */}
-                <Grid item xs={12}>
-                  <FeatureEditor
-                    features={formData.features}
-                    onChange={(features) => setFormData({ ...formData, features })}
-                  />
-                </Grid>
+                {/* Divider */}
+                <div className="h-px bg-slate-200 dark:bg-slate-700 my-4" />
 
-                {/* Limits Editor */}
-                <Grid item xs={12}>
-                  <LimitEditor
-                    limits={formData.limits}
-                    onChange={(limits) => setFormData({ ...formData, limits })}
-                  />
-                </Grid>
-
-                {/* Status Toggle */}
-                <Grid item xs={12}>
-                  <Paper 
-                    variant="outlined" 
-                    sx={{ 
-                      p: 2.5, 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'space-between', 
-                      borderRadius: 2,
-                      backgroundColor: formData.isActive ? 'success.50' : 'error.50',
-                      borderColor: formData.isActive ? 'success.light' : 'error.light',
-                      transition: 'all 0.2s ease'
-                    }}
+                {/* Actions */}
+                <div className={`flex gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                  <button
+                    onClick={() => handleToggleStatus(plan)}
+                    className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg font-medium transition-colors text-sm"
+                    title={plan.isActive ? 'Deactivate' : 'Activate'}
                   >
-                    <Box>
-                      <Typography variant="subtitle2" fontWeight="bold" sx={{ fontSize: '0.95rem' }}>
-                        Plan Status
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {formData.isActive ? '✓ Active and available' : '○ Hidden from customers'}
-                      </Typography>
-                    </Box>
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={formData.isActive}
-                          onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                          color="success"
-                        />
-                      }
-                      label=""
-                      sx={{ m: 0 }}
-                    />
-                  </Paper>
-                </Grid>
-              </Grid>
-            </Grid>
+                    {plan.isActive ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => handleDuplicate(plan)}
+                    className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-900 dark:text-white rounded-lg font-medium transition-colors text-sm"
+                    title="Duplicate"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleOpenModal(plan)}
+                    className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 bg-primary-100 hover:bg-primary-200 dark:bg-primary-900/30 dark:hover:bg-primary-900/50 text-primary-700 dark:text-primary-300 rounded-lg font-medium transition-colors text-sm"
+                    title="Edit"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(plan.id, plan.name)}
+                    className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-700 dark:text-red-300 rounded-lg font-medium transition-colors text-sm"
+                    title="Delete"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
-            {/* Right Column: Preview */}
-            <Grid item xs={12} md={5}>
-              <Box position="sticky" top={20}>
-                <Typography variant="subtitle2" fontWeight="bold" color="text.secondary" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: '0.9rem' }}>
-                  👁️ Live Preview
-                </Typography>
-                <PreviewCard data={formData} />
-                <Alert severity="info" sx={{ mt: 2, fontSize: '0.75rem', borderRadius: 2 }}>
-                  Preview updates in real-time as you make changes.
-                </Alert>
-              </Box>
-            </Grid>
-          </Grid>
-        </DialogContent>
-
-        <DialogActions sx={{ p: 3, gap: 1 }}>
-          <Button 
-            onClick={handleClose} 
-            variant="outlined" 
-            color="inherit" 
-            disabled={saving} 
-            sx={{ borderRadius: 2, textTransform: 'none' }}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="contained"
-            onClick={handleSubmit}
-            size="large"
-            sx={{ px: 4, borderRadius: 2, textTransform: 'none' }}
-            disabled={saving || !formData.name || !formData.currency}
-            startIcon={saving ? <CircularProgress size={20} color="inherit" /> : <Save />}
-          >
-            {saving ? 'Saving...' : (editingPlan ? 'Update Plan' : 'Create Plan')}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Snackbar for Notifications */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      {/* Modal */}
+      <Modal
+        isOpen={modalOpen}
+        onClose={handleCloseModal}
+        title={editingPlan ? 'Edit Plan' : 'Create New Plan'}
+        subtitle={editingPlan ? 'Update plan details and pricing' : 'Set up a new subscription tier'}
+        isRtl={isRtl}
       >
-        <Alert 
-          onClose={() => setSnackbar({ ...snackbar, open: false })} 
-          severity={snackbar.severity} 
-          sx={{ width: '100%', borderRadius: 2 }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </Box>
+        <div className={`space-y-6 ${isRtl ? 'text-right' : 'text-left'}`}>
+          {/* Quick Templates */}
+          {!editingPlan && (
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <p className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-3">
+                Quick Start Templates
+              </p>
+              <div className={`flex flex-wrap gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
+                {PLAN_TEMPLATES.map((t) => (
+                  <button
+                    key={t.name}
+                    onClick={() => handleTemplateSelect(t.name)}
+                    className="px-3 py-1.5 rounded-lg border border-blue-300 dark:border-blue-700 bg-white dark:bg-blue-950 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors text-sm font-medium"
+                  >
+                    {t.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Plan Name */}
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
+              Plan Name *
+            </label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="e.g. Professional Plan"
+              className="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+          </div>
+
+          {/* Pricing */}
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-3">
+              Pricing
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-slate-600 dark:text-slate-400 font-medium mb-1 block">
+                  Monthly Price
+                </label>
+                <input
+                  type="number"
+                  value={formData.price_monthly}
+                  onChange={(e) => setFormData({ ...formData, price_monthly: Number(e.target.value) })}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-600 dark:text-slate-400 font-medium mb-1 block">
+                  Yearly Price
+                </label>
+                <input
+                  type="number"
+                  value={formData.price_yearly}
+                  onChange={(e) => setFormData({ ...formData, price_yearly: Number(e.target.value) })}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Currency */}
+          <div>
+            <label className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
+              Currency *
+            </label>
+            <select
+              value={formData.currency}
+              onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+              className="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              {currencies.length > 0 ? (
+                currencies.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.symbol} {c.code}
+                  </option>
+                ))
+              ) : (
+                <option value="IQD">د.ع IQD</option>
+              )}
+            </select>
+          </div>
+
+          {/* Features */}
+          <FeatureEditor
+            features={formData.features}
+            onChange={(features) => setFormData({ ...formData, features })}
+            label="Features"
+            isRtl={isRtl}
+          />
+
+          {/* Limits */}
+          <LimitEditor
+            limits={formData.limits}
+            onChange={(limits) => setFormData({ ...formData, limits })}
+            label="Limits"
+            isRtl={isRtl}
+          />
+
+          {/* Status Toggle */}
+          <div className="p-4 bg-slate-50 dark:bg-slate-700/30 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+            <div>
+              <p className="font-semibold text-slate-900 dark:text-white">Plan Status</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                {formData.isActive ? '✓ Active and available' : '○ Hidden from customers'}
+              </p>
+            </div>
+            <button
+              onClick={() => setFormData({ ...formData, isActive: !formData.isActive })}
+              className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
+                formData.isActive
+                  ? 'bg-green-600'
+                  : 'bg-slate-300 dark:bg-slate-600'
+              }`}
+            >
+              <span
+                className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                  formData.isActive ? 'translate-x-7' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Actions */}
+          <div className={`flex gap-3 pt-4 ${isRtl ? 'flex-row-reverse' : ''}`}>
+            <button
+              onClick={handleCloseModal}
+              disabled={saving}
+              className="flex-1 px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-700/50 font-medium transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={saving || !formData.name || !formData.currency}
+              className="flex-1 px-4 py-2.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-medium transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-2"
+            >
+              {saving ? (
+                <>
+                  <Loader className="w-4 h-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4" />
+                  {editingPlan ? 'Update Plan' : 'Create Plan'}
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Toast */}
+      <Toast toast={toast} onClose={() => setToast({ ...toast, open: false })} isRtl={isRtl} />
+    </div>
   );
 };
 
