@@ -133,8 +133,9 @@ export const translations = {
     },
     team: {
       title: "Team Management",
-      add: "Add Member",
+      addMember: "Add Member",
       edit: "Edit Member",
+      removeMember: "Remove Member",
       name: "Name",
       email: "Email",
       password: "Password",
@@ -167,13 +168,31 @@ export const translations = {
       pending: "Pending",
       high: "High",
       medium: "Medium",
-      low: "Low"
+      low: "Low",
+      serial: "Serial Key",
+      phone: "Phone Number",
+      issue: "Issue Description",
+      action: "Action",
+      noTickets: "No support tickets found",
+      delete: "Delete Ticket",
+      device: "Device Name",
+      system: "System Version",
+      version: "App Version",
+      hardwareId: "Hardware ID",
+      reply: "Send Reply",
+      resolve: "Mark as Resolved"
     },
     notifications: {
       title: "Notifications",
       markAllRead: "Mark all as read",
       clearAll: "Clear all",
-      noNotifications: "No notifications"
+      noNotifications: "No notifications",
+      sendNotification: "Send Notification",
+      titleLabel: "Notification Title",
+      messageLabel: "Message Body",
+      broadcast: "Broadcast (All Users)",
+      target: "Specific User",
+      clearHistory: "Clear History"
     },
     financials: {
       title: "Accounting",
@@ -184,7 +203,11 @@ export const translations = {
       date: "Date",
       amount: "Amount",
       type: "Type",
-      description: "Description"
+      description: "Description",
+      totalRevenue: "Total Revenue",
+      monthlyRevenue: "Monthly Revenue",
+      dailyRevenue: "Daily Revenue",
+      netProfit: "Net Profit"
     },
     updates: {
       title: "App Versions",
@@ -330,8 +353,9 @@ export const translations = {
     },
     team: {
       title: "إدارة الفريق",
-      add: "إضافة عضو",
+      addMember: "إضافة عضو",
       edit: "تعديل عضو",
+      removeMember: "إزالة العضو",
       name: "الاسم",
       email: "البريد الإلكتروني",
       password: "كلمة المرور",
@@ -364,13 +388,31 @@ export const translations = {
       pending: "قيد الانتظار",
       high: "عالية",
       medium: "متوسطة",
-      low: "منخفضة"
+      low: "منخفضة",
+      serial: "المفتاح التسلسلي",
+      phone: "رقم الهاتف",
+      issue: "وصف المشكلة",
+      action: "الإجراء",
+      noTickets: "لا توجد تذاكر دعم",
+      delete: "حذف التذكرة",
+      device: "اسم الجهاز",
+      system: "إصدار النظام",
+      version: "إصدار التطبيق",
+      hardwareId: "معرف الجهاز",
+      reply: "إرسال رد",
+      resolve: "تحديد كمحلولة"
     },
     notifications: {
       title: "الإشعارات",
       markAllRead: "تحديد الكل كمقروء",
       clearAll: "مسح الكل",
-      noNotifications: "لا توجد إشعارات"
+      noNotifications: "لا توجد إشعارات",
+      sendNotification: "إرسال إشعار",
+      titleLabel: "عنوان الإشعار",
+      messageLabel: "نص الرسالة",
+      broadcast: "إرسال للجميع",
+      target: "مستخدم محدد",
+      clearHistory: "مسح السجل"
     },
     financials: {
       title: "المحاسبة",
@@ -381,7 +423,11 @@ export const translations = {
       date: "التاريخ",
       amount: "المبلغ",
       type: "النوع",
-      description: "الوصف"
+      description: "الوصف",
+      totalRevenue: "إجمالي الإيرادات",
+      monthlyRevenue: "الإيرادات الشهرية",
+      dailyRevenue: "الإيرادات اليومية",
+      netProfit: "صافي الربح"
     },
     updates: {
       title: "إصدارات التطبيق",
