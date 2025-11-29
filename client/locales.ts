@@ -6,15 +6,15 @@ export const translations = {
     updates: "App Versions",
     support: "Support Tickets",
     currencies: "Currencies",
-    remoteConfig: "Settings", 
+    remoteConfig: "Settings",
     apiDocs: "API Docs",
     team: "Team Management",
     notifications: "Notifications",
-    auditLogs: "Audit Logs", 
+    auditLogs: "Audit Logs",
     financials: "Accounting",
     logout: "Logout",
     systemMenu: "System Management",
-    
+
     // Auth
     loginTitle: "Sign in to SourcePlus",
     email: "Email Address",
@@ -24,7 +24,7 @@ export const translations = {
     role: "Role",
     admin: "Administrator",
     developer: "Developer",
-    
+
     // Stats
     totalLicenses: "Total Licenses",
     activeLicenses: "Active Licenses",
@@ -33,7 +33,7 @@ export const translations = {
     revenue: "Total Revenue (USD)",
     totalCustomers: "Total Customers",
     systemHealth: "Server Resource Monitor",
-    
+
     // Actions
     create: "Create",
     save: "Save Changes",
@@ -66,7 +66,7 @@ export const translations = {
     deleteLicenseTitle: "Delete License",
     deleteWarning: "Are you sure you want to permanently delete this license? This action cannot be undone and the key will stop working immediately.",
     confirmAction: "Confirm Action",
-    
+
     // Labels
     serial: "Serial Key",
     customer: "Customer",
@@ -96,7 +96,7 @@ export const translations = {
     ipAddress: "IP Address",
     requestString: "Request Code (from App)",
     activationCode: "Activation Response",
-    
+
     // Financials
     transactions: "Transactions",
     invoice: "Invoice",
@@ -108,7 +108,7 @@ export const translations = {
     monthlyRevenue: "Monthly Income",
     netProfit: "Estimated Net Profit",
     growth: "Growth",
-    
+
     // Dashboard
     revenueTrend: "Revenue Trend",
     licenseDist: "License Distribution",
@@ -120,20 +120,20 @@ export const translations = {
     storage: "Disk Space",
     uptime: "Uptime",
     network: "Network I/O",
-    
+
     // Settings Tabs
     tabGeneral: "General",
     tabServer: "Server Config",
     tabChannels: "Notification Channels",
     tabBackup: "Backup",
     tabRemote: "Client Config",
-    
+
     appName: "Application Name",
     supportEmail: "Support Email",
     maintenanceMode: "Maintenance Mode",
     minPassLen: "Min Password Length",
     sessionTimeout: "Session Timeout (mins)",
-    
+
     // Server Config
     serverHost: "Bind Host",
     serverPort: "Port",
@@ -147,44 +147,31 @@ export const translations = {
     corsEnabled: "Enable CORS",
     rateLimit: "API Rate Limiting",
     logLevel: "Log Level",
-    
+
     // Notification Channels
     enableEmail: "Enable Email Alerts",
     smtpHost: "SMTP Host",
     smtpPort: "SMTP Port",
     smtpUser: "SMTP User",
     smtpPass: "SMTP Password",
-    
+
     enableTelegram: "Enable Telegram Alerts",
     telegramToken: "Bot Token",
     telegramChatId: "Chat ID",
-    
+
     autoBackup: "Automated Backup",
     backupFreq: "Backup Frequency",
-    retentionDays: "Retention (Days)",
-    primaryColor: "Brand Color",
-
-    // Messages
-    welcome: "SourcePlus Server",
-    description: "Centralized POS Licensing & Management System",
-    noTickets: "No open tickets. Good job!",
-  },
-  ar: {
-    dashboard: "لوحة المعلومات",
-    licenses: "إدارة التراخيص",
-    plans: "خطط الاشتراك",
-    updates: "إصدارات التطبيق",
     support: "طلبات الدعم",
     currencies: "أسعار العملات",
     remoteConfig: "الإعدادات",
     apiDocs: "توثيق API",
     team: "إدارة الفريق",
     notifications: "الإشعارات",
-    auditLogs: "سجلات النظام", 
+    auditLogs: "سجلات النظام",
     financials: "النظام المحاسبي",
     logout: "تسجيل خروج",
     systemMenu: "أدوات النظام",
-    
+
     // Auth
     loginTitle: "تسجيل الدخول إلى سورس بلس",
     email: "البريد الإلكتروني",
@@ -194,7 +181,7 @@ export const translations = {
     role: "الصلاحية",
     admin: "مدير النظام",
     developer: "مطور",
-    
+
     // Stats
     totalLicenses: "إجمالي التراخيص",
     activeLicenses: "التراخيص النشطة",
@@ -203,7 +190,7 @@ export const translations = {
     revenue: "الإيرادات الكلية (USD)",
     totalCustomers: "إجمالي العملاء",
     systemHealth: "مراقبة موارد السيرفر",
-    
+
     // Actions
     create: "إضافة جديد",
     save: "حفظ التغييرات",
@@ -236,7 +223,7 @@ export const translations = {
     deleteLicenseTitle: "حذف الترخيص",
     deleteWarning: "هل أنت متأكد تماماً من حذف هذا الترخيص؟ هذا الإجراء نهائي ولا يمكن استرجاعه، وسيتوقف المفتاح عن العمل فوراً.",
     confirmAction: "تأكيد الإجراء",
-    
+
     // Labels
     serial: "مفتاح الترخيص",
     customer: "العميل",
@@ -266,7 +253,7 @@ export const translations = {
     ipAddress: "عنوان IP",
     requestString: "كود الطلب (من التطبيق)",
     activationCode: "كود الاستجابة (التفعيل)",
-    
+
     // Financials
     transactions: "سجل المعاملات",
     invoice: "فاتورة",
@@ -290,20 +277,20 @@ export const translations = {
     storage: "التخزين",
     uptime: "وقت التشغيل",
     network: "الشبكة",
-    
+
     // Settings Tabs
     tabGeneral: "عام",
     tabServer: "إعدادات السيرفر",
     tabChannels: "قنوات الإشعارات",
     tabBackup: "النسخ الاحتياطي",
     tabRemote: "إعدادات العميل",
-    
+
     appName: "اسم التطبيق",
     supportEmail: "بريد الدعم الفني",
     maintenanceMode: "وضع الصيانة",
     minPassLen: "الحد الأدنى لكلمة المرور",
     sessionTimeout: "وقت انتهاء الجلسة (دقيقة)",
-    
+
     // Server Config
     serverHost: "عنوان السيرفر (Host/IP)",
     serverPort: "المنفذ (Port)",
@@ -317,14 +304,209 @@ export const translations = {
     corsEnabled: "تفعيل CORS",
     rateLimit: "تحديد معدل الطلبات (Rate Limit)",
     logLevel: "مستوى السجلات",
-    
+
     // Notification Channels
     enableEmail: "تفعيل تنبيهات البريد",
     smtpHost: "خادم SMTP",
     smtpPort: "منفذ SMTP",
     smtpUser: "اسم المستخدم",
     smtpPass: "كلمة المرور",
-    
+
+    enableTelegram: "تفعيل تنبيهات تيليجرام",
+    telegramToken: "توكن البوت (Bot Token)",
+    telegramChatId: "معرف المحادثة (Chat ID)",
+
+    autoBackup: "نسخ احتياطي تلقائي",
+    backupFreq: "تكرار النسخ",
+    retentionDays: "مدة الاحتفاظ (يوم)",
+    tabChannels: "Notification Channels",
+    tabBackup: "Backup",
+    tabRemote: "Client Config",
+
+    appName: "Application Name",
+    supportEmail: "Support Email",
+    maintenanceMode: "Maintenance Mode",
+    minPassLen: "Min Password Length",
+    sessionTimeout: "Session Timeout (mins)",
+
+    // Server Config
+    serverHost: "Bind Host",
+    serverPort: "Port",
+    timezone: "Timezone",
+    dbConnection: "Database Connection",
+    dbHost: "DB Host",
+    dbPort: "DB Port",
+    dbName: "Database Name",
+    dbUser: "Username",
+    security: "Security & Logging",
+    corsEnabled: "Enable CORS",
+    rateLimit: "API Rate Limiting",
+    logLevel: "Log Level",
+
+    // Notification Channels
+    enableEmail: "Enable Email Alerts",
+    smtpHost: "SMTP Host",
+    smtpPort: "SMTP Port",
+    smtpUser: "SMTP User",
+    smtpPass: "SMTP Password",
+
+    enableTelegram: "Enable Telegram Alerts",
+    telegramToken: "Bot Token",
+    telegramChatId: "Chat ID",
+
+    autoBackup: "Automated Backup",
+    backupFreq: "Backup Frequency",
+    support: "طلبات الدعم",
+    currencies: "أسعار العملات",
+    remoteConfig: "الإعدادات",
+    apiDocs: "توثيق API",
+    team: "إدارة الفريق",
+    notifications: "الإشعارات",
+    auditLogs: "سجلات النظام",
+    financials: "النظام المحاسبي",
+    logout: "تسجيل خروج",
+    systemMenu: "أدوات النظام",
+
+    // Auth
+    loginTitle: "تسجيل الدخول إلى سورس بلس",
+    email: "البريد الإلكتروني",
+    password: "كلمة المرور",
+    loginButton: "دخول",
+    loginError: "البريد الإلكتروني أو كلمة المرور غير صحيحة",
+    role: "الصلاحية",
+    admin: "مدير النظام",
+    developer: "مطور",
+
+    // Stats
+    totalLicenses: "إجمالي التراخيص",
+    activeLicenses: "التراخيص النشطة",
+    expiredLicenses: "التراخيص المنتهية",
+    expiringSoon: "ستنتهي قريباً",
+    revenue: "الإيرادات الكلية (USD)",
+    totalCustomers: "إجمالي العملاء",
+    systemHealth: "مراقبة موارد السيرفر",
+
+    // Actions
+    create: "إضافة جديد",
+    save: "حفظ التغييرات",
+    cancel: "إلغاء",
+    delete: "حذف",
+    edit: "تعديل",
+    revoke: "إبطال",
+    renew: "تجديد",
+    pause: "إيقاف مؤقت",
+    resume: "استئناف",
+    exportCsv: "تصدير (Excel)",
+    addMember: "إضافة عضو",
+    removeMember: "إزالة",
+    addPlan: "إضافة خطة",
+    editPlan: "تعديل الخطة",
+    addCurrency: "إضافة عملة",
+    syncRates: "تحديث الأسعار",
+    confirmDelete: "هل أنت متأكد من حذف هذا العنصر؟",
+    sendNotification: "إرسال إشعار",
+    reply: "رد",
+    resolve: "إغلاق التذكرة",
+    clearLogs: "تنظيف السجلات",
+    confirmClearLogs: "هل أنت متأكد من حذف جميع السجلات؟ لا يمكن التراجع عن هذا الإجراء.",
+    clearHistory: "مسح السجل",
+    offlineActivation: "تفعيل أوفلاين",
+    generateResponse: "توليد كود التفعيل",
+    bulkGenerate: "توليد بالجملة",
+    quantity: "العدد",
+    editLicense: "تعديل بيانات الترخيص",
+    deleteLicenseTitle: "حذف الترخيص",
+    deleteWarning: "هل أنت متأكد تماماً من حذف هذا الترخيص؟ هذا الإجراء نهائي ولا يمكن استرجاعه، وسيتوقف المفتاح عن العمل فوراً.",
+    confirmAction: "تأكيد الإجراء",
+
+    // Labels
+    serial: "مفتاح الترخيص",
+    customer: "العميل",
+    status: "الحالة",
+    plan: "الخطة",
+    hardwareId: "معرف الكمبيوتر (HWID)",
+    activationCount: "عدد التفعيلات",
+    version: "النسخة",
+    deviceLimit: "حد الكمبيوترات",
+    price: "السعر",
+    duration: "المدة (أشهر)",
+    forceUpdate: "تحديث إجباري",
+    name: "الاسم",
+    features: "المميزات",
+    rate: "سعر الصرف (USD)",
+    symbol: "الرمز",
+    title: "العنوان",
+    message: "نص الرسالة",
+    target: "المستهدف (سيريال)",
+    broadcast: "إرسال للكل (عام)",
+    phone: "رقم الهاتف",
+    device: "اسم الكمبيوتر",
+    system: "نظام التشغيل",
+    action: "الإجراء",
+    details: "التفاصيل",
+    timestamp: "التوقيت",
+    ipAddress: "عنوان IP",
+    requestString: "كود الطلب (من التطبيق)",
+    activationCode: "كود الاستجابة (التفعيل)",
+
+    // Financials
+    transactions: "سجل المعاملات",
+    invoice: "فاتورة",
+    amount: "المبلغ",
+    paymentDate: "تاريخ الدفع",
+    paymentType: "النوع",
+    totalRevenue: "إجمالي الدخل",
+    dailyRevenue: "دخل اليوم",
+    monthlyRevenue: "الدخل الشهري",
+    netProfit: "صافي الأرباح (تقديري)",
+    growth: "معدل النمو",
+
+    // Dashboard
+    revenueTrend: "نمو الإيرادات",
+    licenseDist: "توزيع التراخيص",
+    quickActions: "الوصول السريع",
+    newLicense: "ترخيص جديد",
+    viewReports: "عرض التقارير",
+    cpu: "استهلاك المعالج",
+    memory: "الذاكرة (RAM)",
+    storage: "التخزين",
+    uptime: "وقت التشغيل",
+    network: "الشبكة",
+
+    // Settings Tabs
+    tabGeneral: "عام",
+    tabServer: "إعدادات السيرفر",
+    tabChannels: "قنوات الإشعارات",
+    tabBackup: "النسخ الاحتياطي",
+    tabRemote: "إعدادات العميل",
+
+    appName: "اسم التطبيق",
+    supportEmail: "بريد الدعم الفني",
+    maintenanceMode: "وضع الصيانة",
+    minPassLen: "الحد الأدنى لكلمة المرور",
+    sessionTimeout: "وقت انتهاء الجلسة (دقيقة)",
+
+    // Server Config
+    serverHost: "عنوان السيرفر (Host/IP)",
+    serverPort: "المنفذ (Port)",
+    timezone: "المنطقة الزمنية",
+    dbConnection: "اتصال قاعدة البيانات",
+    dbHost: "خادم القاعدة (Host)",
+    dbPort: "منفذ القاعدة",
+    dbName: "اسم القاعدة",
+    dbUser: "اسم المستخدم",
+    security: "الأمان والسجلات",
+    corsEnabled: "تفعيل CORS",
+    rateLimit: "تحديد معدل الطلبات (Rate Limit)",
+    logLevel: "مستوى السجلات",
+
+    // Notification Channels
+    enableEmail: "تفعيل تنبيهات البريد",
+    smtpHost: "خادم SMTP",
+    smtpPort: "منفذ SMTP",
+    smtpUser: "اسم المستخدم",
+    smtpPass: "كلمة المرور",
+
     enableTelegram: "تفعيل تنبيهات تيليجرام",
     telegramToken: "توكن البوت (Bot Token)",
     telegramChatId: "معرف المحادثة (Chat ID)",
@@ -338,6 +520,17 @@ export const translations = {
     welcome: "خادم سورس بلس",
     description: "نظام مركزي لإدارة تراخيص واشتراكات نقاط البيع",
     noTickets: "لا توجد تذاكر مفتوحة. عمل رائع!",
+
+    // Plans & Templates
+    livePreview: "معاينة حية",
+    saveAsTemplate: "حفظ كقالب",
+    saveTemplate: "حفظ القالب",
+    templateName: "اسم القالب",
+    customTemplates: "قوالبي الخاصة",
+    quickTemplates: "قوالب جاهزة",
+    templateSaved: "تم حفظ القالب بنجاح",
+    deleteTemplate: "حذف القالب",
+    confirmDeleteTemplate: "هل أنت متأكد من حذف هذا القالب؟",
   }
 };
 
