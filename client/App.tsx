@@ -154,7 +154,36 @@ function App() {
     updateThemeColors(hex);
   }
 
-  if (loadingUser || !user) {
+  if (loadingUser) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col items-center justify-center transition-colors">
+        <div className="w-16 h-16 bg-gradient-to-br from-sky-500 to-indigo-600 rounded-2xl flex items-center justify-center mb-6 animate-bounce shadow-lg shadow-sky-500/20">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="32"
+            height="32"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="text-white"
+          >
+            <rect width="20" height="8" x="2" y="2" rx="2" ry="2" />
+            <rect width="20" height="8" x="2" y="14" rx="2" ry="2" />
+            <line x1="6" x2="6.01" y1="6" y2="6" />
+            <line x1="6" x2="6.01" y1="18" y2="18" />
+          </svg>
+        </div>
+        <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight animate-pulse">
+          SOURCE<span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-500 to-indigo-500">PLUS</span>
+        </h1>
+      </div>
+    );
+  }
+
+  if (!user) {
     return <Login onLogin={setUser} />;
   }
 

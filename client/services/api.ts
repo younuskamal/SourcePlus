@@ -76,7 +76,7 @@ const doRequest = async <T>(path: string, options: RequestInit = {}, retry = tru
 
     // If we get here, refresh failed
     clearTokens();
-    window.location.href = '/login';
+    window.location.reload();
     throw new Error('Session expired');
   }
 
