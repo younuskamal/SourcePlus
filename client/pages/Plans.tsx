@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   Plus, Edit2, Trash2, Copy, Check, X, Loader, AlertCircle,
-  CheckCircle2, XCircle, Eye, EyeOff, ShieldCheck, Zap, Globe
+  CheckCircle2, XCircle, Eye, EyeOff, ShieldCheck, Zap, Globe,
+  AlertTriangle
 } from 'lucide-react';
 import { api } from '../services/api';
 import { CurrencyRate } from '../types';
@@ -93,6 +94,57 @@ const Toast: React.FC<{ toast: Toast; onClose: () => void; isRtl: boolean }> = (
   );
 };
 
+// ============ Confirm Dialog Component ============
+const ConfirmDialog: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  message: string;
+  isRtl: boolean;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  isDestructive?: boolean;
+}> = ({ isOpen, onClose, onConfirm, title, message, isRtl, confirmLabel = 'Confirm', cancelLabel = 'Cancel', isDestructive = false }) => {
+  if (!isOpen) return null;
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] transition-opacity" onClick={onClose} />
+      <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 pointer-events-none">
+        <div
+          className={`pointer-events-auto bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full animate-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-700 flex flex-col`}
+          dir={isRtl ? 'rtl' : 'ltr'}
+        >
+          <div className="p-6 text-center">
+            <div className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-4 ${isDestructive ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'}`}>
+              <AlertTriangle size={24} />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{title}</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{message}</p>
+          </div>
+          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-700 flex gap-3 rounded-b-2xl">
+            <button
+              onClick={onClose}
+              className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 font-bold transition-colors text-sm"
+            >
+              {cancelLabel}
+            </button>
+            <button
+              onClick={() => { onConfirm(); onClose(); }}
+              className={`flex-1 px-4 py-2.5 rounded-xl text-white font-bold transition-colors text-sm shadow-lg ${isDestructive
+                ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20'
+                : 'bg-primary-600 hover:bg-primary-700 shadow-primary-600/20'}`}
+            >
+              {confirmLabel}
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
 // ============ Feature Editor Component ============
 const FeatureEditor: React.FC<{
   features: Record<string, any>;
@@ -116,45 +168,49 @@ const FeatureEditor: React.FC<{
   };
 
   return (
-    <div>
-      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-        {label}
+    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+        <CheckCircle2 size={14} /> {label}
       </label>
-      <div className="flex flex-wrap gap-2 mb-3">
-        {Object.keys(features).length > 0 ? (
-          Object.keys(features).map((feature) => (
-            <div
-              key={feature}
-              className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 border border-primary-100 dark:border-primary-800"
-            >
-              <span className="text-xs font-medium">{feature}</span>
-              <button
-                onClick={() => handleDelete(feature)}
-                className="hover:text-primary-900 dark:hover:text-primary-100 transition-colors"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </div>
-          ))
-        ) : (
-          <p className="text-xs text-slate-400 italic py-1">No features added</p>
-        )}
-      </div>
-      <div className="flex gap-2">
+
+      <div className="flex gap-2 mb-3">
         <input
           type="text"
           value={newFeature}
           onChange={(e) => setNewFeature(e.target.value)}
           onKeyPress={(e) => e.key === 'Enter' && handleAdd()}
-          placeholder="Add feature..."
-          className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 text-sm transition-all"
+          placeholder="Add feature (e.g. Offline Mode)..."
+          className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 text-sm transition-all shadow-sm"
         />
         <button
           onClick={handleAdd}
-          className="px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors text-sm flex items-center gap-1.5 shadow-sm"
+          className="px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors text-sm flex items-center gap-1.5 shadow-sm active:scale-95"
         >
           <Plus className="w-4 h-4" />
         </button>
+      </div>
+
+      <div className="flex flex-wrap gap-2 min-h-[40px]">
+        {Object.keys(features).length > 0 ? (
+          Object.keys(features).map((feature) => (
+            <div
+              key={feature}
+              className="group animate-in zoom-in-95 duration-200 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 shadow-sm"
+            >
+              <span className="text-xs font-medium">{feature}</span>
+              <button
+                onClick={() => handleDelete(feature)}
+                className="text-slate-400 hover:text-rose-500 transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))
+        ) : (
+          <div className="w-full text-center py-2 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-lg">
+            <p className="text-xs text-slate-400 italic">No features added yet</p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -186,37 +242,18 @@ const LimitEditor: React.FC<{
   };
 
   return (
-    <div>
-      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-        {label}
+    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+        <Zap size={14} /> {label}
       </label>
-      <div className="flex flex-wrap gap-2 mb-3">
-        {Object.keys(limits).length > 0 ? (
-          Object.entries(limits).map(([key, value]) => (
-            <div
-              key={key}
-              className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border border-emerald-100 dark:border-emerald-800"
-            >
-              <span className="text-xs font-medium">{key}: {value}</span>
-              <button
-                onClick={() => handleDelete(key)}
-                className="hover:text-emerald-900 dark:hover:text-emerald-100 transition-colors"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </div>
-          ))
-        ) : (
-          <p className="text-xs text-slate-400 italic py-1">No limits added</p>
-        )}
-      </div>
-      <div className="grid grid-cols-3 gap-2">
+
+      <div className="grid grid-cols-5 gap-2 mb-3">
         <input
           type="text"
           value={newKey}
           onChange={(e) => setNewKey(e.target.value)}
           placeholder="Key (e.g. users)"
-          className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 text-sm transition-all"
+          className="col-span-3 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 text-sm transition-all shadow-sm"
         />
         <input
           type="number"
@@ -224,14 +261,37 @@ const LimitEditor: React.FC<{
           onChange={(e) => setNewValue(e.target.value)}
           onKeyPress={(e) => e.key === 'Enter' && handleAdd()}
           placeholder="Val"
-          className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 text-sm transition-all"
+          className="col-span-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 text-sm transition-all shadow-sm"
         />
         <button
           onClick={handleAdd}
-          className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors text-sm flex items-center justify-center gap-1.5 shadow-sm"
+          className="col-span-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors text-sm flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
         >
           <Plus className="w-4 h-4" />
         </button>
+      </div>
+
+      <div className="flex flex-wrap gap-2 min-h-[40px]">
+        {Object.keys(limits).length > 0 ? (
+          Object.entries(limits).map(([key, value]) => (
+            <div
+              key={key}
+              className="group animate-in zoom-in-95 duration-200 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 shadow-sm"
+            >
+              <span className="text-xs font-medium"><span className="text-slate-400">{key}:</span> {value}</span>
+              <button
+                onClick={() => handleDelete(key)}
+                className="text-slate-400 hover:text-rose-500 transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))
+        ) : (
+          <div className="w-full text-center py-2 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-lg">
+            <p className="text-xs text-slate-400 italic">No limits added yet</p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -291,6 +351,8 @@ const Plans: React.FC<{ currentLang: Language }> = ({ currentLang }) => {
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<Toast>({ open: false, message: '', type: 'success' });
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string; name: string } | null>(null);
+
   const [formData, setFormData] = useState<FormData>({
     name: '',
     price_monthly: 0,
@@ -419,11 +481,15 @@ const Plans: React.FC<{ currentLang: Language }> = ({ currentLang }) => {
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete the "${name}" plan?`)) return;
+  const handleDeleteClick = (id: string, name: string) => {
+    setDeleteConfirm({ open: true, id, name });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return;
 
     try {
-      await api.deletePlan(id);
+      await api.deletePlan(deleteConfirm.id);
       setToast({ open: true, message: 'Plan deleted successfully', type: 'success' });
       await fetchData();
     } catch (err: any) {
@@ -659,7 +725,7 @@ const Plans: React.FC<{ currentLang: Language }> = ({ currentLang }) => {
                   <Edit2 size={14} />
                 </button>
                 <button
-                  onClick={() => handleDelete(plan.id, plan.name)}
+                  onClick={() => handleDeleteClick(plan.id, plan.name)}
                   className="inline-flex items-center justify-center p-2 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-800 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-900/30 transition-colors"
                   title="Delete"
                 >
@@ -839,6 +905,19 @@ const Plans: React.FC<{ currentLang: Language }> = ({ currentLang }) => {
           </div>
         </div>
       </Modal>
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={!!deleteConfirm}
+        onClose={() => setDeleteConfirm(null)}
+        onConfirm={confirmDelete}
+        title={t.deleteLicenseTitle || "Delete Plan"}
+        message={t.confirmDelete || `Are you sure you want to delete the "${deleteConfirm?.name}" plan?`}
+        isRtl={isRtl}
+        confirmLabel={t.delete}
+        cancelLabel={t.cancel}
+        isDestructive={true}
+      />
 
       {/* Toast */}
       <Toast toast={toast} onClose={() => setToast({ ...toast, open: false })} isRtl={isRtl} />
