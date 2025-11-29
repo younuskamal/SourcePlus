@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { User } from '../types';
 import { translations, Language } from '../locales';
@@ -10,7 +9,9 @@ import {
   AlertCircle,
   Loader2,
   CheckCircle2,
-  WifiOff
+  WifiOff,
+  Code2,
+  ShieldCheck
 } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -21,8 +22,9 @@ interface LoginProps {
 
 const Login: React.FC<LoginProps> = ({ onLogin, currentLang }) => {
   const t = translations[currentLang];
-  const [email, setEmail] = useState('admin@sourceplus.com');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [serverStatus, setServerStatus] = useState<
@@ -31,6 +33,15 @@ const Login: React.FC<LoginProps> = ({ onLogin, currentLang }) => {
   const [latency, setLatency] = useState<number | null>(null);
 
   useEffect(() => {
+    // Check for saved email
+    const savedEmail = localStorage.getItem('sourceplus_email');
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
+    } else {
+      setEmail('admin@sourceplus.com'); // Default fallback
+    }
+
     let cancelled = false;
     const pingServer = async () => {
       try {
@@ -54,6 +65,13 @@ const Login: React.FC<LoginProps> = ({ onLogin, currentLang }) => {
     try {
       setIsLoading(true);
       setError('');
+
+      if (rememberMe) {
+        localStorage.setItem('sourceplus_email', email);
+      } else {
+        localStorage.removeItem('sourceplus_email');
+      }
+
       const user = await api.login(email, password);
       onLogin(user as unknown as User);
     } catch (err: any) {
@@ -64,111 +82,149 @@ const Login: React.FC<LoginProps> = ({ onLogin, currentLang }) => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-4 transition-colors" dir={currentLang === 'ar' ? 'rtl' : 'ltr'}>
-      <div className="max-w-md w-full bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 overflow-hidden">
-        <div className="bg-slate-900 dark:bg-slate-950 p-8 text-center relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-full opacity-10">
-            <div className="absolute right-[-20px] top-[-20px] w-32 h-32 rounded-full bg-sky-500 blur-3xl"></div>
-            <div className="absolute left-[-20px] bottom-[-20px] w-32 h-32 rounded-full bg-indigo-500 blur-3xl"></div>
-          </div>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-4 transition-colors relative overflow-hidden" dir={currentLang === 'ar' ? 'rtl' : 'ltr'}>
 
-          <div className="relative z-10 flex flex-col items-center">
-            <div className="w-16 h-16 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-4 text-sky-400 border border-white/10 shadow-lg">
-              <Server size={32} strokeWidth={1.5} />
+      {/* Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-sky-500/10 blur-3xl animate-pulse" />
+        <div className="absolute top-[40%] -right-[10%] w-[40%] h-[40%] rounded-full bg-indigo-500/10 blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+      </div>
+
+      <div className="max-w-md w-full bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-slate-200/50 dark:border-slate-700/50 overflow-hidden relative z-10 animate-in zoom-in-95 duration-500">
+
+        {/* Header */}
+        <div className="bg-slate-900/5 dark:bg-slate-950/30 p-8 text-center border-b border-slate-100 dark:border-slate-700/50">
+          <div className="flex flex-col items-center">
+            <div className="w-20 h-20 bg-gradient-to-br from-sky-500 to-indigo-600 rounded-2xl flex items-center justify-center mb-4 text-white shadow-lg shadow-sky-500/20 transform hover:scale-105 transition-transform duration-300">
+              <Server size={40} strokeWidth={1.5} />
             </div>
-            <h1 className="text-2xl font-bold text-white tracking-wide">SOURCE<span className="text-sky-400">PLUS</span></h1>
-            <p className="text-slate-400 text-sm mt-2">{t.description}</p>
+            <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+              SOURCE<span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-500 to-indigo-500">PLUS</span>
+            </h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-2 font-medium">{t.description}</p>
           </div>
         </div>
 
+        {/* Form */}
         <form onSubmit={handleSubmit} className="p-8 space-y-6">
-          <h2 className="text-xl font-bold text-slate-800 dark:text-white text-center">{t.loginTitle}</h2>
+          <div className="text-center mb-2">
+            <h2 className="text-xl font-bold text-slate-800 dark:text-white">{t.loginTitle}</h2>
+          </div>
 
           {error && (
-            <div className="bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 px-4 py-3 rounded-lg text-sm flex items-center gap-2 border border-rose-100 dark:border-rose-900">
-              <AlertCircle size={16} />
-              {error}
+            <div className="bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 px-4 py-3 rounded-xl text-sm flex items-center gap-3 border border-rose-100 dark:border-rose-900/50 animate-in slide-in-from-top-2">
+              <AlertCircle size={18} className="flex-shrink-0" />
+              <span className="font-medium">{error}</span>
             </div>
           )}
 
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t.email}</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 ml-1">{t.email}</label>
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Mail className="text-slate-400 group-focus-within:text-sky-500 transition-colors" size={18} />
+                </div>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoFocus
-                  className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none transition-all"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 outline-none transition-all"
+                  placeholder="name@company.com"
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t.password}</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 ml-1">{t.password}</label>
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="text-slate-400 group-focus-within:text-sky-500 transition-colors" size={18} />
+                </div>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none transition-all"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 outline-none transition-all"
+                  placeholder="••••••••"
                   required
                 />
               </div>
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <div className="flex items-center gap-1.5">
-              {serverStatus === 'online' && (
-                <CheckCircle2 className="text-emerald-500" size={14} />
-              )}
-              {serverStatus === 'checking' && (
-                <Loader2 className="text-sky-500 animate-spin" size={14} />
-              )}
-              {serverStatus === 'offline' && (
-                <WifiOff className="text-rose-500" size={14} />
-              )}
-              <span>
-                {serverStatus === 'online'
-                  ? 'Server connected'
-                  : serverStatus === 'checking'
-                  ? 'Checking server...'
-                  : 'Server offline'}
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${rememberMe ? 'bg-sky-500 border-sky-500' : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'}`}>
+                {rememberMe && <CheckCircle2 size={14} className="text-white" />}
+              </div>
+              <input
+                type="checkbox"
+                className="hidden"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+              />
+              <span className="text-sm text-slate-600 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-200 transition-colors select-none">
+                {t.rememberMe || "Remember me"}
               </span>
-            </div>
-            {latency !== null && serverStatus === 'online' && (
-              <span>{latency} ms</span>
-            )}
-          </div>
-
-          <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-900/40 text-xs text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-            <p className="font-semibold mb-1">Default Admin</p>
-            <p>admin@sourceplus.com / Admin12345</p>
+            </label>
+            <a href="#" className="text-sm font-medium text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 transition-colors">
+              {t.forgotPassword || "Forgot password?"}
+            </a>
           </div>
 
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-sky-600 hover:bg-sky-700 disabled:bg-slate-400 text-white font-medium py-2.5 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md shadow-sky-600/20 active:scale-[0.98] disabled:cursor-not-allowed"
+            className="w-full bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 disabled:from-slate-400 disabled:to-slate-500 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-sky-600/20 hover:shadow-sky-600/30 active:scale-[0.98] disabled:cursor-not-allowed"
           >
             {isLoading ? (
               <>
-                <Loader2 className="animate-spin" size={18} />
+                <Loader2 className="animate-spin" size={20} />
                 <span>Signing in...</span>
               </>
             ) : (
               <>
                 <span>{t.loginButton}</span>
-                <ArrowRight size={18} />
+                <ArrowRight size={20} />
               </>
             )}
           </button>
+
+          {/* Server Status & Info */}
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-700/50 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+            <div className="flex items-center gap-1.5">
+              {serverStatus === 'online' && <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}
+              {serverStatus === 'checking' && <Loader2 className="text-sky-500 animate-spin" size={12} />}
+              {serverStatus === 'offline' && <div className="w-2 h-2 rounded-full bg-rose-500" />}
+
+              <span className="font-medium">
+                {serverStatus === 'online' ? 'System Operational' : serverStatus === 'checking' ? 'Connecting...' : 'System Offline'}
+              </span>
+              {latency !== null && serverStatus === 'online' && (
+                <span className="ml-1 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-mono">
+                  {latency}ms
+                </span>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <div className="flex items-center gap-1" title="Admin Access">
+                <ShieldCheck size={12} /> Admin
+              </div>
+              <div className="flex items-center gap-1" title="Developer Access">
+                <Code2 size={12} /> Dev
+              </div>
+            </div>
+          </div>
         </form>
+      </div>
+
+      {/* Footer */}
+      <div className="absolute bottom-6 text-center w-full text-xs text-slate-400 dark:text-slate-500">
+        &copy; {new Date().getFullYear()} SourcePlus Licensing System. All rights reserved.
       </div>
     </div>
   );
