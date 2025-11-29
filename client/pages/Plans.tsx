@@ -1,15 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Button, Card, Typography, IconButton, Chip, Modal,
+  Box, Button, Card, Typography, IconButton, Chip, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, FormControl, InputLabel, Select, MenuItem, Switch,
   FormControlLabel, Grid, Alert, CircularProgress, CardContent, CardActions,
-  Stack, Divider, Tooltip, Fade, Paper
+  Stack, Divider, Tooltip, Fade, Paper, Slide, Snackbar
 } from '@mui/material';
+import { TransitionProps } from '@mui/material/transitions';
 import {
   Add, Edit, Delete, CheckCircle, Cancel, ContentCopy,
-  MonetizationOn, Verified, Close
+  MonetizationOn, Verified, Close, Save
 } from '@mui/icons-material';
 import { api } from '../services/api';
+
+// Transition for Dialog
+const Transition = React.forwardRef(function Transition(
+  props: TransitionProps & {
+    children: React.ReactElement<any, any>;
+  },
+  ref: React.Ref<unknown>,
+) {
+  return <Slide direction="up" ref={ref} {...props} />;
+});
 
 interface Plan {
   id: string;
@@ -163,13 +174,18 @@ const Plans = () => {
   const [openModal, setOpenModal] = useState(false);
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
 
+  // Feedback State
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+
   // Form State
   const [formData, setFormData] = useState({
     name: '',
     price_monthly: 0,
     price_yearly: 0,
     currency: 'IQD',
-    features: [] as string[], // Simplified to array of strings for UI
+    features: [] as string[],
     limits: {} as Record<string, any>,
     isActive: true
   });
@@ -193,12 +209,9 @@ const Plans = () => {
   }, []);
 
   const handleOpen = (plan?: Plan) => {
+    setSaveError('');
     if (plan) {
       setEditingPlan(plan);
-      // Convert features object to array if needed, or handle as is. 
-      // Assuming features is stored as { "pos": true, "inventory": true } or ["pos", "inventory"]
-      // The user requested "Features list (auto-format JSON -> readable list)"
-      // Let's assume features is an array of strings or object keys with true values.
       let featuresList: string[] = [];
       if (Array.isArray(plan.features)) {
         featuresList = plan.features;
@@ -235,7 +248,7 @@ const Plans = () => {
     if (template) {
       setFormData({
         ...template,
-        name: template.name, // Allow user to rename if they want, but start with template name
+        name: template.name,
         features: [...template.features],
         limits: { ...template.limits }
       });
@@ -245,9 +258,9 @@ const Plans = () => {
   const handleClose = () => setOpenModal(false);
 
   const handleSubmit = async () => {
+    setSaving(true);
+    setSaveError('');
     try {
-      // Convert features array back to object if backend expects object, or keep as array.
-      // User prompt: "features: { "pos": true, "inventory": true }"
       const featuresObj = formData.features.reduce((acc, curr) => ({ ...acc, [curr]: true }), {});
 
       const payload = {
@@ -262,15 +275,20 @@ const Plans = () => {
 
       if (editingPlan) {
         await api.updatePlan(editingPlan.id, payload);
+        setSnackbar({ open: true, message: 'Plan updated successfully', severity: 'success' });
       } else {
         await api.createPlan(payload);
+        setSnackbar({ open: true, message: 'Plan created successfully', severity: 'success' });
       }
 
       fetchPlans();
       handleClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving plan', err);
-      alert('Failed to save plan.');
+      const msg = err.response?.data?.message || err.message || 'Failed to save plan';
+      setSaveError(msg);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -279,9 +297,10 @@ const Plans = () => {
       try {
         await api.deletePlan(id);
         fetchPlans();
+        setSnackbar({ open: true, message: 'Plan deleted', severity: 'success' });
       } catch (err) {
         console.error('Error deleting plan', err);
-        alert('Failed to delete plan');
+        setSnackbar({ open: true, message: 'Failed to delete plan', severity: 'error' });
       }
     }
   };
@@ -291,8 +310,10 @@ const Plans = () => {
       const action = plan.isActive ? 'deactivate' : 'activate';
       await api.togglePlanStatus(plan.id, action);
       fetchPlans();
+      setSnackbar({ open: true, message: `Plan ${action}d`, severity: 'success' });
     } catch (err) {
       console.error('Error toggling status', err);
+      setSnackbar({ open: true, message: 'Failed to update status', severity: 'error' });
     }
   };
 
@@ -305,13 +326,14 @@ const Plans = () => {
         currency: plan.currency,
         features: plan.features,
         limits: plan.limits,
-        isActive: false // Default to inactive for copy
+        isActive: false
       };
       await api.createPlan(payload);
       fetchPlans();
+      setSnackbar({ open: true, message: 'Plan duplicated', severity: 'success' });
     } catch (err) {
       console.error('Error duplicating plan', err);
-      alert('Failed to duplicate plan');
+      setSnackbar({ open: true, message: 'Failed to duplicate plan', severity: 'error' });
     }
   };
 
@@ -525,139 +547,162 @@ const Plans = () => {
         </Grid>
       )}
 
-      <Modal open={openModal} onClose={handleClose}>
-        <Fade in={openModal}>
-          <Box sx={{
-            position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-            width: { xs: '95%', md: 900 }, bgcolor: 'background.paper', boxShadow: 24, p: 4, borderRadius: 3,
-            maxHeight: '90vh', overflowY: 'auto'
-          }}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-              <Typography variant="h5" fontWeight="bold">{editingPlan ? 'Edit Plan' : 'Create New Plan'}</Typography>
-              <IconButton onClick={handleClose}><Close /></IconButton>
-            </Box>
+      <Dialog
+        open={openModal}
+        onClose={handleClose}
+        TransitionComponent={Transition}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 3 } }}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+          <Typography variant="h5" fontWeight="bold">{editingPlan ? 'Edit Plan' : 'Create New Plan'}</Typography>
+          <IconButton onClick={handleClose}><Close /></IconButton>
+        </DialogTitle>
 
-            <Grid container spacing={4}>
-              {/* Left Column: Form */}
-              <Grid item xs={12} md={7}>
-                {!editingPlan && (
-                  <Box mb={3}>
-                    <Typography variant="subtitle2" gutterBottom>Quick Start with Templates</Typography>
-                    <Stack direction="row" spacing={1}>
-                      {PLAN_TEMPLATES.map(t => (
-                        <Chip
-                          key={t.name}
-                          label={t.name}
-                          onClick={() => handleTemplateSelect(t.name)}
-                          clickable
-                          color="primary"
-                          variant="outlined"
-                        />
-                      ))}
-                    </Stack>
-                  </Box>
-                )}
-
-                <Grid container spacing={2}>
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth label="Plan Name"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      variant="outlined"
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    <TextField
-                      fullWidth label="Monthly Price" type="number"
-                      value={formData.price_monthly}
-                      onChange={(e) => setFormData({ ...formData, price_monthly: Number(e.target.value) })}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    <TextField
-                      fullWidth label="Yearly Price" type="number"
-                      value={formData.price_yearly}
-                      onChange={(e) => setFormData({ ...formData, price_yearly: Number(e.target.value) })}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    <FormControl fullWidth>
-                      <InputLabel>Currency</InputLabel>
-                      <Select
-                        value={formData.currency}
-                        label="Currency"
-                        onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                      >
-                        <MenuItem value="IQD">IQD</MenuItem>
-                        <MenuItem value="USD">USD</MenuItem>
-                        <MenuItem value="EUR">EUR</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </Grid>
-
-                  <Grid item xs={12}>
-                    <Divider sx={{ my: 1 }}>Features & Limits</Divider>
-                  </Grid>
-
-                  <Grid item xs={12}>
-                    <ListEditor
-                      label="Features"
-                      items={formData.features}
-                      onChange={(items) => setFormData({ ...formData, features: items })}
-                      placeholder="Add feature (e.g. POS)"
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <KeyValueEditor
-                      label="Limits"
-                      items={formData.limits}
-                      onChange={(items) => setFormData({ ...formData, limits: items })}
-                    />
-                  </Grid>
-
-                  <Grid item xs={12}>
-                    <Paper variant="outlined" sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <Box>
-                        <Typography variant="subtitle2">Plan Status</Typography>
-                        <Typography variant="caption" color="text.secondary">Active plans are visible to the system</Typography>
-                      </Box>
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            checked={formData.isActive}
-                            onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                            color="success"
-                          />
-                        }
-                        label={formData.isActive ? "Active" : "Inactive"}
+        <DialogContent dividers>
+          <Grid container spacing={4}>
+            {/* Left Column: Form */}
+            <Grid item xs={12} md={7}>
+              {!editingPlan && (
+                <Box mb={3}>
+                  <Typography variant="subtitle2" gutterBottom>Quick Start with Templates</Typography>
+                  <Stack direction="row" spacing={1}>
+                    {PLAN_TEMPLATES.map(t => (
+                      <Chip
+                        key={t.name}
+                        label={t.name}
+                        onClick={() => handleTemplateSelect(t.name)}
+                        clickable
+                        color="primary"
+                        variant="outlined"
                       />
-                    </Paper>
-                  </Grid>
+                    ))}
+                  </Stack>
+                </Box>
+              )}
 
-                  <Grid item xs={12} display="flex" justifyContent="flex-end" gap={2} mt={2}>
-                    <Button onClick={handleClose} variant="outlined" color="inherit">Cancel</Button>
-                    <Button variant="contained" onClick={handleSubmit} size="large" sx={{ px: 4 }}>
-                      {editingPlan ? 'Update Plan' : 'Create & Publish'}
-                    </Button>
-                  </Grid>
+              {saveError && (
+                <Alert severity="error" sx={{ mb: 2 }}>{saveError}</Alert>
+              )}
+
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth label="Plan Name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    variant="outlined"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    fullWidth label="Monthly Price" type="number"
+                    value={formData.price_monthly}
+                    onChange={(e) => setFormData({ ...formData, price_monthly: Number(e.target.value) })}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    fullWidth label="Yearly Price" type="number"
+                    value={formData.price_yearly}
+                    onChange={(e) => setFormData({ ...formData, price_yearly: Number(e.target.value) })}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <FormControl fullWidth>
+                    <InputLabel>Currency</InputLabel>
+                    <Select
+                      value={formData.currency}
+                      label="Currency"
+                      onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                    >
+                      <MenuItem value="IQD">IQD</MenuItem>
+                      <MenuItem value="USD">USD</MenuItem>
+                      <MenuItem value="EUR">EUR</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Divider sx={{ my: 1 }}>Features & Limits</Divider>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <ListEditor
+                    label="Features"
+                    items={formData.features}
+                    onChange={(items) => setFormData({ ...formData, features: items })}
+                    placeholder="Add feature (e.g. POS)"
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <KeyValueEditor
+                    label="Limits"
+                    items={formData.limits}
+                    onChange={(items) => setFormData({ ...formData, limits: items })}
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Paper variant="outlined" sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Box>
+                      <Typography variant="subtitle2">Plan Status</Typography>
+                      <Typography variant="caption" color="text.secondary">Active plans are visible to the system</Typography>
+                    </Box>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={formData.isActive}
+                          onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                          color="success"
+                        />
+                      }
+                      label={formData.isActive ? "Active" : "Inactive"}
+                    />
+                  </Paper>
                 </Grid>
               </Grid>
-
-              {/* Right Column: Preview */}
-              <Grid item xs={12} md={5}>
-                <Box position="sticky" top={0}>
-                  <Typography variant="overline" color="text.secondary" gutterBottom>Live Preview</Typography>
-                  <PreviewCard data={formData} />
-                  <Alert severity="info" sx={{ mt: 2, fontSize: '0.8rem' }}>
-                    This is how the plan will appear in the admin dashboard.
-                  </Alert>
-                </Box>
-              </Grid>
             </Grid>
-          </Box>
-        </Fade>
-      </Modal>
+
+            {/* Right Column: Preview */}
+            <Grid item xs={12} md={5}>
+              <Box position="sticky" top={20}>
+                <Typography variant="overline" color="text.secondary" gutterBottom>Live Preview</Typography>
+                <PreviewCard data={formData} />
+                <Alert severity="info" sx={{ mt: 2, fontSize: '0.8rem' }}>
+                  This is how the plan will appear in the admin dashboard.
+                </Alert>
+              </Box>
+            </Grid>
+          </Grid>
+        </DialogContent>
+
+        <DialogActions sx={{ p: 3 }}>
+          <Button onClick={handleClose} variant="outlined" color="inherit" disabled={saving}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleSubmit}
+            size="large"
+            sx={{ px: 4 }}
+            disabled={saving}
+            startIcon={saving ? <CircularProgress size={20} /> : <Save />}
+          >
+            {saving ? 'Saving...' : (editingPlan ? 'Update Plan' : 'Create & Publish')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
