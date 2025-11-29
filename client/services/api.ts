@@ -105,16 +105,19 @@ export const api = {
     return doRequest<void>(`/licenses/${id}`, { method: 'DELETE' });
   },
   getPlans() {
-    return doRequest<SubscriptionPlan[]>('/plans');
+    return doRequest<any[]>('/plans');
   },
   createPlan(payload: any) {
-    return doRequest<SubscriptionPlan>('/plans', { method: 'POST', body: JSON.stringify(payload) });
+    return doRequest<any>('/plans', { method: 'POST', body: JSON.stringify(payload) });
   },
   updatePlan(id: string, payload: any) {
-    return doRequest<SubscriptionPlan>(`/plans/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+    return doRequest<any>(`/plans/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
   },
   deletePlan(id: string) {
     return doRequest<void>(`/plans/${id}`, { method: 'DELETE' });
+  },
+  togglePlanStatus(id: string, action: 'activate' | 'deactivate') {
+    return doRequest<any>(`/plans/${id}/${action}`, { method: 'PATCH' });
   },
   getCurrencies() {
     return doRequest<CurrencyRate[]>('/currencies');

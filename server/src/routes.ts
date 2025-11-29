@@ -15,10 +15,13 @@ import clientRoutes from './modules/client/routes.js';
 
 import { trafficRoutes } from './modules/traffic/traffic.routes.js';
 
+import publicPlanRoutes from './modules/plans/public.routes.js';
+
 export const registerRoutes = (app: FastifyInstance) => {
   app.register(authRoutes, { prefix: '/auth' });
   app.register(userRoutes, { prefix: '/users' });
   app.register(planRoutes, { prefix: '/plans' });
+  app.register(publicPlanRoutes, { prefix: '/api/plans' });
   app.register(currencyRoutes, { prefix: '/currencies' });
   app.register(licenseRoutes, { prefix: '/licenses' });
   app.register(notificationRoutes, { prefix: '/notifications' });
