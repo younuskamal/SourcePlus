@@ -19,22 +19,32 @@ export interface User {
   createdAt: string;
 }
 
+
 export interface PlanPrice {
   currency: string;
-  amount: number;
+  monthlyPrice: number;
+  periodPrice: number;
+  yearlyPrice: number;
+  discount: number;
+  isPrimary: boolean;
 }
 
 export interface SubscriptionPlan {
   id: string; // UUID
   name: string;
   durationMonths: number;
-  priceUSD: number;
-  alternativePrices: PlanPrice[]; // Dynamic regional pricing
-  features: string[];
+  prices: PlanPrice[]; // Multi-currency pricing
+  features: any; // JSON
+  limits: any; // JSON
   deviceLimit: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  // Legacy fields (optional)
+  priceUSD?: number;
+  price_monthly?: number;
+  price_yearly?: number;
+  currency?: string;
 }
 
 export interface LicenseKey {
@@ -49,7 +59,7 @@ export interface LicenseKey {
   activationDate?: string;
   expireDate?: string;
   status: LicenseStatus;
-  versionAllowed?: string; 
+  versionAllowed?: string;
   createdAt: string;
   lastRenewalDate?: string;
   isPaused?: boolean;
@@ -109,11 +119,11 @@ export interface SystemSettings {
   appName: string;
   supportEmail: string;
   maintenanceMode: boolean;
-  
+
   // Security (App Level)
   minPasswordLength: number;
   sessionTimeout: number; // minutes
-  
+
   // Server Network
   serverHost: string;
   serverPort: number;
@@ -121,17 +131,17 @@ export interface SystemSettings {
   corsEnabled: boolean;
   corsOrigins: string;
   rateLimitEnabled: boolean;
-  
+
   // Database Configuration
   dbHost: string;
   dbPort: number;
   dbName: string;
   dbUser: string;
-  
+
   // Logging
   logLevel: 'debug' | 'info' | 'warn' | 'error';
   logRetentionDays: number;
-  
+
   // Notification Channels
   enableEmailAlerts: boolean;
   enableTelegramAlerts: boolean;
@@ -145,12 +155,12 @@ export interface SystemSettings {
   // Telegram Config
   telegramBotToken?: string;
   telegramChatId?: string;
-  
+
   // Backup
   autoBackup: boolean;
   backupFrequency: 'daily' | 'weekly' | 'monthly';
   retentionDays: number;
-  
+
   // Branding
   primaryColor: string; // Hex Code
   logoUrl?: string;
@@ -186,12 +196,12 @@ export interface Transaction {
 }
 
 export interface ServerHealth {
-    cpuUsage: number;
-    ramUsage: number;
-    diskUsage: number;
-    uptimeSeconds: number;
-    networkIn: number; // MB/s
-    networkOut: number; // MB/s
-    activeConnections: number;
-    lastUpdated: string;
+  cpuUsage: number;
+  ramUsage: number;
+  diskUsage: number;
+  uptimeSeconds: number;
+  networkIn: number; // MB/s
+  networkOut: number; // MB/s
+  activeConnections: number;
+  lastUpdated: string;
 }

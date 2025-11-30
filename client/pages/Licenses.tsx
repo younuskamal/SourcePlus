@@ -461,6 +461,7 @@ const Licenses: React.FC = () => {
                 />
               </div>
 
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('licenses.plan')}</label>
                 <select
@@ -468,11 +469,37 @@ const Licenses: React.FC = () => {
                   onChange={(e) => setSelectedPlan(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                 >
-                  {plans.map(plan => (
-                    <option key={plan.id} value={plan.id}>
-                      {plan.name} - {plan.priceUSD === 0 ? 'FREE' : `$${plan.priceUSD}`}
-                    </option>
-                  ))}
+                  {plans.map(plan => {
+                    const primaryPrice = plan.prices?.find(p => p.isPrimary) || plan.prices?.[0];
+                    let priceLabel = 'FREE';
+
+                    if (primaryPrice && primaryPrice.periodPrice > 0) {
+                      const currency = primaryPrice.currency;
+                      const price = primaryPrice.periodPrice.toLocaleString();
+                      const duration = plan.durationMonths;
+                      const discount = primaryPrice.discount;
+
+                      if (i18n.language === 'ar') {
+                        // Arabic Format
+                        const durationLabel = duration === 1 ? 'شهرياً' : duration === 12 ? 'سنوياً' : `كل ${duration} أشهر`;
+                        priceLabel = `${price} ${currency} / ${durationLabel}`;
+                        if (discount > 0) priceLabel += ` (خصم ${discount}%)`;
+                      } else {
+                        // English Format
+                        const durationLabel = duration === 1 ? 'month' : duration === 12 ? 'year' : `${duration} months`;
+                        priceLabel = `${currency} ${price} / ${durationLabel}`;
+                        if (discount > 0) priceLabel += ` (after ${discount}% discount)`;
+                      }
+                    } else if (i18n.language === 'ar') {
+                      priceLabel = 'مجاني';
+                    }
+
+                    return (
+                      <option key={plan.id} value={plan.id}>
+                        {plan.name} — {priceLabel}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 

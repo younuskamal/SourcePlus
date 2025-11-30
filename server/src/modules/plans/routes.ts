@@ -1,13 +1,22 @@
+
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { Role } from '@prisma/client';
 import { logAudit } from '../../utils/audit.js';
 
+const priceSchema = z.object({
+  currency: z.string(),
+  monthlyPrice: z.number().nonnegative().optional(),
+  periodPrice: z.number().nonnegative().optional(),
+  yearlyPrice: z.number().nonnegative().optional(),
+  discount: z.number().min(0).max(100).optional(),
+  isPrimary: z.boolean().default(false)
+});
+
 const planSchema = z.object({
   name: z.string().min(2),
-  price_monthly: z.number().nonnegative().optional(),
-  price_yearly: z.number().nonnegative().optional(),
-  currency: z.string().default('IQD'),
+  durationMonths: z.number().int().positive().default(12),
+  prices: z.array(priceSchema).default([]),
   features: z.any().optional(), // JSON
   limits: z.any().optional(), // JSON
   isActive: z.boolean().default(true)
@@ -19,30 +28,57 @@ export default async function planRoutes(app: FastifyInstance) {
   // GET /admin/plans
   app.get('/', { preHandler: [app.authorize([Role.admin])] }, async (request, reply) => {
     const plans = await app.prisma.plan.findMany({
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      include: { prices: true }
     });
-    return plans;
+
+    // Transform to match the requested API response structure
+    const formattedPlans = plans.map(plan => ({
+      id: plan.id,
+      name: plan.name,
+      durationMonths: plan.durationMonths,
+      features: plan.features,
+      limits: plan.limits,
+      is_active: plan.isActive,
+      prices: plan.prices.map(p => ({
+        currency: p.currency,
+        monthlyPrice: p.monthlyPrice,
+        periodPrice: p.periodPrice,
+        yearlyPrice: p.yearlyPrice,
+        discount: p.discount,
+        isPrimary: p.isPrimary
+      }))
+    }));
+
+    return { plans: formattedPlans };
   });
 
   // POST /admin/plans
   app.post('/', { preHandler: [app.authorize([Role.admin])] }, async (request, reply) => {
     const data = planSchema.parse(request.body);
 
-    // Default values for legacy fields to satisfy DB constraints if any
     const plan = await app.prisma.plan.create({
       data: {
         name: data.name,
-        price_monthly: data.price_monthly,
-        price_yearly: data.price_yearly,
-        currency: data.currency,
+        durationMonths: data.durationMonths,
         features: data.features || {},
         limits: data.limits || {},
         isActive: data.isActive,
         // Legacy fields defaults
-        durationMonths: 1,
         priceUSD: 0,
-        deviceLimit: 1
-      }
+        deviceLimit: 1,
+        prices: {
+          create: data.prices.map(p => ({
+            currency: p.currency,
+            monthlyPrice: p.monthlyPrice,
+            periodPrice: p.periodPrice,
+            yearlyPrice: p.yearlyPrice,
+            discount: p.discount,
+            isPrimary: p.isPrimary
+          }))
+        }
+      },
+      include: { prices: true }
     });
 
     await logAudit(app, {
@@ -63,17 +99,34 @@ export default async function planRoutes(app: FastifyInstance) {
     const oldPlan = await app.prisma.plan.findUnique({ where: { id } });
     if (!oldPlan) return reply.code(404).send({ message: 'Plan not found' });
 
-    const plan = await app.prisma.plan.update({
-      where: { id },
-      data: {
-        name: data.name,
-        price_monthly: data.price_monthly,
-        price_yearly: data.price_yearly,
-        currency: data.currency,
-        features: data.features || {},
-        limits: data.limits || {},
-        isActive: data.isActive
-      }
+    // Update plan and replace prices
+    // Transaction to ensure atomicity
+    const plan = await app.prisma.$transaction(async (tx) => {
+      // Delete existing prices
+      await tx.planPrice.deleteMany({ where: { planId: id } });
+
+      // Update plan and create new prices
+      return tx.plan.update({
+        where: { id },
+        data: {
+          name: data.name,
+          durationMonths: data.durationMonths,
+          features: data.features || {},
+          limits: data.limits || {},
+          isActive: data.isActive,
+          prices: {
+            create: data.prices.map(p => ({
+              currency: p.currency,
+              monthlyPrice: p.monthlyPrice,
+              periodPrice: p.periodPrice,
+              yearlyPrice: p.yearlyPrice,
+              discount: p.discount,
+              isPrimary: p.isPrimary
+            }))
+          }
+        },
+        include: { prices: true }
+      });
     });
 
     await logAudit(app, {
@@ -110,7 +163,8 @@ export default async function planRoutes(app: FastifyInstance) {
     const id = (request.params as { id: string }).id;
     const plan = await app.prisma.plan.update({
       where: { id },
-      data: { isActive: true }
+      data: { isActive: true },
+      include: { prices: true }
     });
 
     await logAudit(app, {
@@ -128,7 +182,8 @@ export default async function planRoutes(app: FastifyInstance) {
     const id = (request.params as { id: string }).id;
     const plan = await app.prisma.plan.update({
       where: { id },
-      data: { isActive: false }
+      data: { isActive: false },
+      include: { prices: true }
     });
 
     await logAudit(app, {

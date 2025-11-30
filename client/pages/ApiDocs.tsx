@@ -227,20 +227,20 @@ const ApiDocs: React.FC = () => {
           description="Retrieve available subscription plans for your application."
         />
         <div className="space-y-4">
-          <Endpoint
-            isRtl={isRtl}
-            method="GET"
-            url="/api/plans"
-            title="List Active Plans"
-            description="Fetch a list of all active subscription plans to display in your application's pricing page."
-            response={`{
+
+          <div className="space-y-4">
+            <Endpoint
+              isRtl={isRtl}
+              method="GET"
+              url="/api/plans"
+              title="List Active Plans"
+              description="Fetch a list of all active subscription plans with detailed multi-currency pricing."
+              response={`{
   "plans": [
     {
-      "id": "cl...",
+      "id": "uuid...",
       "name": "Professional Plan",
-      "price_monthly": 35000,
-      "price_yearly": 350000,
-      "currency": "IQD",
+      "durationMonths": 12,
       "features": {
         "pos": true,
         "inventory": true
@@ -248,11 +248,30 @@ const ApiDocs: React.FC = () => {
       "limits": {
         "maxUsers": 5
       },
-      "is_active": true
+      "is_active": true,
+      "prices": [
+        {
+          "currency": "USD",
+          "monthlyPrice": 10,
+          "periodPrice": 100,
+          "yearlyPrice": 100,
+          "discount": 16.6,
+          "isPrimary": true
+        },
+        {
+          "currency": "IQD",
+          "monthlyPrice": 15000,
+          "periodPrice": 150000,
+          "yearlyPrice": 150000,
+          "discount": 16.6,
+          "isPrimary": false
+        }
+      ]
     }
   ]
 }`}
-          />
+            />
+          </div>
         </div>
       </section>
 

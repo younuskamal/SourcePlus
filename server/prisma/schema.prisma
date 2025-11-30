@@ -36,16 +36,17 @@ model Session {
 model Plan {
   id             String       @id @default(uuid())
   name           String
-  durationMonths Int
-  priceUSD       Float
-  // New fields for public API
+  durationMonths Int          @default(12)
+  
+  // Deprecated legacy fields (kept for safety)
+  priceUSD       Float?
   price_monthly  Float?
   price_yearly   Float?
-  currency       String       @default("IQD")
-  limits         Json?
+  currency       String?      @default("IQD")
   
+  limits         Json?
   features       Json
-  deviceLimit    Int
+  deviceLimit    Int          @default(1)
   isActive       Boolean      @default(true)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
@@ -54,12 +55,16 @@ model Plan {
 }
 
 model PlanPrice {
-  id       String  @id @default(uuid())
-  planId   String
-  plan     Plan    @relation(fields: [planId], references: [id], onDelete: Cascade)
-  currency String
-  amount   Float
+  id           String  @id @default(uuid())
+  planId       String
+  currency     String
+  monthlyPrice Float?
+  periodPrice  Float?
+  yearlyPrice  Float?
+  discount     Float?   // percentage discount
+  isPrimary    Boolean @default(false)
 
+  plan Plan @relation(fields: [planId], references: [id], onDelete: Cascade)
   @@unique([planId, currency])
 }
 

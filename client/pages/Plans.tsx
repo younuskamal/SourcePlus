@@ -1,23 +1,13 @@
+
 import React, { useState, useEffect } from 'react';
 import {
   Plus, Edit2, Trash2, Copy, Check, X, Loader, AlertCircle,
   CheckCircle2, XCircle, Eye, EyeOff, ShieldCheck, Zap, Globe,
-  AlertTriangle, LayoutTemplate, Save
+  AlertTriangle, LayoutTemplate, Save, Calendar, Coins, Calculator, Star
 } from 'lucide-react';
 import { api } from '../services/api';
-import { CurrencyRate } from '../types';
+import { CurrencyRate, SubscriptionPlan, PlanPrice } from '../types';
 import { useTranslation } from '../hooks/useTranslation';
-
-interface Plan {
-  id: string;
-  name: string;
-  price_monthly: number | null;
-  price_yearly: number | null;
-  currency: string | null;
-  features: Record<string, any>;
-  limits: Record<string, any>;
-  isActive: boolean;
-}
 
 interface Toast {
   open: boolean;
@@ -27,9 +17,8 @@ interface Toast {
 
 interface FormData {
   name: string;
-  price_monthly: number;
-  price_yearly: number;
-  currency: string;
+  durationMonths: number;
+  prices: PlanPrice[];
   features: Record<string, any>;
   limits: Record<string, any>;
   isActive: boolean;
@@ -38,25 +27,25 @@ interface FormData {
 const DEFAULT_TEMPLATES = [
   {
     name: 'Starter',
-    price_monthly: 15000,
-    price_yearly: 150000,
-    currency: 'IQD',
+    durationMonths: 1,
+    prices: [{ currency: 'IQD', monthlyPrice: 15000, periodPrice: 15000, yearlyPrice: 180000, discount: 0, isPrimary: true }],
     features: { pos: true, inventory: true },
     limits: { maxUsers: 1, maxProducts: 500, maxBranches: 1 }
   },
   {
     name: 'Professional',
-    price_monthly: 35000,
-    price_yearly: 350000,
-    currency: 'IQD',
+    durationMonths: 12,
+    prices: [{ currency: 'IQD', monthlyPrice: 35000, periodPrice: 350000, yearlyPrice: 350000, discount: 16, isPrimary: true }],
     features: { pos: true, inventory: true, reports: true, support: true },
     limits: { maxUsers: 5, maxProducts: 5000, maxBranches: 3 }
   },
   {
     name: 'Enterprise',
-    price_monthly: 75000,
-    price_yearly: 750000,
-    currency: 'IQD',
+    durationMonths: 12,
+    prices: [
+      { currency: 'IQD', monthlyPrice: 75000, periodPrice: 750000, yearlyPrice: 750000, discount: 16, isPrimary: true },
+      { currency: 'USD', monthlyPrice: 50, periodPrice: 500, yearlyPrice: 500, discount: 16, isPrimary: false }
+    ],
     features: { pos: true, inventory: true, reports: true, support: true, api: true },
     limits: { maxUsers: 999, maxProducts: 99999, maxBranches: 10 }
   }
@@ -313,7 +302,7 @@ const Modal: React.FC<{
       <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 transition-opacity" onClick={onClose} />
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
         <div
-          className={`pointer-events-auto bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-700 flex flex-col`}
+          className={`pointer-events-auto bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-700 flex flex-col`}
           dir={isRtl ? 'rtl' : 'ltr'}
         >
           {/* Header */}
@@ -343,12 +332,12 @@ const Plans: React.FC = () => {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.language === 'ar';
 
-  const [plans, setPlans] = useState<Plan[]>([]);
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [currencies, setCurrencies] = useState<CurrencyRate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
+  const [editingPlan, setEditingPlan] = useState<SubscriptionPlan | null>(null);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<Toast>({ open: false, message: '', type: 'success' });
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string; name: string } | null>(null);
@@ -356,21 +345,12 @@ const Plans: React.FC = () => {
 
   const [formData, setFormData] = useState<FormData>({
     name: '',
-    price_monthly: 0,
-    price_yearly: 0,
-    currency: 'IQD',
+    durationMonths: 12,
+    prices: [],
     features: {},
     limits: {},
     isActive: true
   });
-
-  const formatPrice = (amount: number | null | undefined, currencyCode: string | null | undefined) => {
-    const safeAmount = amount ?? 0;
-    const safeCurrencyCode = currencyCode || 'IQD';
-    const currency = currencies.find(c => c.code === safeCurrencyCode);
-    const symbol = currency?.symbol || safeCurrencyCode;
-    return `${symbol} ${safeAmount.toLocaleString()}`;
-  };
 
   const fetchData = async () => {
     try {
@@ -386,9 +366,6 @@ const Plans: React.FC = () => {
       console.error('Failed to fetch data', err);
       const msg = err.message || 'Failed to load plans';
       setError(msg);
-      if (msg.includes('price_monthly') || msg.includes('does not exist')) {
-        setError('Database Error: Missing columns. Please run "npx prisma db push" on the server.');
-      }
       setToast({ open: true, message: msg, type: 'error' });
     } finally {
       setLoading(false);
@@ -407,14 +384,13 @@ const Plans: React.FC = () => {
     }
   }, []);
 
-  const handleOpenModal = (plan?: Plan) => {
+  const handleOpenModal = (plan?: SubscriptionPlan) => {
     if (plan) {
       setEditingPlan(plan);
       setFormData({
         name: plan.name,
-        price_monthly: plan.price_monthly || 0,
-        price_yearly: plan.price_yearly || 0,
-        currency: plan.currency || 'IQD',
+        durationMonths: plan.durationMonths || 12,
+        prices: plan.prices || [],
         features: plan.features || {},
         limits: plan.limits || {},
         isActive: plan.isActive
@@ -423,9 +399,8 @@ const Plans: React.FC = () => {
       setEditingPlan(null);
       setFormData({
         name: '',
-        price_monthly: 0,
-        price_yearly: 0,
-        currency: currencies.length > 0 ? currencies[0].code : 'IQD',
+        durationMonths: 12,
+        prices: currencies.length > 0 ? [{ currency: currencies[0].code, monthlyPrice: 0, periodPrice: 0, yearlyPrice: 0, discount: 0, isPrimary: true }] : [{ currency: 'IQD', monthlyPrice: 0, periodPrice: 0, yearlyPrice: 0, discount: 0, isPrimary: true }],
         features: {},
         limits: {},
         isActive: true
@@ -441,34 +416,18 @@ const Plans: React.FC = () => {
 
   const handleTemplateSelect = (template: any) => {
     setFormData({
-      ...formData, // Keep current state if needed, but usually we overwrite
+      ...formData,
       name: template.name,
-      price_monthly: template.price_monthly,
-      price_yearly: template.price_yearly,
-      currency: currencies.some(c => c.code === template.currency) ? template.currency : (currencies[0]?.code || 'IQD'),
+      durationMonths: template.durationMonths || 12,
+      prices: template.prices || [],
       features: template.features,
       limits: template.limits
     });
   };
 
-  const handleSaveTemplate = () => {
-    if (!formData.name) return;
-    const newTemplate = { ...formData };
-    const updated = [...customTemplates, newTemplate];
-    setCustomTemplates(updated);
-    localStorage.setItem('sourceplus_plan_templates', JSON.stringify(updated));
-    setToast({ open: true, message: 'Template saved successfully', type: 'success' });
-  };
-
-  const handleDeleteTemplate = (index: number) => {
-    const updated = customTemplates.filter((_, i) => i !== index);
-    setCustomTemplates(updated);
-    localStorage.setItem('sourceplus_plan_templates', JSON.stringify(updated));
-  };
-
   const handleSubmit = async () => {
-    if (!formData.name.trim() || !formData.currency) {
-      setToast({ open: true, message: 'Please fill in all required fields', type: 'error' });
+    if (!formData.name.trim() || formData.prices.length === 0) {
+      setToast({ open: true, message: 'Please fill in all required fields and at least one price', type: 'error' });
       return;
     }
 
@@ -476,9 +435,15 @@ const Plans: React.FC = () => {
     try {
       const payload = {
         name: formData.name,
-        price_monthly: Number(formData.price_monthly),
-        price_yearly: Number(formData.price_yearly),
-        currency: formData.currency,
+        durationMonths: Number(formData.durationMonths),
+        prices: formData.prices.map(p => ({
+          currency: p.currency,
+          monthlyPrice: Number(p.monthlyPrice),
+          periodPrice: Number(p.periodPrice),
+          yearlyPrice: Number(p.yearlyPrice),
+          discount: Number(p.discount),
+          isPrimary: p.isPrimary
+        })),
         features: formData.features,
         limits: formData.limits,
         isActive: formData.isActive
@@ -497,9 +462,6 @@ const Plans: React.FC = () => {
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || 'Failed to save plan';
       setToast({ open: true, message: msg, type: 'error' });
-      if (msg.includes('price_monthly') || msg.includes('does not exist')) {
-        setToast({ open: true, message: 'Database Error: Missing columns. Run migration.', type: 'error' });
-      }
     } finally {
       setSaving(false);
     }
@@ -522,7 +484,7 @@ const Plans: React.FC = () => {
     }
   };
 
-  const handleToggleStatus = async (plan: Plan) => {
+  const handleToggleStatus = async (plan: SubscriptionPlan) => {
     try {
       const action = plan.isActive ? 'deactivate' : 'activate';
       await api.togglePlanStatus(plan.id, action);
@@ -538,13 +500,12 @@ const Plans: React.FC = () => {
     }
   };
 
-  const handleDuplicate = async (plan: Plan) => {
+  const handleDuplicate = async (plan: SubscriptionPlan) => {
     try {
       const payload = {
         name: `${plan.name} (Copy)`,
-        price_monthly: plan.price_monthly,
-        price_yearly: plan.price_yearly,
-        currency: plan.currency,
+        durationMonths: plan.durationMonths,
+        prices: plan.prices,
         features: plan.features,
         limits: plan.limits,
         isActive: false
@@ -556,6 +517,73 @@ const Plans: React.FC = () => {
       const msg = err.message || 'Failed to duplicate plan';
       setToast({ open: true, message: msg, type: 'error' });
     }
+  };
+
+  const handleAddPrice = () => {
+    setFormData({
+      ...formData,
+      prices: [...formData.prices, { currency: currencies[0]?.code || 'IQD', monthlyPrice: 0, periodPrice: 0, yearlyPrice: 0, discount: 0, isPrimary: false }]
+    });
+  };
+
+  const handleRemovePrice = (index: number) => {
+    const newPrices = [...formData.prices];
+    newPrices.splice(index, 1);
+    setFormData({ ...formData, prices: newPrices });
+  };
+
+  const handlePriceChange = (index: number, field: keyof PlanPrice, value: any) => {
+    const newPrices = [...formData.prices];
+    newPrices[index] = { ...newPrices[index], [field]: value };
+
+    // Auto-calculate logic
+    if (field === 'monthlyPrice' || field === 'discount') {
+      const monthly = field === 'monthlyPrice' ? Number(value) : newPrices[index].monthlyPrice;
+      const discount = field === 'discount' ? Number(value) : newPrices[index].discount;
+      const duration = formData.durationMonths;
+
+      const basePeriodPrice = monthly * duration;
+      const baseYearlyPrice = monthly * 12;
+
+      const discountedPeriodPrice = basePeriodPrice - (basePeriodPrice * (discount / 100));
+      const discountedYearlyPrice = baseYearlyPrice - (baseYearlyPrice * (discount / 100));
+
+      newPrices[index].periodPrice = discountedPeriodPrice;
+      newPrices[index].yearlyPrice = discountedYearlyPrice;
+    }
+
+    setFormData({ ...formData, prices: newPrices });
+  };
+
+  const handleDurationChange = (months: number) => {
+    // Recalculate all prices based on new duration
+    const newPrices = formData.prices.map(price => {
+      const monthly = price.monthlyPrice;
+      const discount = price.discount;
+      const duration = months;
+
+      const basePeriodPrice = monthly * duration;
+      const baseYearlyPrice = monthly * 12;
+
+      const discountedPeriodPrice = basePeriodPrice - (basePeriodPrice * (discount / 100));
+      const discountedYearlyPrice = baseYearlyPrice - (baseYearlyPrice * (discount / 100));
+
+      return {
+        ...price,
+        periodPrice: discountedPeriodPrice,
+        yearlyPrice: discountedYearlyPrice
+      };
+    });
+
+    setFormData({ ...formData, durationMonths: months, prices: newPrices });
+  };
+
+  const handleSetPrimary = (index: number) => {
+    const newPrices = formData.prices.map((p, i) => ({
+      ...p,
+      isPrimary: i === index
+    }));
+    setFormData({ ...formData, prices: newPrices });
   };
 
   return (
@@ -584,11 +612,6 @@ const Plans: React.FC = () => {
           <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-bold text-rose-900 dark:text-rose-200">{error}</p>
-            {error.includes('column') && (
-              <p className="text-xs text-rose-800 dark:text-rose-300 mt-1">
-                Run <code className="bg-rose-100 dark:bg-rose-900/50 px-1 py-0.5 rounded">npx prisma db push</code> on the server to fix this.
-              </p>
-            )}
           </div>
         </div>
       )}
@@ -641,7 +664,7 @@ const Plans: React.FC = () => {
                     </h3>
                     <div className="flex gap-2 flex-wrap">
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 text-[10px] font-bold uppercase tracking-wider">
-                        {plan.currency || 'IQD'}
+                        <Calendar size={10} /> {plan.durationMonths} Months
                       </span>
                       <span
                         className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${plan.isActive
@@ -660,15 +683,28 @@ const Plans: React.FC = () => {
 
                 {/* Pricing */}
                 <div className="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-4 mb-5 border border-slate-100 dark:border-slate-700/50">
-                  <div className="flex items-baseline gap-1 mb-1">
-                    <span className="text-2xl font-extrabold text-slate-900 dark:text-white">
-                      {formatPrice(plan.price_monthly, plan.currency)}
-                    </span>
-                    <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">/ month</span>
-                  </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    or {formatPrice(plan.price_yearly, plan.currency)} / year
-                  </p>
+                  {plan.prices && plan.prices.length > 0 ? (
+                    <div className="space-y-2">
+                      {plan.prices.map((price, idx) => (
+                        <div key={idx} className={`flex justify-between items-center text-sm ${price.isPrimary ? 'font-bold text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
+                          <div className="flex items-center gap-1">
+                            <span>{price.currency}</span>
+                            {price.isPrimary && <Star size={10} className="text-amber-500 fill-amber-500" />}
+                          </div>
+                          <div className="flex flex-col items-end">
+                            <span>{price.periodPrice.toLocaleString()}</span>
+                            {price.discount > 0 && (
+                              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30 px-1.5 rounded-full">
+                                -{price.discount}%
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-500 italic">No prices defined</p>
+                  )}
                 </div>
 
                 {/* Features */}
@@ -791,111 +827,142 @@ const Plans: React.FC = () => {
                     ))}
                   </div>
                 </div>
-
-                {customTemplates.length > 0 && (
-                  <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-100 dark:border-amber-800/50">
-                    <p className="text-xs font-bold text-amber-600 dark:text-amber-300 mb-3 uppercase tracking-wider flex items-center gap-2">
-                      <LayoutTemplate size={12} /> {t('plans.customTemplates')}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {customTemplates.map((t, idx) => (
-                        <div key={idx} className="group relative inline-flex">
-                          <button
-                            onClick={() => handleTemplateSelect(t)}
-                            className="px-3 py-1.5 rounded-lg border border-amber-200 dark:border-amber-700 bg-white dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/50 transition-colors text-xs font-bold shadow-sm pr-7"
-                          >
-                            {t.name}
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleDeleteTemplate(idx); }}
-                            className="absolute right-1 top-1.5 p-0.5 text-amber-400 hover:text-rose-500 rounded-full transition-colors"
-                          >
-                            <X size={12} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
             {/* Plan Name */}
             <div>
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-                {t('plans.name')} <span className="text-rose-500">*</span>
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                {t('plans.name')}
               </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g. Professional Plan"
-                  className="flex-1 px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all"
-                />
-                {!editingPlan && (
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all"
+                placeholder="e.g. Gold Plan"
+              />
+            </div>
+
+            {/* Duration Selector */}
+            <div>
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                Duration (Months)
+              </label>
+              <div className="grid grid-cols-3 gap-3">
+                {[6, 12].map(months => (
                   <button
-                    onClick={handleSaveTemplate}
-                    disabled={!formData.name}
-                    className="px-3 py-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
-                    title={t('plans.saveAsTemplate')}
+                    key={months}
+                    onClick={() => handleDurationChange(months)}
+                    className={`px-4 py-2.5 rounded-xl border font-bold text-sm transition-all ${formData.durationMonths === months
+                      ? 'bg-primary-600 text-white border-primary-600 shadow-lg shadow-primary-600/20'
+                      : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+                      }`}
                   >
-                    <Save size={18} />
+                    {months} Months
                   </button>
-                )}
-              </div>
-            </div>
-
-            {/* Pricing */}
-            <div>
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-                {t('plans.price')}
-              </label>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] text-slate-400 mb-1 block">Monthly</label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-2.5 text-slate-400 text-sm">$</span>
-                    <input
-                      type="number"
-                      value={formData.price_monthly}
-                      onChange={(e) => setFormData({ ...formData, price_monthly: Number(e.target.value) })}
-                      className="w-full pl-7 pr-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 mb-1 block">Yearly</label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-2.5 text-slate-400 text-sm">$</span>
-                    <input
-                      type="number"
-                      value={formData.price_yearly}
-                      onChange={(e) => setFormData({ ...formData, price_yearly: Number(e.target.value) })}
-                      className="w-full pl-7 pr-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Currency */}
-            <div>
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-                Currency
-              </label>
-              <select
-                value={formData.currency}
-                onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all"
-              >
-                {currencies.map(c => (
-                  <option key={c.code} value={c.code}>{c.code} - {c.name}</option>
                 ))}
-              </select>
+                <div className="relative">
+                  <input
+                    type="number"
+                    value={formData.durationMonths}
+                    onChange={(e) => handleDurationChange(Number(e.target.value))}
+                    className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none transition-all text-center ${![6, 12].includes(formData.durationMonths)
+                      ? 'border-primary-600 ring-2 ring-primary-500/20 bg-white dark:bg-slate-900'
+                      : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50'
+                      }`}
+                    placeholder="Custom"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">
+                    Custom
+                  </span>
+                </div>
+              </div>
             </div>
 
-            {/* Features & Limits */}
+            {/* Multi-Currency Pricing */}
+            <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+              <div className="flex justify-between items-center mb-3">
+                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                  <Coins size={14} /> Pricing
+                </label>
+                <button
+                  onClick={handleAddPrice}
+                  className="text-xs font-bold text-primary-600 hover:text-primary-700 flex items-center gap-1"
+                >
+                  <Plus size={12} /> Add Currency
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {formData.prices.map((price, index) => (
+                  <div key={index} className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm animate-in slide-in-from-left-2 relative">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={price.currency}
+                          onChange={(e) => handlePriceChange(index, 'currency', e.target.value)}
+                          className="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold outline-none focus:ring-2 focus:ring-primary-500"
+                        >
+                          {currencies.map(c => (
+                            <option key={c.code} value={c.code}>{c.code}</option>
+                          ))}
+                          {!currencies.some(c => c.code === price.currency) && (
+                            <option value={price.currency}>{price.currency}</option>
+                          )}
+                        </select>
+                        <button
+                          onClick={() => handleSetPrimary(index)}
+                          className={`p-1 rounded-full transition-colors ${price.isPrimary ? 'text-amber-500 bg-amber-50 dark:bg-amber-900/20' : 'text-slate-300 hover:text-amber-400'}`}
+                          title="Set as Primary Currency"
+                        >
+                          <Star size={14} className={price.isPrimary ? 'fill-amber-500' : ''} />
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => handleRemovePrice(index)}
+                        className="text-slate-400 hover:text-rose-500 transition-colors"
+                        disabled={formData.prices.length === 1}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Monthly Price</label>
+                        <input
+                          type="number"
+                          value={price.monthlyPrice}
+                          onChange={(e) => handlePriceChange(index, 'monthlyPrice', e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Discount %</label>
+                        <input
+                          type="number"
+                          value={price.discount}
+                          onChange={(e) => handlePriceChange(index, 'discount', e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"
+                          placeholder="0%"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between text-xs text-slate-500 dark:text-slate-400">
+                      <span>{formData.durationMonths} Months: <strong className="text-slate-900 dark:text-white">{price.periodPrice.toLocaleString()}</strong></span>
+                      <span>Yearly: <strong className="text-slate-900 dark:text-white">{price.yearlyPrice.toLocaleString()}</strong></span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Features & Limits */}
+          <div className="space-y-5">
             <FeatureEditor
               label={t('plans.features')}
               features={formData.features}
@@ -910,140 +977,81 @@ const Plans: React.FC = () => {
               isRtl={isRtl}
             />
 
-            {/* Submit Button */}
-            <div className="pt-4 border-t border-slate-100 dark:border-slate-700">
-              <button
-                onClick={handleSubmit}
-                disabled={saving}
-                className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-primary-600/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
-              >
-                {saving ? (
-                  <>
-                    <Loader className="animate-spin" size={20} />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Check size={20} />
-                    {editingPlan ? 'Update Plan' : 'Create Plan'}
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
+            {/* Preview Card */}
+            <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-700">
+              <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-4 text-center">
+                {t('plans.livePreview')}
+              </p>
+              <div className="max-w-xs mx-auto bg-white dark:bg-slate-800 rounded-2xl border border-primary-500 shadow-xl shadow-primary-500/10 overflow-hidden transform scale-95">
+                <div className="h-1 bg-gradient-to-r from-emerald-500 to-teal-400" />
+                <div className="p-6">
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1 text-center">
+                    {formData.name || 'Plan Name'}
+                  </h3>
+                  <div className="flex justify-center gap-2 mb-4">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 text-[10px] font-bold uppercase tracking-wider">
+                      <Calendar size={10} /> Billed every {formData.durationMonths} months
+                    </span>
+                  </div>
 
-          {/* Right Column: Live Preview */}
-          <div className="hidden lg:block space-y-4">
-            <div className="sticky top-6">
-              <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                <Eye size={16} /> {t('plans.livePreview')}
-              </h3>
-
-              <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden flex flex-col transform transition-all duration-300">
-                {/* Status Indicator */}
-                <div className={`h-1 ${formData.isActive ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : 'bg-slate-200 dark:bg-slate-700'}`} />
-
-                {/* Content */}
-                <div className="p-6 flex-1">
-                  {/* Header */}
-                  <div className="flex items-start justify-between gap-3 mb-4">
-                    <div>
-                      <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
-                        {formData.name || 'Plan Name'}
-                      </h3>
-                      <div className="flex gap-2 flex-wrap">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 text-[10px] font-bold uppercase tracking-wider">
-                          {formData.currency || 'IQD'}
-                        </span>
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${formData.isActive
-                            ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
-                            : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
-                            }`}
-                        >
-                          {formData.isActive ? 'Active' : 'Inactive'}
-                        </span>
+                  <div className="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-4 mb-5 text-center">
+                    {formData.prices.length > 0 ? (
+                      <div className="space-y-2">
+                        {formData.prices.filter(p => p.isPrimary).map((p, i) => (
+                          <div key={i}>
+                            <div className="text-2xl font-extrabold text-slate-900 dark:text-white">
+                              {p.currency} {p.periodPrice.toLocaleString()}
+                            </div>
+                            {p.discount > 0 && (
+                              <div className="text-xs text-emerald-600 font-bold mt-1">
+                                Save {p.discount}%
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                        {formData.prices.filter(p => !p.isPrimary).length > 0 && (
+                          <div className="pt-2 mt-2 border-t border-slate-200 dark:border-slate-600 text-xs text-slate-500">
+                            Also available in: {formData.prices.filter(p => !p.isPrimary).map(p => p.currency).join(', ')}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                    <div className="p-2 bg-primary-50 dark:bg-primary-900/20 rounded-xl text-primary-600 dark:text-primary-400">
-                      <ShieldCheck size={20} />
-                    </div>
+                    ) : (
+                      <span className="text-2xl font-extrabold text-slate-900 dark:text-white">0</span>
+                    )}
                   </div>
 
-                  {/* Pricing */}
-                  <div className="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-4 mb-5 border border-slate-100 dark:border-slate-700/50">
-                    <div className="flex items-baseline gap-1 mb-1">
-                      <span className="text-2xl font-extrabold text-slate-900 dark:text-white">
-                        {formatPrice(formData.price_monthly, formData.currency)}
-                      </span>
-                      <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">/ month</span>
-                    </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      or {formatPrice(formData.price_yearly, formData.currency)} / year
-                    </p>
+                  <div className="space-y-2">
+                    {Object.keys(formData.features).slice(0, 3).map(f => (
+                      <div key={f} className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+                        <CheckCircle2 size={12} className="text-emerald-500" /> {f}
+                      </div>
+                    ))}
+                    {Object.keys(formData.features).length > 3 && (
+                      <p className="text-xs text-slate-400 text-center italic">+ {Object.keys(formData.features).length - 3} more features</p>
+                    )}
                   </div>
-
-                  {/* Features */}
-                  <div className="mb-5">
-                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
-                      {t('plans.features')}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {Object.keys(formData.features || {}).length > 0 ? (
-                        Object.keys(formData.features).map((f) => (
-                          <span
-                            key={f}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-xs font-medium shadow-sm"
-                          >
-                            <Check size={10} className="text-emerald-500" /> {f}
-                          </span>
-                        ))
-                      ) : (
-                        <p className="text-xs text-slate-400 italic">No features defined</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Limits */}
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
-                      Limits
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {Object.keys(formData.limits || {}).length > 0 ? (
-                        Object.entries(formData.limits).map(([k, v]) => (
-                          <span
-                            key={k}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-xs font-medium shadow-sm"
-                          >
-                            <Zap size={10} className="text-amber-500" /> {k}: {v}
-                          </span>
-                        ))
-                      ) : (
-                        <p className="text-xs text-slate-400 italic">No limits defined</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Actions Mock */}
-                <div className="p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex gap-2 opacity-50 pointer-events-none">
-                  <button className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-bold bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
-                    <Eye size={14} /> Publish
-                  </button>
-                  <button className="inline-flex items-center justify-center p-2 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 rounded-lg">
-                    <Copy size={14} />
-                  </button>
-                  <button className="inline-flex items-center justify-center p-2 bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 border border-primary-100 dark:border-primary-800 rounded-lg">
-                    <Edit2 size={14} />
-                  </button>
-                  <button className="inline-flex items-center justify-center p-2 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-800 rounded-lg">
-                    <Trash2 size={14} />
-                  </button>
                 </div>
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Footer Actions */}
+        <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-700 flex justify-end gap-3">
+          <button
+            onClick={handleCloseModal}
+            className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 font-bold transition-colors text-sm"
+          >
+            {t('common.cancel')}
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={saving}
+            className="px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-primary-600/20 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+          >
+            {saving ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {editingPlan ? 'Update Plan' : 'Create Plan'}
+          </button>
         </div>
       </Modal>
 
@@ -1052,18 +1060,15 @@ const Plans: React.FC = () => {
         onClose={() => setDeleteConfirm(null)}
         onConfirm={confirmDelete}
         title={t('plans.deleteConfirm')}
-        message={`Are you sure you want to delete "${deleteConfirm?.name}"? This action cannot be undone.`}
+        message={`Are you sure you want to delete ${deleteConfirm?.name}? This action cannot be undone.`}
         isRtl={isRtl}
         confirmLabel={t('common.delete')}
         cancelLabel={t('common.cancel')}
-        isDestructive={true}
+        isDestructive
       />
 
-      <Toast
-        toast={toast}
-        onClose={() => setToast({ ...toast, open: false })}
-        isRtl={isRtl}
-      />
+      {/* Toast Notification */}
+      <Toast toast={toast} onClose={() => setToast({ ...toast, open: false })} isRtl={isRtl} />
     </div>
   );
 };
