@@ -8,7 +8,7 @@ import { Plus, Search, Monitor, Shield, Ban, CalendarClock, Download, Trash2, Fi
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
 const Licenses: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { tick: autoRefreshTick, requestRefresh } = useAutoRefresh();
   const [licenses, setLicenses] = useState<LicenseKey[]>([]);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
