@@ -1,5 +1,6 @@
+
 import { FastifyInstance } from 'fastify';
-import argon2 from 'argon2';
+import bcrypt from 'bcrypt';
 import { Role } from '@prisma/client';
 import { z } from 'zod';
 import { logAudit } from '../../utils/audit.js';
@@ -23,7 +24,7 @@ export default async function userRoutes(app: FastifyInstance) {
     const exists = await app.prisma.user.findUnique({ where: { email: data.email } });
     if (exists) return reply.code(400).send({ message: 'Email already used' });
 
-    const passwordHash = await argon2.hash(data.password);
+    const passwordHash = await bcrypt.hash(data.password, 10);
     const user = await app.prisma.user.create({
       data: { name: data.name, email: data.email, passwordHash, role: data.role }
     });
