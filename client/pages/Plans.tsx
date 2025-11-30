@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import {
   Plus, Edit2, Trash2, Copy, Check, X, Loader, AlertCircle,
   CheckCircle2, XCircle, Eye, EyeOff, ShieldCheck, Zap, Globe,
-  AlertTriangle, LayoutTemplate, Save, Calendar, Coins, Calculator, Star
+  AlertTriangle, LayoutTemplate, Save, Calendar, Coins, Calculator, Star,
+  RefreshCw, Info
 } from 'lucide-react';
 import { api } from '../services/api';
 import { CurrencyRate, SubscriptionPlan, PlanPrice } from '../types';
@@ -341,7 +342,9 @@ const Plans: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<Toast>({ open: false, message: '', type: 'success' });
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string; name: string } | null>(null);
-  const [customTemplates, setCustomTemplates] = useState<any[]>([]);
+
+  // Validation State
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const [formData, setFormData] = useState<FormData>({
     name: '',
@@ -374,17 +377,25 @@ const Plans: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-    const savedTemplates = localStorage.getItem('sourceplus_plan_templates');
-    if (savedTemplates) {
-      try {
-        setCustomTemplates(JSON.parse(savedTemplates));
-      } catch (e) {
-        console.error('Failed to parse templates', e);
-      }
-    }
   }, []);
 
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+    if (!formData.name.trim()) errors.name = 'Plan name is required';
+    if (formData.prices.length === 0) errors.prices = 'At least one price is required';
+    if (formData.durationMonths <= 0) errors.duration = 'Duration must be greater than 0';
+
+    formData.prices.forEach((p, i) => {
+      if (p.monthlyPrice < 0) errors[`price_${i}_monthly`] = 'Price cannot be negative';
+      if (p.discount < 0 || p.discount > 100) errors[`price_${i}_discount`] = 'Discount must be between 0 and 100';
+    });
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleOpenModal = (plan?: SubscriptionPlan) => {
+    setFormErrors({});
     if (plan) {
       setEditingPlan(plan);
       setFormData({
@@ -412,6 +423,7 @@ const Plans: React.FC = () => {
   const handleCloseModal = () => {
     setModalOpen(false);
     setEditingPlan(null);
+    setFormErrors({});
   };
 
   const handleTemplateSelect = (template: any) => {
@@ -423,11 +435,12 @@ const Plans: React.FC = () => {
       features: template.features,
       limits: template.limits
     });
+    setFormErrors({});
   };
 
   const handleSubmit = async () => {
-    if (!formData.name.trim() || formData.prices.length === 0) {
-      setToast({ open: true, message: 'Please fill in all required fields and at least one price', type: 'error' });
+    if (!validateForm()) {
+      setToast({ open: true, message: 'Please fix the errors in the form', type: 'error' });
       return;
     }
 
@@ -807,7 +820,7 @@ const Plans: React.FC = () => {
       >
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left Column: Form */}
-          <div className="space-y-5">
+          <div className="space-y-6">
             {/* Quick Templates */}
             {!editingPlan && (
               <div className="space-y-3">
@@ -833,21 +846,26 @@ const Plans: React.FC = () => {
             {/* Plan Name */}
             <div>
               <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                {t('plans.name')}
+                {t('plans.name')} <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all"
+                onChange={(e) => {
+                  setFormData({ ...formData, name: e.target.value });
+                  if (formErrors.name) setFormErrors({ ...formErrors, name: '' });
+                }}
+                className={`w-full px-4 py-2.5 rounded-xl border bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all ${formErrors.name ? 'border-rose-500 ring-2 ring-rose-500/20' : 'border-slate-200 dark:border-slate-700'
+                  }`}
                 placeholder="e.g. Gold Plan"
               />
+              {formErrors.name && <p className="text-xs text-rose-500 mt-1 font-bold">{formErrors.name}</p>}
             </div>
 
             {/* Duration Selector */}
             <div>
               <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                Duration (Months)
+                Duration (Months) <span className="text-rose-500">*</span>
               </label>
               <div className="grid grid-cols-3 gap-3">
                 {[6, 12].map(months => (
@@ -865,6 +883,7 @@ const Plans: React.FC = () => {
                 <div className="relative">
                   <input
                     type="number"
+                    min="1"
                     value={formData.durationMonths}
                     onChange={(e) => handleDurationChange(Number(e.target.value))}
                     className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none transition-all text-center ${![6, 12].includes(formData.durationMonths)
@@ -878,81 +897,109 @@ const Plans: React.FC = () => {
                   </span>
                 </div>
               </div>
+              {formErrors.duration && <p className="text-xs text-rose-500 mt-1 font-bold">{formErrors.duration}</p>}
             </div>
 
             {/* Multi-Currency Pricing */}
             <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
               <div className="flex justify-between items-center mb-3">
                 <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                  <Coins size={14} /> Pricing
+                  <Coins size={14} /> Pricing <span className="text-rose-500">*</span>
                 </label>
                 <button
                   onClick={handleAddPrice}
-                  className="text-xs font-bold text-primary-600 hover:text-primary-700 flex items-center gap-1"
+                  className="text-xs font-bold text-primary-600 hover:text-primary-700 flex items-center gap-1 bg-white dark:bg-slate-700 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-600 shadow-sm"
                 >
                   <Plus size={12} /> Add Currency
                 </button>
               </div>
 
+              {formErrors.prices && <p className="text-xs text-rose-500 mb-3 font-bold">{formErrors.prices}</p>}
+
               <div className="space-y-4">
                 {formData.prices.map((price, index) => (
-                  <div key={index} className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm animate-in slide-in-from-left-2 relative">
+                  <div key={index} className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm animate-in slide-in-from-left-2 relative group hover:border-primary-300 dark:hover:border-primary-700 transition-colors">
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex items-center gap-2">
-                        <select
-                          value={price.currency}
-                          onChange={(e) => handlePriceChange(index, 'currency', e.target.value)}
-                          className="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold outline-none focus:ring-2 focus:ring-primary-500"
-                        >
-                          {currencies.map(c => (
-                            <option key={c.code} value={c.code}>{c.code}</option>
-                          ))}
-                          {!currencies.some(c => c.code === price.currency) && (
-                            <option value={price.currency}>{price.currency}</option>
-                          )}
-                        </select>
+                        <div className="relative">
+                          <select
+                            value={price.currency}
+                            onChange={(e) => handlePriceChange(index, 'currency', e.target.value)}
+                            className="pl-2 pr-8 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold outline-none focus:ring-2 focus:ring-primary-500 appearance-none cursor-pointer"
+                          >
+                            {currencies.map(c => (
+                              <option key={c.code} value={c.code}>{c.code}</option>
+                            ))}
+                            {!currencies.some(c => c.code === price.currency) && (
+                              <option value={price.currency}>{price.currency}</option>
+                            )}
+                          </select>
+                          <Globe size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                        </div>
+
                         <button
                           onClick={() => handleSetPrimary(index)}
-                          className={`p-1 rounded-full transition-colors ${price.isPrimary ? 'text-amber-500 bg-amber-50 dark:bg-amber-900/20' : 'text-slate-300 hover:text-amber-400'}`}
+                          className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold transition-all ${price.isPrimary
+                              ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 ring-1 ring-amber-500/20'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-600'
+                            }`}
                           title="Set as Primary Currency"
                         >
-                          <Star size={14} className={price.isPrimary ? 'fill-amber-500' : ''} />
+                          <Star size={10} className={price.isPrimary ? 'fill-amber-500 text-amber-500' : ''} />
+                          {price.isPrimary ? 'Primary' : 'Set Primary'}
                         </button>
                       </div>
                       <button
                         onClick={() => handleRemovePrice(index)}
-                        className="text-slate-400 hover:text-rose-500 transition-colors"
+                        className="text-slate-400 hover:text-rose-500 transition-colors p-1 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg"
                         disabled={formData.prices.length === 1}
+                        title="Remove Price"
                       >
                         <Trash2 size={14} />
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-[10px] font-bold text-slate-500 mb-1">Monthly Price</label>
-                        <input
-                          type="number"
-                          value={price.monthlyPrice}
-                          onChange={(e) => handlePriceChange(index, 'monthlyPrice', e.target.value)}
-                          className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"
-                          placeholder="0.00"
-                        />
+                        <div className="relative">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={price.monthlyPrice}
+                            onChange={(e) => handlePriceChange(index, 'monthlyPrice', e.target.value)}
+                            className={`w-full pl-3 pr-3 py-2 rounded-lg border bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm outline-none focus:ring-2 focus:ring-primary-500 transition-all ${formErrors[`price_${index}_monthly`] ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'
+                              }`}
+                            placeholder="0.00"
+                          />
+                        </div>
+                        {formErrors[`price_${index}_monthly`] && <p className="text-[10px] text-rose-500 mt-1">{formErrors[`price_${index}_monthly`]}</p>}
                       </div>
                       <div>
                         <label className="block text-[10px] font-bold text-slate-500 mb-1">Discount %</label>
-                        <input
-                          type="number"
-                          value={price.discount}
-                          onChange={(e) => handlePriceChange(index, 'discount', e.target.value)}
-                          className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm outline-none focus:ring-2 focus:ring-primary-500"
-                          placeholder="0%"
-                        />
+                        <div className="relative">
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={price.discount}
+                            onChange={(e) => handlePriceChange(index, 'discount', e.target.value)}
+                            className={`w-full pl-3 pr-8 py-2 rounded-lg border bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm outline-none focus:ring-2 focus:ring-primary-500 transition-all ${formErrors[`price_${index}_discount`] ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'
+                              }`}
+                            placeholder="0"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">%</span>
+                        </div>
+                        {formErrors[`price_${index}_discount`] && <p className="text-[10px] text-rose-500 mt-1">{formErrors[`price_${index}_discount`]}</p>}
                       </div>
                     </div>
 
-                    <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between text-xs text-slate-500 dark:text-slate-400">
-                      <span>{formData.durationMonths} Months: <strong className="text-slate-900 dark:text-white">{price.periodPrice.toLocaleString()}</strong></span>
+                    <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between text-xs text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-800/50 -mx-4 -mb-4 px-4 py-2 rounded-b-xl">
+                      <div className="flex items-center gap-1">
+                        <Calculator size={12} className="text-slate-400" />
+                        <span>{formData.durationMonths} Months: <strong className="text-slate-900 dark:text-white">{price.periodPrice.toLocaleString()}</strong></span>
+                      </div>
                       <span>Yearly: <strong className="text-slate-900 dark:text-white">{price.yearlyPrice.toLocaleString()}</strong></span>
                     </div>
                   </div>
@@ -962,7 +1009,7 @@ const Plans: React.FC = () => {
           </div>
 
           {/* Right Column: Features & Limits */}
-          <div className="space-y-5">
+          <div className="space-y-6">
             <FeatureEditor
               label={t('plans.features')}
               features={formData.features}
@@ -979,57 +1026,77 @@ const Plans: React.FC = () => {
 
             {/* Preview Card */}
             <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-700">
-              <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-4 text-center">
-                {t('plans.livePreview')}
+              <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-4 text-center flex items-center justify-center gap-2">
+                <Eye size={14} /> {t('plans.livePreview')}
               </p>
-              <div className="max-w-xs mx-auto bg-white dark:bg-slate-800 rounded-2xl border border-primary-500 shadow-xl shadow-primary-500/10 overflow-hidden transform scale-95">
-                <div className="h-1 bg-gradient-to-r from-emerald-500 to-teal-400" />
+              <div className="max-w-xs mx-auto bg-white dark:bg-slate-800 rounded-2xl border border-primary-500 shadow-2xl shadow-primary-500/20 overflow-hidden transform scale-100 transition-all duration-300">
+                <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
                 <div className="p-6">
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1 text-center">
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white mb-1 text-center tracking-tight">
                     {formData.name || 'Plan Name'}
                   </h3>
-                  <div className="flex justify-center gap-2 mb-4">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 text-[10px] font-bold uppercase tracking-wider">
+                  <div className="flex justify-center gap-2 mb-6">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 text-[10px] font-bold uppercase tracking-wider border border-slate-200 dark:border-slate-600">
                       <Calendar size={10} /> Billed every {formData.durationMonths} months
                     </span>
                   </div>
 
-                  <div className="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-4 mb-5 text-center">
+                  <div className="bg-slate-50 dark:bg-slate-700/30 rounded-2xl p-5 mb-6 text-center border border-slate-100 dark:border-slate-700/50">
                     {formData.prices.length > 0 ? (
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         {formData.prices.filter(p => p.isPrimary).map((p, i) => (
-                          <div key={i}>
-                            <div className="text-2xl font-extrabold text-slate-900 dark:text-white">
-                              {p.currency} {p.periodPrice.toLocaleString()}
+                          <div key={i} className="animate-in zoom-in-95 duration-300">
+                            <div className="flex items-baseline justify-center gap-1 text-slate-900 dark:text-white">
+                              <span className="text-lg font-medium text-slate-500 dark:text-slate-400">{p.currency}</span>
+                              <span className="text-4xl font-black tracking-tight">{p.periodPrice.toLocaleString()}</span>
                             </div>
                             {p.discount > 0 && (
-                              <div className="text-xs text-emerald-600 font-bold mt-1">
+                              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold mt-2">
                                 Save {p.discount}%
                               </div>
                             )}
                           </div>
                         ))}
                         {formData.prices.filter(p => !p.isPrimary).length > 0 && (
-                          <div className="pt-2 mt-2 border-t border-slate-200 dark:border-slate-600 text-xs text-slate-500">
-                            Also available in: {formData.prices.filter(p => !p.isPrimary).map(p => p.currency).join(', ')}
+                          <div className="pt-3 mt-1 border-t border-slate-200 dark:border-slate-600/50">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Also available in</p>
+                            <div className="flex flex-wrap justify-center gap-2">
+                              {formData.prices.filter(p => !p.isPrimary).map((p, idx) => (
+                                <span key={idx} className="text-xs font-bold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 px-2 py-1 rounded border border-slate-200 dark:border-slate-600">
+                                  {p.currency} {p.periodPrice.toLocaleString()}
+                                </span>
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>
                     ) : (
-                      <span className="text-2xl font-extrabold text-slate-900 dark:text-white">0</span>
+                      <span className="text-3xl font-black text-slate-300 dark:text-slate-600">--</span>
                     )}
                   </div>
 
-                  <div className="space-y-2">
-                    {Object.keys(formData.features).slice(0, 3).map(f => (
-                      <div key={f} className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
-                        <CheckCircle2 size={12} className="text-emerald-500" /> {f}
+                  <div className="space-y-3">
+                    {Object.keys(formData.features).slice(0, 4).map(f => (
+                      <div key={f} className="flex items-start gap-3 text-sm text-slate-600 dark:text-slate-300">
+                        <div className="mt-0.5 p-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+                          <Check size={10} strokeWidth={3} />
+                        </div>
+                        <span className="font-medium">{f}</span>
                       </div>
                     ))}
-                    {Object.keys(formData.features).length > 3 && (
-                      <p className="text-xs text-slate-400 text-center italic">+ {Object.keys(formData.features).length - 3} more features</p>
+                    {Object.keys(formData.features).length > 4 && (
+                      <p className="text-xs text-slate-400 text-center italic mt-2">+ {Object.keys(formData.features).length - 4} more features</p>
+                    )}
+                    {Object.keys(formData.features).length === 0 && (
+                      <div className="text-center py-4 text-slate-400 italic text-xs">
+                        Add features to see them here
+                      </div>
                     )}
                   </div>
+
+                  <button className="w-full mt-6 py-3 rounded-xl bg-primary-600 text-white font-bold text-sm shadow-lg shadow-primary-600/20 opacity-90 cursor-default">
+                    Choose Plan
+                  </button>
                 </div>
               </div>
             </div>
