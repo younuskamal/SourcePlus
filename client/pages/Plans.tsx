@@ -661,56 +661,36 @@ const Plans: React.FC = () => {
         </button>
       </div>
 
-      {/* Quick Stats */}
+      {/* Toolbar */}
       {!loading && plans.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-4 rounded-xl border border-blue-200 dark:border-blue-800">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Total Plans</p>
-                <p className="text-2xl font-black text-blue-900 dark:text-blue-100 mt-1">{plans.length}</p>
-              </div>
-              <div className="p-3 bg-blue-200 dark:bg-blue-800/50 rounded-lg">
-                <LayoutTemplate size={20} className="text-blue-700 dark:text-blue-300" />
-              </div>
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+            {/* Filters */}
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => setFilterStatus('all')} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${filterStatus === 'all' ? 'bg-primary-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'}`}>
+                All <span className="ml-1 opacity-75">({plans.length})</span>
+              </button>
+              <button onClick={() => setFilterStatus('active')} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${filterStatus === 'active' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'}`}>
+                Active <span className="ml-1 opacity-75">({plans.filter(p => p.isActive).length})</span>
+              </button>
+              <button onClick={() => setFilterStatus('inactive')} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${filterStatus === 'inactive' ? 'bg-slate-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'}`}>
+                Inactive <span className="ml-1 opacity-75">({plans.filter(p => !p.isActive).length})</span>
+              </button>
+            </div>
+            {/* Search */}
+            <div className="relative w-full lg:w-80">
+              <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search plans..." className="w-full pl-10 pr-10 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all text-sm" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              {searchQuery && <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"><X size={14} /></button>}
             </div>
           </div>
-
-          <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 p-4 rounded-xl border border-emerald-200 dark:border-emerald-800">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Active</p>
-                <p className="text-2xl font-black text-emerald-900 dark:text-emerald-100 mt-1">{plans.filter(p => p.isActive).length}</p>
-              </div>
-              <div className="p-3 bg-emerald-200 dark:bg-emerald-800/50 rounded-lg">
-                <CheckCircle2 size={20} className="text-emerald-700 dark:text-emerald-300" />
-              </div>
+          {(searchQuery || filterStatus !== 'all') && (
+            <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Showing <span className="font-bold text-slate-700 dark:text-slate-300">{filteredPlans.length}</span> of <span className="font-bold">{plans.length}</span> plans
+              </p>
             </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 p-4 rounded-xl border border-amber-200 dark:border-amber-800">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">Currencies</p>
-                <p className="text-2xl font-black text-amber-900 dark:text-amber-100 mt-1">{new Set(plans.flatMap(p => p.prices?.map(pr => pr.currency) || [])).size}</p>
-              </div>
-              <div className="p-3 bg-amber-200 dark:bg-amber-800/50 rounded-lg">
-                <Coins size={20} className="text-amber-700 dark:text-amber-300" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 p-4 rounded-xl border border-purple-200 dark:border-purple-800">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider">Inactive</p>
-                <p className="text-2xl font-black text-purple-900 dark:text-purple-100 mt-1">{plans.filter(p => !p.isActive).length}</p>
-              </div>
-              <div className="p-3 bg-purple-200 dark:bg-purple-800/50 rounded-lg">
-                <XCircle size={20} className="text-purple-700 dark:text-purple-300" />
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       )}
 
