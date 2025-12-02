@@ -362,8 +362,16 @@ const Plans: React.FC = () => {
         api.getPlans(),
         api.getCurrencies()
       ]);
-      setPlans(plansRes);
-      setCurrencies(currenciesRes);
+
+      console.log('Plans API Response:', plansRes);
+      console.log('Currencies API Response:', currenciesRes);
+
+      // Handle both array and object response formats
+      const plansArray = Array.isArray(plansRes) ? plansRes : (plansRes as any)?.plans || [];
+      const currenciesArray = Array.isArray(currenciesRes) ? currenciesRes : (currenciesRes as any)?.currencies || [];
+
+      setPlans(plansArray);
+      setCurrencies(currenciesArray);
       setError('');
     } catch (err: any) {
       console.error('Failed to fetch data', err);
@@ -627,6 +635,59 @@ const Plans: React.FC = () => {
         </button>
       </div>
 
+      {/* Quick Stats */}
+      {!loading && plans.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-4 rounded-xl border border-blue-200 dark:border-blue-800">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Total Plans</p>
+                <p className="text-2xl font-black text-blue-900 dark:text-blue-100 mt-1">{plans.length}</p>
+              </div>
+              <div className="p-3 bg-blue-200 dark:bg-blue-800/50 rounded-lg">
+                <LayoutTemplate size={20} className="text-blue-700 dark:text-blue-300" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 p-4 rounded-xl border border-emerald-200 dark:border-emerald-800">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Active</p>
+                <p className="text-2xl font-black text-emerald-900 dark:text-emerald-100 mt-1">{plans.filter(p => p.isActive).length}</p>
+              </div>
+              <div className="p-3 bg-emerald-200 dark:bg-emerald-800/50 rounded-lg">
+                <CheckCircle2 size={20} className="text-emerald-700 dark:text-emerald-300" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 p-4 rounded-xl border border-amber-200 dark:border-amber-800">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">Currencies</p>
+                <p className="text-2xl font-black text-amber-900 dark:text-amber-100 mt-1">{new Set(plans.flatMap(p => p.prices?.map(pr => pr.currency) || [])).size}</p>
+              </div>
+              <div className="p-3 bg-amber-200 dark:bg-amber-800/50 rounded-lg">
+                <Coins size={20} className="text-amber-700 dark:text-amber-300" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 p-4 rounded-xl border border-purple-200 dark:border-purple-800">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider">Inactive</p>
+                <p className="text-2xl font-black text-purple-900 dark:text-purple-100 mt-1">{plans.filter(p => !p.isActive).length}</p>
+              </div>
+              <div className="p-3 bg-purple-200 dark:bg-purple-800/50 rounded-lg">
+                <XCircle size={20} className="text-purple-700 dark:text-purple-300" />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Error Alert */}
       {error && (
         <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 flex gap-3">
@@ -669,54 +730,68 @@ const Plans: React.FC = () => {
           {plans.map((plan, index) => (
             <div
               key={plan.id}
-              className="group relative bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 hover:border-primary-500 dark:hover:border-primary-500 hover:shadow-xl hover:shadow-primary-500/10 transition-all duration-300 overflow-hidden flex flex-col"
+              className="group relative bg-white dark:bg-slate-800 rounded-2xl border-2 border-slate-200 dark:border-slate-700 hover:border-primary-500 dark:hover:border-primary-500 hover:shadow-2xl hover:shadow-primary-500/20 transition-all duration-300 overflow-hidden flex flex-col"
               style={{ animationDelay: `${index * 100}ms` }}
             >
               {/* Status Indicator */}
-              <div className={`absolute top-0 left-0 right-0 h-1 ${plan.isActive ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : 'bg-slate-200 dark:bg-slate-700'}`} />
+              <div className={`absolute top-0 left-0 right-0 h-1.5 ${plan.isActive ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
 
               {/* Content */}
               <div className="p-6 flex-1">
                 {/* Header */}
                 <div className="flex items-start justify-between gap-3 mb-4">
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
+                  <div className="flex-1">
+                    <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">
                       {plan.name}
                     </h3>
                     <div className="flex gap-2 flex-wrap">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 text-[10px] font-bold uppercase tracking-wider">
-                        <Calendar size={10} /> {plan.durationMonths} Months
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-xs font-bold border border-blue-100 dark:border-blue-800">
+                        <Calendar size={12} /> {plan.durationMonths} {plan.durationMonths === 1 ? 'Month' : 'Months'}
                       </span>
                       <span
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${plan.isActive
-                          ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
-                          : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border ${plan.isActive
+                          ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-800'
+                          : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-600'
                           }`}
                       >
-                        {plan.isActive ? 'Active' : 'Inactive'}
+                        {plan.isActive ? '✓ Active' : '○ Inactive'}
                       </span>
                     </div>
                   </div>
-                  <div className="p-2 bg-primary-50 dark:bg-primary-900/20 rounded-xl text-primary-600 dark:text-primary-400">
-                    <ShieldCheck size={20} />
+                  <div className="p-3 bg-gradient-to-br from-primary-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-800/20 rounded-xl text-primary-600 dark:text-primary-400 shadow-sm">
+                    <ShieldCheck size={24} />
                   </div>
                 </div>
 
                 {/* Pricing */}
-                <div className="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-4 mb-5 border border-slate-100 dark:border-slate-700/50">
+                <div className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-700/30 dark:to-slate-800/30 rounded-xl p-4 mb-5 border border-slate-200 dark:border-slate-700/50 shadow-inner">
                   {plan.prices && plan.prices.length > 0 ? (
-                    <div className="space-y-2">
+                    <div className="space-y-3">
+                      <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+                        <Coins size={10} className="inline mr-1" /> Pricing Options
+                      </p>
                       {plan.prices.map((price, idx) => (
-                        <div key={idx} className={`flex justify-between items-center text-sm ${price.isPrimary ? 'font-bold text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
-                          <div className="flex items-center gap-1">
-                            <span>{price.currency}</span>
-                            {price.isPrimary && <Star size={10} className="text-amber-500 fill-amber-500" />}
+                        <div key={idx} className={`flex justify-between items-center p-2.5 rounded-lg ${price.isPrimary ? 'bg-white dark:bg-slate-700 shadow-sm border border-primary-200 dark:border-primary-800' : 'bg-slate-50 dark:bg-slate-800/50'}`}>
+                          <div className="flex items-center gap-2">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${price.isPrimary ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'}`}>
+                              {price.currency}
+                            </div>
+                            <div>
+                              <div className={`text-sm font-bold ${price.isPrimary ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
+                                {price.periodPrice.toLocaleString()}
+                              </div>
+                              <div className="text-[10px] text-slate-500 dark:text-slate-500">
+                                {price.monthlyPrice.toLocaleString()}/mo
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex flex-col items-end">
-                            <span>{price.periodPrice.toLocaleString()}</span>
+                          <div className="flex flex-col items-end gap-1">
+                            {price.isPrimary && (
+                              <Star size={12} className="text-amber-500 fill-amber-500" />
+                            )}
                             {price.discount > 0 && (
-                              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30 px-1.5 rounded-full">
-                                -{price.discount}%
+                              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full">
+                                Save {price.discount}%
                               </span>
                             )}
                           </div>
@@ -724,48 +799,61 @@ const Plans: React.FC = () => {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-xs text-slate-500 italic">No prices defined</p>
+                    <div className="text-center py-4">
+                      <p className="text-sm text-rose-600 dark:text-rose-400 font-medium">⚠ No prices defined</p>
+                      <p className="text-xs text-slate-500 mt-1">Click edit to add pricing</p>
+                    </div>
                   )}
                 </div>
 
                 {/* Features */}
                 <div className="mb-5">
-                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
-                    {t('plans.features')}
+                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1">
+                    <CheckCircle2 size={10} /> {t('plans.features')} ({Object.keys(plan.features || {}).length})
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {Object.keys(plan.features || {}).length > 0 ? (
-                      Object.keys(plan.features).map((f) => (
+                      Object.keys(plan.features).slice(0, 5).map((f) => (
                         <span
                           key={f}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-xs font-medium shadow-sm"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-700 border border-emerald-200 dark:border-emerald-800 text-slate-700 dark:text-slate-200 text-xs font-medium shadow-sm hover:shadow-md transition-shadow"
                         >
-                          <Check size={10} className="text-emerald-500" /> {f}
+                          <Check size={12} className="text-emerald-500 dark:text-emerald-400" /> {f}
                         </span>
                       ))
                     ) : (
-                      <p className="text-xs text-slate-400 italic">No features defined</p>
+                      <p className="text-xs text-slate-400 italic w-full text-center py-2">No features defined</p>
+                    )}
+                    {Object.keys(plan.features || {}).length > 5 && (
+                      <span className="inline-flex items-center px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold">
+                        +{Object.keys(plan.features).length - 5} more
+                      </span>
                     )}
                   </div>
                 </div>
 
                 {/* Limits */}
                 <div>
-                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
-                    Limits
+                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1">
+                    <Zap size={10} /> Limits ({Object.keys(plan.limits || {}).length})
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {Object.keys(plan.limits || {}).length > 0 ? (
-                      Object.entries(plan.limits).map(([k, v]) => (
+                      Object.entries(plan.limits).slice(0, 4).map(([k, v]) => (
                         <span
                           key={k}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-xs font-medium shadow-sm"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-700 border border-amber-200 dark:border-amber-800 text-slate-700 dark:text-slate-200 text-xs font-medium shadow-sm"
                         >
-                          <Zap size={10} className="text-amber-500" /> {k}: {v}
+                          <Zap size={12} className="text-amber-500 dark:text-amber-400" /> {k}: <strong>{v}</strong>
                         </span>
                       ))
                     ) : (
-                      <p className="text-xs text-slate-400 italic">No limits defined</p>
+                      <p className="text-xs text-slate-400 italic w-full text-center py-2">No limits defined</p>
+                    )}
+                    {Object.keys(plan.limits || {}).length > 4 && (
+                      <span className="inline-flex items-center px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold">
+                        +{Object.keys(plan.limits).length - 4} more
+                      </span>
                     )}
                   </div>
                 </div>
