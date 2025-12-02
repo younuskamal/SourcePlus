@@ -20,6 +20,7 @@ model User {
   sessions     Session[]
   auditLogs    AuditLog[]
   replies      SupportReply[]
+  messageReplies MessageReply[]
 }
 
 model Session {
@@ -285,10 +286,10 @@ model SupportMessage {
   status    String   @default("pending") // pending, resolved, closed
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  replies   SupportReply[]
+  replies   MessageReply[]
 }
 
-model SupportReply {
+model MessageReply {
   id        String         @id @default(uuid())
   messageId String
   message   SupportMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
