@@ -39,7 +39,7 @@ export default async function licenseRoutes(app: FastifyInstance) {
           expireDate: new Date(new Date().setMonth(new Date().getMonth() + plan.durationMonths))
         }
       });
-      if (plan.priceUSD > 0) {
+      if (plan.priceUSD && plan.priceUSD > 0) {
         await app.prisma.transaction.create({
           data: {
             licenseId: license.id,
@@ -70,7 +70,7 @@ export default async function licenseRoutes(app: FastifyInstance) {
   app.post('/:id/renew', { preHandler: [app.authorize([Role.admin])] }, async (request, reply) => {
     const { months } = z.object({ months: z.number().int().positive() }).parse(request.body);
     const id = (request.params as { id: string }).id;
-    const license = await app.prisma.license.findUnique({ where: { id } , include: { plan: true }});
+    const license = await app.prisma.license.findUnique({ where: { id }, include: { plan: true } });
     if (!license || !license.plan) return reply.code(404).send({ message: 'License not found' });
 
     const current = license.expireDate ? new Date(license.expireDate) : new Date();
@@ -86,7 +86,7 @@ export default async function licenseRoutes(app: FastifyInstance) {
         licenseId: id,
         customerName: license.customerName,
         planName: license.plan.name,
-        amount: (license.plan.priceUSD / license.plan.durationMonths) * months,
+        amount: ((license.plan.priceUSD || 0) / license.plan.durationMonths) * months,
         currency: 'USD',
         type: TransactionType.renewal,
         status: TransactionStatus.completed
@@ -97,7 +97,7 @@ export default async function licenseRoutes(app: FastifyInstance) {
     return reply.send(updated);
   });
 
-  app.post('/:id/pause', { preHandler: [app.authorize([Role.admin])]}, async (request, reply) => {
+  app.post('/:id/pause', { preHandler: [app.authorize([Role.admin])] }, async (request, reply) => {
     const id = (request.params as { id: string }).id;
     const license = await app.prisma.license.findUnique({ where: { id } });
     if (!license) return reply.code(404).send({ message: 'License not found' });
@@ -106,14 +106,14 @@ export default async function licenseRoutes(app: FastifyInstance) {
     return reply.send(updated);
   });
 
-  app.post('/:id/revoke', { preHandler: [app.authorize([Role.admin])]}, async (request, reply) => {
+  app.post('/:id/revoke', { preHandler: [app.authorize([Role.admin])] }, async (request, reply) => {
     const id = (request.params as { id: string }).id;
     const updated = await app.prisma.license.update({ where: { id }, data: { status: LicenseStatus.revoked } });
     await logAudit(app, { userId: request.user?.id, action: 'REVOKE_LICENSE', details: `Revoked ${updated.serial}`, ip: request.ip });
     return reply.send(updated);
   });
 
-  app.delete('/:id', { preHandler: [app.authorize([Role.admin])]}, async (request, reply) => {
+  app.delete('/:id', { preHandler: [app.authorize([Role.admin])] }, async (request, reply) => {
     const id = (request.params as { id: string }).id;
     const license = await app.prisma.license.delete({ where: { id } });
     await logAudit(app, { userId: request.user?.id, action: 'DELETE_LICENSE', details: `Deleted ${license.serial}`, ip: request.ip });

@@ -113,6 +113,12 @@ export const api = {
   async logout() {
     clearTokens();
   },
+  async register(name: string, email: string, password: string, role: 'admin' | 'developer' | 'viewer' = 'viewer') {
+    return doRequest<User>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ name, email, password, role })
+    });
+  },
   async ping() {
     return doRequest<{ healthy: boolean }>('/health', {}, false);
   },

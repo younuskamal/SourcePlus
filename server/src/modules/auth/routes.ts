@@ -68,6 +68,51 @@ export default async function authRoutes(app: FastifyInstance) {
     });
   });
 
+  // Register new user (admin only can create users)
+  const registerSchema = z.object({
+    name: z.string().min(2),
+    email: z.string().email(),
+    password: z.string().min(8),
+    role: z.enum(['admin', 'developer', 'viewer']).default('viewer')
+  });
+
+  app.post('/register', { preHandler: [app.authorize(['admin'])] }, async (request, reply) => {
+    const { name, email, password, role } = registerSchema.parse(request.body);
+
+    // Check if user already exists
+    const existingUser = await app.prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return reply.code(409).send({ message: 'User with this email already exists' });
+    }
+
+    // Hash password
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // Create user
+    const user = await app.prisma.user.create({
+      data: {
+        name,
+        email,
+        passwordHash,
+        role
+      }
+    });
+
+    await logAudit(app, {
+      userId: request.user?.id,
+      action: 'USER_CREATE',
+      details: `Created new user ${email} with role ${role}`,
+      ip: request.ip
+    });
+
+    return reply.code(201).send({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role
+    });
+  });
+
   app.post('/refresh', async (request, reply) => {
     const auth = request.body as { refreshToken?: string };
     if (!auth?.refreshToken) return reply.code(400).send({ message: 'Missing refresh token' });

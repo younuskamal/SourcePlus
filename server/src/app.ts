@@ -118,3 +118,12 @@ export const buildApp = () => {
 
   return app;
 };
+
+// Export backup scheduler instance
+export let backupScheduler: any = null;
+
+export const initializeBackupScheduler = async (app: any) => {
+  const { BackupScheduler } = await import('./services/backup.scheduler.js');
+  backupScheduler = new BackupScheduler(app);
+  await backupScheduler.start();
+};
