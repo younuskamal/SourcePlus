@@ -4,7 +4,7 @@ import {
   Plus, Edit2, Trash2, Copy, Check, X, Loader, AlertCircle,
   CheckCircle2, XCircle, Eye, EyeOff, ShieldCheck, Zap, Globe,
   AlertTriangle, LayoutTemplate, Save, Calendar, Coins, Calculator, Star,
-  RefreshCw, Info
+  RefreshCw, Info, Search
 } from 'lucide-react';
 import { api } from '../services/api';
 import { CurrencyRate, SubscriptionPlan, PlanPrice } from '../types';
@@ -343,6 +343,10 @@ const Plans: React.FC = () => {
   const [toast, setToast] = useState<Toast>({ open: false, message: '', type: 'success' });
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string; name: string } | null>(null);
 
+  // Filter & Search State
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+
   // Validation State
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
@@ -422,10 +426,18 @@ const Plans: React.FC = () => {
       });
     } else {
       setEditingPlan(null);
+      const defaultCurrency = currencies.length > 0 ? currencies[0].code : 'IQD';
       setFormData({
         name: '',
         durationMonths: 12,
-        prices: currencies.length > 0 ? [{ currency: currencies[0].code, monthlyPrice: 0, periodPrice: 0, yearlyPrice: 0, discount: 0, isPrimary: true }] : [{ currency: 'IQD', monthlyPrice: 0, periodPrice: 0, yearlyPrice: 0, discount: 0, isPrimary: true }],
+        prices: [{
+          currency: defaultCurrency,
+          monthlyPrice: 0,
+          periodPrice: 0,
+          yearlyPrice: 0,
+          discount: 0,
+          isPrimary: true
+        }],
         features: {},
         limits: {},
         isActive: true
@@ -615,6 +627,20 @@ const Plans: React.FC = () => {
     setFormData({ ...formData, prices: newPrices });
   };
 
+  // Filter plans based on status and search
+  const filteredPlans = plans.filter(plan => {
+    const matchesStatus =
+      filterStatus === 'all' ? true :
+        filterStatus === 'active' ? plan.isActive :
+          !plan.isActive;
+
+    const matchesSearch =
+      searchQuery === '' ? true :
+        plan.name.toLowerCase().includes(searchQuery.toLowerCase());
+
+    return matchesStatus && matchesSearch;
+  });
+
   return (
     <div className="space-y-6 pb-8">
       {/* Header */}
@@ -704,30 +730,32 @@ const Plans: React.FC = () => {
           <Loader className="w-10 h-10 text-primary-500 animate-spin mb-4" />
           <p className="text-slate-500 dark:text-slate-400 font-medium">Loading plans...</p>
         </div>
-      ) : plans.length === 0 ? (
+      ) : filteredPlans.length === 0 ? (
         /* Empty State */
         <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-slate-800 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700">
           <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-full mb-4">
             <ShieldCheck className="w-8 h-8 text-slate-400 dark:text-slate-500" />
           </div>
           <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
-            No Plans Yet
+            {searchQuery || filterStatus !== 'all' ? 'No Plans Found' : 'No Plans Yet'}
           </h3>
           <p className="text-slate-500 dark:text-slate-400 mb-6 text-center max-w-sm">
-            Create your first subscription plan to start selling licenses.
+            {searchQuery || filterStatus !== 'all' ? 'Try adjusting your filters or search query.' : 'Create your first subscription plan to start selling licenses.'}
           </p>
-          <button
-            onClick={() => handleOpenModal()}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            {t('plans.add')}
-          </button>
+          {(!searchQuery && filterStatus === 'all') && (
+            <button
+              onClick={() => handleOpenModal()}
+              className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              {t('plans.add')}
+            </button>
+          )}
         </div>
       ) : (
         /* Plans Grid */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          {plans.map((plan, index) => (
+          {filteredPlans.map((plan, index) => (
             <div
               key={plan.id}
               className="group relative bg-white dark:bg-slate-800 rounded-2xl border-2 border-slate-200 dark:border-slate-700 hover:border-primary-500 dark:hover:border-primary-500 hover:shadow-2xl hover:shadow-primary-500/20 transition-all duration-300 overflow-hidden flex flex-col"
