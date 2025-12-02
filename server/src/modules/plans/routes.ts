@@ -55,7 +55,11 @@ export default async function planRoutes(app: FastifyInstance) {
 
   // POST /admin/plans
   app.post('/', { preHandler: [app.authorize([Role.admin])] }, async (request, reply) => {
+    console.log('Received POST /admin/plans body:', JSON.stringify(request.body, null, 2));
     const data = planSchema.parse(request.body);
+    console.log('Parsed plan data:', JSON.stringify(data, null, 2));
+
+    const primaryPrice = data.prices.find(p => p.isPrimary) || data.prices[0];
 
     const plan = await app.prisma.plan.create({
       data: {
@@ -64,8 +68,11 @@ export default async function planRoutes(app: FastifyInstance) {
         features: data.features || {},
         limits: data.limits || {},
         isActive: data.isActive,
-        // Legacy fields defaults
+        // Legacy fields defaults - Populate them for safety
         priceUSD: 0,
+        price_monthly: primaryPrice?.monthlyPrice || 0,
+        price_yearly: primaryPrice?.yearlyPrice || 0,
+        currency: primaryPrice?.currency || 'IQD',
         deviceLimit: 1,
         prices: {
           create: data.prices.map(p => ({
@@ -94,10 +101,13 @@ export default async function planRoutes(app: FastifyInstance) {
   // PUT /admin/plans/:id
   app.put('/:id', { preHandler: [app.authorize([Role.admin])] }, async (request, reply) => {
     const id = (request.params as { id: string }).id;
+    console.log(`Received PUT /admin/plans/${id} body:`, JSON.stringify(request.body, null, 2));
     const data = planSchema.parse(request.body);
 
     const oldPlan = await app.prisma.plan.findUnique({ where: { id } });
     if (!oldPlan) return reply.code(404).send({ message: 'Plan not found' });
+
+    const primaryPrice = data.prices.find(p => p.isPrimary) || data.prices[0];
 
     // Update plan and replace prices
     // Transaction to ensure atomicity
@@ -114,6 +124,10 @@ export default async function planRoutes(app: FastifyInstance) {
           features: data.features || {},
           limits: data.limits || {},
           isActive: data.isActive,
+          // Update legacy fields
+          price_monthly: primaryPrice?.monthlyPrice || 0,
+          price_yearly: primaryPrice?.yearlyPrice || 0,
+          currency: primaryPrice?.currency || 'IQD',
           prices: {
             create: data.prices.map(p => ({
               currency: p.currency,

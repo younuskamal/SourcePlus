@@ -454,9 +454,9 @@ const Plans: React.FC = () => {
     try {
       const payload = {
         name: formData.name,
-        durationMonths: Number(formData.durationMonths),
+        durationMonths: Math.floor(Number(formData.durationMonths)),
         prices: formData.prices.map(p => ({
-          currency: p.currency,
+          currency: p.currency || 'IQD',
           monthlyPrice: Number(p.monthlyPrice),
           periodPrice: Number(p.periodPrice),
           yearlyPrice: Number(p.yearlyPrice),
@@ -467,6 +467,8 @@ const Plans: React.FC = () => {
         limits: formData.limits,
         isActive: formData.isActive
       };
+
+      console.log('Submitting plan payload:', payload);
 
       if (editingPlan) {
         await api.updatePlan(editingPlan.id, payload);
