@@ -385,6 +385,12 @@ const Plans: React.FC = () => {
     if (formData.prices.length === 0) errors.prices = 'At least one price is required';
     if (formData.durationMonths <= 0) errors.duration = 'Duration must be greater than 0';
 
+    const currencies = formData.prices.map(p => p.currency);
+    const uniqueCurrencies = new Set(currencies);
+    if (currencies.length !== uniqueCurrencies.size) {
+      errors.prices = 'Duplicate currencies are not allowed';
+    }
+
     formData.prices.forEach((p, i) => {
       if (p.monthlyPrice < 0) errors[`price_${i}_monthly`] = 'Price cannot be negative';
       if (p.discount < 0 || p.discount > 100) errors[`price_${i}_discount`] = 'Discount must be between 0 and 100';
@@ -940,8 +946,8 @@ const Plans: React.FC = () => {
                         <button
                           onClick={() => handleSetPrimary(index)}
                           className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold transition-all ${price.isPrimary
-                              ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 ring-1 ring-amber-500/20'
-                              : 'bg-slate-100 dark:bg-slate-800 text-slate-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-600'
+                            ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 ring-1 ring-amber-500/20'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-600'
                             }`}
                           title="Set as Primary Currency"
                         >
