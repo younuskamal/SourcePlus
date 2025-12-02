@@ -276,3 +276,24 @@ enum TransactionStatus {
   failed
   cancelled
 }
+
+model SupportMessage {
+  id        String   @id @default(uuid())
+  name      String
+  serial    String?
+  message   String
+  status    String   @default("pending") // pending, resolved, closed
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  replies   SupportReply[]
+}
+
+model SupportReply {
+  id        String         @id @default(uuid())
+  messageId String
+  message   SupportMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User           @relation(fields: [userId], references: [id])
+  reply     String
+  createdAt DateTime       @default(now())
+}
