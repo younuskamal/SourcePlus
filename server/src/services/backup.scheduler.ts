@@ -42,7 +42,7 @@ export class BackupScheduler {
                 await this.performBackup();
                 await this.cleanOldBackups();
             } catch (error) {
-                this.app.log.error('Scheduled backup failed:', error);
+                this.app.log.error({ err: error }, 'Scheduled backup failed');
                 // TODO: Send notification about backup failure
             }
         });
@@ -104,7 +104,7 @@ export class BackupScheduler {
 
             return filename;
         } catch (error) {
-            this.app.log.error('Backup creation failed:', error);
+            this.app.log.error({ err: error }, 'Backup creation failed');
             throw error;
         }
     }
@@ -143,7 +143,7 @@ export class BackupScheduler {
                 });
             }
         } catch (error) {
-            this.app.log.error('Backup cleanup failed:', error);
+            this.app.log.error({ err: error }, 'Backup cleanup failed');
         }
     }
 
