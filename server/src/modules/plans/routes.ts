@@ -50,7 +50,7 @@ export default async function planRoutes(app: FastifyInstance) {
       }))
     }));
 
-    return { plans: formattedPlans };
+    return formattedPlans;
   });
 
   // POST /admin/plans
