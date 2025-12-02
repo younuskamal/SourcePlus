@@ -4,7 +4,7 @@ import {
   Plus, Edit2, Trash2, Copy, Check, X, Loader, AlertCircle,
   CheckCircle2, XCircle, Eye, EyeOff, ShieldCheck, Zap, Globe,
   AlertTriangle, LayoutTemplate, Save, Calendar, Coins, Calculator, Star,
-  RefreshCw, Info, Search
+  RefreshCw, Info, Search, MoreHorizontal
 } from 'lucide-react';
 import { api } from '../services/api';
 import { CurrencyRate, SubscriptionPlan, PlanPrice } from '../types';
@@ -738,176 +738,169 @@ const Plans: React.FC = () => {
           {filteredPlans.map((plan, index) => (
             <div
               key={plan.id}
-              className="group relative bg-white dark:bg-slate-800 rounded-2xl border-2 border-slate-200 dark:border-slate-700 hover:border-primary-500 dark:hover:border-primary-500 hover:shadow-2xl hover:shadow-primary-500/20 transition-all duration-300 overflow-hidden flex flex-col"
+              className={`group relative flex flex-col bg-white dark:bg-slate-800 rounded-2xl border transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${plan.isActive
+                ? 'border-slate-200 dark:border-slate-700 shadow-sm'
+                : 'border-slate-200 dark:border-slate-700 opacity-75 hover:opacity-100 border-dashed'
+                }`}
               style={{ animationDelay: `${index * 100}ms` }}
             >
-              {/* Status Indicator */}
-              <div className={`absolute top-0 left-0 right-0 h-1.5 ${plan.isActive ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
+              {/* Status Badge */}
+              <div className="absolute top-4 right-4 z-10">
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-sm ${plan.isActive
+                  ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-600'
+                  }`}>
+                  {plan.isActive ? (
+                    <><CheckCircle2 size={10} /> Active</>
+                  ) : (
+                    <><EyeOff size={10} /> Inactive</>
+                  )}
+                </span>
+              </div>
 
-              {/* Content */}
-              <div className="p-6 flex-1">
-                {/* Header */}
-                <div className="flex items-start justify-between gap-3 mb-4">
-                  <div className="flex-1">
-                    <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">
-                      {plan.name}
-                    </h3>
-                    <div className="flex gap-2 flex-wrap">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-xs font-bold border border-blue-100 dark:border-blue-800">
-                        <Calendar size={12} /> {plan.durationMonths} {plan.durationMonths === 1 ? 'Month' : 'Months'}
-                      </span>
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border ${plan.isActive
-                          ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-800'
-                          : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-600'
-                          }`}
-                      >
-                        {plan.isActive ? '✓ Active' : '○ Inactive'}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="p-3 bg-gradient-to-br from-primary-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-800/20 rounded-xl text-primary-600 dark:text-primary-400 shadow-sm">
-                    <ShieldCheck size={24} />
+              {/* Card Header & Price */}
+              <div className="p-6 pb-4">
+                <div className="mb-4 pr-20">
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white mb-1 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                    {plan.name}
+                  </h3>
+                  <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                    <span className="flex items-center gap-1 bg-slate-100 dark:bg-slate-700/50 px-2 py-0.5 rounded text-slate-600 dark:text-slate-300">
+                      <Calendar size={10} /> {plan.durationMonths} {plan.durationMonths === 1 ? 'Month' : 'Months'}
+                    </span>
                   </div>
                 </div>
 
-                {/* Pricing */}
-                <div className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-700/30 dark:to-slate-800/30 rounded-xl p-4 mb-5 border border-slate-200 dark:border-slate-700/50 shadow-inner">
+                {/* Pricing Display */}
+                <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-4 border border-slate-100 dark:border-slate-700/50">
                   {plan.prices && plan.prices.length > 0 ? (
-                    <div className="space-y-3">
-                      <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-                        <Coins size={10} className="inline mr-1" /> Pricing Options
-                      </p>
-                      {plan.prices.map((price, idx) => (
-                        <div key={idx} className={`flex justify-between items-center p-2.5 rounded-lg ${price.isPrimary ? 'bg-white dark:bg-slate-700 shadow-sm border border-primary-200 dark:border-primary-800' : 'bg-slate-50 dark:bg-slate-800/50'}`}>
-                          <div className="flex items-center gap-2">
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${price.isPrimary ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'}`}>
-                              {price.currency}
-                            </div>
-                            <div>
-                              <div className={`text-sm font-bold ${price.isPrimary ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
-                                {price.periodPrice.toLocaleString()}
-                              </div>
-                              <div className="text-[10px] text-slate-500 dark:text-slate-500">
-                                {price.monthlyPrice.toLocaleString()}/mo
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex flex-col items-end gap-1">
-                            {price.isPrimary && (
-                              <Star size={12} className="text-amber-500 fill-amber-500" />
-                            )}
-                            {price.discount > 0 && (
-                              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full">
-                                Save {price.discount}%
-                              </span>
-                            )}
-                          </div>
+                    <div className="space-y-2">
+                      {plan.prices.filter(p => p.isPrimary).map((price, idx) => (
+                        <div key={`primary-${idx}`} className="flex items-baseline gap-1">
+                          <span className="text-2xl font-black text-slate-900 dark:text-white">
+                            {price.periodPrice.toLocaleString()}
+                          </span>
+                          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
+                            {price.currency}
+                          </span>
+                          {price.discount > 0 && (
+                            <span className="ml-auto text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full">
+                              -{price.discount}%
+                            </span>
+                          )}
                         </div>
                       ))}
+                      {plan.prices.filter(p => !p.isPrimary).length > 0 && (
+                        <div className="pt-2 mt-2 border-t border-slate-200 dark:border-slate-700 flex flex-wrap gap-2">
+                          {plan.prices.filter(p => !p.isPrimary).map((price, idx) => (
+                            <span key={`other-${idx}`} className="text-[10px] text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                              {price.periodPrice.toLocaleString()} {price.currency}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ) : (
-                    <div className="text-center py-4">
-                      <p className="text-sm text-rose-600 dark:text-rose-400 font-medium">⚠ No prices defined</p>
-                      <p className="text-xs text-slate-500 mt-1">Click edit to add pricing</p>
+                    <div className="text-center py-2 text-xs text-slate-400 italic">
+                      No pricing configured
                     </div>
                   )}
-                </div>
-
-                {/* Features */}
-                <div className="mb-5">
-                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1">
-                    <CheckCircle2 size={10} /> {t('plans.features')} ({Object.keys(plan.features || {}).length})
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {Object.keys(plan.features || {}).length > 0 ? (
-                      Object.keys(plan.features).slice(0, 5).map((f) => (
-                        <span
-                          key={f}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-700 border border-emerald-200 dark:border-emerald-800 text-slate-700 dark:text-slate-200 text-xs font-medium shadow-sm hover:shadow-md transition-shadow"
-                        >
-                          <Check size={12} className="text-emerald-500 dark:text-emerald-400" /> {f}
-                        </span>
-                      ))
-                    ) : (
-                      <p className="text-xs text-slate-400 italic w-full text-center py-2">No features defined</p>
-                    )}
-                    {Object.keys(plan.features || {}).length > 5 && (
-                      <span className="inline-flex items-center px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold">
-                        +{Object.keys(plan.features).length - 5} more
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Limits */}
-                <div>
-                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1">
-                    <Zap size={10} /> Limits ({Object.keys(plan.limits || {}).length})
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {Object.keys(plan.limits || {}).length > 0 ? (
-                      Object.entries(plan.limits).slice(0, 4).map(([k, v]) => (
-                        <span
-                          key={k}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-700 border border-amber-200 dark:border-amber-800 text-slate-700 dark:text-slate-200 text-xs font-medium shadow-sm"
-                        >
-                          <Zap size={12} className="text-amber-500 dark:text-amber-400" /> {k}: <strong>{v}</strong>
-                        </span>
-                      ))
-                    ) : (
-                      <p className="text-xs text-slate-400 italic w-full text-center py-2">No limits defined</p>
-                    )}
-                    {Object.keys(plan.limits || {}).length > 4 && (
-                      <span className="inline-flex items-center px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold">
-                        +{Object.keys(plan.limits).length - 4} more
-                      </span>
-                    )}
-                  </div>
                 </div>
               </div>
 
-              {/* Actions */}
-              <div className="p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex gap-2">
-                <button
-                  onClick={() => handleToggleStatus(plan)}
-                  className={`flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-colors ${plan.isActive
-                    ? 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600'
-                    : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/30'
-                    }`}
-                  title={plan.isActive ? 'Deactivate' : 'Activate'}
-                >
-                  {plan.isActive ? (
-                    <>
-                      <EyeOff size={14} /> Hide
-                    </>
-                  ) : (
-                    <>
-                      <Eye size={14} /> Publish
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={() => handleDuplicate(plan)}
-                  className="inline-flex items-center justify-center p-2 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"
-                  title="Duplicate"
-                >
-                  <Copy size={14} />
-                </button>
-                <button
-                  onClick={() => handleOpenModal(plan)}
-                  className="inline-flex items-center justify-center p-2 bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 border border-primary-100 dark:border-primary-800 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/30 transition-colors"
-                  title="Edit"
-                >
-                  <Edit2 size={14} />
-                </button>
-                <button
-                  onClick={() => handleDeleteClick(plan.id, plan.name)}
-                  className="inline-flex items-center justify-center p-2 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-800 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-900/30 transition-colors"
-                  title="Delete"
-                >
-                  <Trash2 size={14} />
-                </button>
+              {/* Features & Limits Scrollable Area */}
+              <div className="flex-1 px-6 py-2 space-y-4">
+                {/* Features */}
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1">
+                    <ShieldCheck size={10} /> Features
+                  </p>
+                  <ul className="space-y-1.5">
+                    {Object.keys(plan.features || {}).slice(0, 4).map((f, i) => (
+                      <li key={i} className="flex items-start gap-2 text-xs text-slate-600 dark:text-slate-300">
+                        <Check size={12} className="text-emerald-500 mt-0.5 shrink-0" />
+                        <span className="line-clamp-1">{f}</span>
+                      </li>
+                    ))}
+                    {Object.keys(plan.features || {}).length === 0 && (
+                      <li className="text-xs text-slate-400 italic pl-5">No features listed</li>
+                    )}
+                    {Object.keys(plan.features || {}).length > 4 && (
+                      <li className="text-[10px] font-medium text-primary-600 dark:text-primary-400 pl-5">
+                        +{Object.keys(plan.features || {}).length - 4} more features
+                      </li>
+                    )}
+                  </ul>
+                </div>
+
+                {/* Limits */}
+                {Object.keys(plan.limits || {}).length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1">
+                      <Zap size={10} /> Limits
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {Object.entries(plan.limits || {}).slice(0, 3).map(([k, v], i) => (
+                        <span key={i} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/30 text-[10px] text-amber-700 dark:text-amber-400">
+                          <span className="font-medium">{k}:</span> <strong>{v}</strong>
+                        </span>
+                      ))}
+                      {Object.keys(plan.limits || {}).length > 3 && (
+                        <span className="text-[10px] text-slate-400 self-center">...</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Actions Footer */}
+              <div className="p-4 mt-auto">
+                <div className="grid grid-cols-4 gap-2">
+                  <button
+                    onClick={() => handleToggleStatus(plan)}
+                    className={`col-span-2 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all ${plan.isActive
+                      ? 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                      : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm hover:shadow-emerald-500/20'
+                      }`}
+                  >
+                    {plan.isActive ? (
+                      <><EyeOff size={14} /> Hide</>
+                    ) : (
+                      <><Eye size={14} /> Publish</>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => handleOpenModal(plan)}
+                    className="col-span-1 flex items-center justify-center p-2 rounded-lg bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 border border-primary-100 dark:border-primary-800 hover:bg-primary-100 dark:hover:bg-primary-900/30 transition-colors"
+                    title="Edit Plan"
+                  >
+                    <Edit2 size={16} />
+                  </button>
+
+                  <div className="col-span-1 relative group/menu">
+                    <button
+                      className="w-full h-full flex items-center justify-center p-2 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                    >
+                      <MoreHorizontal size={16} />
+                    </button>
+                    {/* Dropdown Menu */}
+                    <div className="absolute bottom-full right-0 mb-2 w-32 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 overflow-hidden hidden group-hover/menu:block z-20 animate-in slide-in-from-bottom-2 fade-in-50">
+                      <button
+                        onClick={() => handleDuplicate(plan)}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 text-left"
+                      >
+                        <Copy size={12} /> Duplicate
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClick(plan.id, plan.name)}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 text-left"
+                      >
+                        <Trash2 size={12} /> Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           ))}
