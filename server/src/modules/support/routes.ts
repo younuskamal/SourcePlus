@@ -11,10 +11,11 @@ const supportMessageSchema = z.object({
 
 export default async function supportRoutes(app: FastifyInstance) {
     // Get all support messages (Admin/Developer only)
-    app.get('/messages', { preHandler: [app.authorize([Role.admin, Role.developer])] }, async () => {
-        return app.prisma.supportMessage.findMany({
+    app.get('/messages', { preHandler: [app.authorize([Role.admin, Role.developer])] }, async (request, reply) => {
+        const messages = await app.prisma.supportMessage.findMany({
             orderBy: { createdAt: 'desc' }
         });
+        return reply.send(messages);
     });
 
     // Submit a support message (Public endpoint)
