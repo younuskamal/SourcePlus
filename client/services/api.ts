@@ -290,5 +290,16 @@ export const api = {
   },
   clearTrafficLogs() {
     return doRequest<void>('/traffic/clear', { method: 'POST' });
+  },
+
+  // -- Clinics --
+  getClinicRequests() {
+    return doRequest<any[]>('/api/clinics/requests');
+  },
+  approveClinic(id: string) {
+    return doRequest<any>(`/api/clinics/${id}/approve`, { method: 'POST' });
+  },
+  toggleClinicStatus(id: string) {
+    return doRequest<any>(`/api/clinics/${id}/toggle-status`, { method: 'POST' });
   }
 };

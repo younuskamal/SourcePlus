@@ -32,9 +32,7 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
     const fetchClinics = async () => {
         try {
             setLoading(true);
-            // We fetch all requests. In a real large-scale app, we might pass ?status=X to the API.
-            // For now, the API returns everything and we filter client-side for immediate UI transitions.
-            const { data } = await api.get('/api/clinics/requests');
+            const data = await api.getClinicRequests();
             setClinics(data);
         } catch (e) {
             console.error('Failed to fetch clinics', e);
@@ -51,7 +49,7 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
         if (!confirm('Are you sure you want to approve this clinic? This will generate a new license.')) return;
         try {
             setProcessing(id);
-            await api.post(`/api/clinics/${id}/approve`);
+            await api.approveClinic(id);
             await fetchClinics();
         } catch (e) {
             alert('Failed to approve clinic');
@@ -67,7 +65,7 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
 
         try {
             setProcessing(id);
-            await api.post(`/api/clinics/${id}/toggle-status`);
+            await api.toggleClinicStatus(id);
             await fetchClinics();
         } catch (e) {
             alert(`Failed to ${action} clinic`);
@@ -218,8 +216,8 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                                                             {clinic.license.serial}
                                                         </div>
                                                         <div className={`flex items-center gap-2 text-xs ${new Date(clinic.license.expireDate || '') < new Date()
-                                                                ? 'text-rose-500 font-bold'
-                                                                : 'text-slate-500'
+                                                            ? 'text-rose-500 font-bold'
+                                                            : 'text-slate-500'
                                                             }`}>
                                                             <Calendar size={12} />
                                                             Example: {formatDate(clinic.license.expireDate || '')}
