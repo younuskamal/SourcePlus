@@ -1,14 +1,14 @@
-
 import React, { useState } from 'react';
 import { useTranslation } from '../hooks/useTranslation';
 import {
   Server, Shield, Globe, Terminal, Copy, Check,
   ChevronRight, ChevronDown, Code2, Database, Zap,
-  CreditCard, Layout, Activity
+  CreditCard, Stethoscope
 } from 'lucide-react';
+import { useSystem } from '../context/SystemContext';
 
-const LICENSING_BASE = 'https://sourceplus.onrender.com/api';
-const AUTH_BASE = 'https://sourceplus.onrender.com/auth';
+const LICENSING_BASE = 'https://sourcef.onrender.com/api';
+const AUTH_BASE = 'https://sourcef.onrender.com/auth';
 
 const CodeBlock: React.FC<{ children: string; language?: string }> = ({ children, language = 'json' }) => {
   const [copied, setCopied] = useState(false);
@@ -123,24 +123,28 @@ const SectionHeader: React.FC<{ title: string; icon: any; description: string }>
 const ApiDocs: React.FC = () => {
   const { t, i18n } = useTranslation();
   const isRtl = i18n.language === 'ar';
+  const { product } = useSystem();
 
   return (
     <div className="max-w-4xl mx-auto pb-20 space-y-12" dir={isRtl ? 'rtl' : 'ltr'}>
 
       {/* Header */}
       <div className="text-center space-y-4 py-8">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-500 to-indigo-600 text-white shadow-lg shadow-primary-500/20 mb-4">
+        <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br ${product === 'CLINIC' ? 'from-emerald-500 to-teal-600' : 'from-blue-500 to-indigo-600'} text-white shadow-lg shadow-primary-500/20 mb-4`}>
           <Server size={32} />
         </div>
         <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
           {t('nav.apiDocs')}
         </h1>
         <p className="text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
-          Comprehensive guide to integrating your applications with the SourcePlus Licensing System.
+          {product === 'CLINIC'
+            ? "دليل دمج وتسجيل نظام العيادات"
+            : "Comprehensive guide to integrating your applications with the SourcePlus Licensing System."
+          }
         </p>
       </div>
 
-      {/* Quick Info Cards */}
+      {/* Base Info Cards - Dynamic based on system */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
           <div className="flex items-center gap-2 mb-2 text-primary-600 dark:text-primary-400">
@@ -151,49 +155,102 @@ const ApiDocs: React.FC = () => {
             {LICENSING_BASE}
           </code>
         </div>
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
-          <div className="flex items-center gap-2 mb-2 text-indigo-600 dark:text-indigo-400">
-            <Shield size={18} />
-            <span className="text-xs font-bold uppercase tracking-wider">Auth URL</span>
+        {!product && (
+          <div className="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div className="flex items-center gap-2 mb-2 text-indigo-600 dark:text-indigo-400">
+              <Shield size={18} />
+              <span className="text-xs font-bold uppercase tracking-wider">Auth URL</span>
+            </div>
+            <code className="text-sm font-mono font-bold text-slate-900 dark:text-white break-all">
+              {AUTH_BASE}
+            </code>
           </div>
-          <code className="text-sm font-mono font-bold text-slate-900 dark:text-white break-all">
-            {AUTH_BASE}
-          </code>
-        </div>
+        )}
         <div className="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
           <div className="flex items-center gap-2 mb-2 text-emerald-600 dark:text-emerald-400">
             <Check size={18} />
-            <span className="text-xs font-bold uppercase tracking-wider">Status</span>
+            <span className="text-xs font-bold uppercase tracking-wider">System Status</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="relative flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
             </span>
-            <span className="text-sm font-bold text-slate-900 dark:text-white">Operational</span>
+            <span className="text-sm font-bold text-slate-900 dark:text-white">Active</span>
           </div>
         </div>
       </div>
 
-      {/* Authentication Section */}
-      <section>
-        <SectionHeader
-          title="Authentication"
-          icon={Shield}
-          description="Manage user sessions and obtain access tokens."
-        />
-        <div className="space-y-4">
-          <Endpoint
-            isRtl={isRtl}
-            method="POST"
-            url="/login"
-            title="User Login"
-            description="Authenticate a user to receive access and refresh tokens."
-            payload={`{
+      {product === 'CLINIC' ? (
+        /* CLinic Specific Documentation */
+        <section>
+          <SectionHeader
+            title="تسجيل العيادات (Clinic Registration)"
+            icon={Stethoscope}
+            description="نقاط النهاية (Endpoints) الخاصة بتسجيل عيادة جديدة والتحقق من حالتها."
+          />
+          <div className="space-y-4">
+            <Endpoint
+              isRtl={isRtl}
+              method="POST"
+              url="/api/clinics/register"
+              title="تسجيل طلب عيادة جديد"
+              description="يستخدم هذا الرابط لإرسال بيانات العيادة لأول مرة عند التثبيت. سيتم وضع الطلب في حالة انتظار (PENDING) لحين الموافقة من قبل الإدارة."
+              payload={`{
+  "name": "عيادة الأمل الطبية",
+  "doctorName": "د. أحمد علي",
+  "email": "clinic@example.com",
+  "phone": "+9647701234567",
+  "address": "بغداد، المنصور",
+  "hwid": "HWID-1234-5678-9000",
+  "systemVersion": "1.0.0"
+}`}
+              response={`{
+  "id": "uuid-clinic-id",
+  "name": "عيادة الأمل الطبية",
+  "status": "PENDING",
+  "createdAt": "2024-03-20T10:00:00Z"
+}`}
+            />
+            <Endpoint
+              isRtl={isRtl}
+              method="GET"
+              url="/api/subscription/status"
+              title="التحقق من حالة التفعيل"
+              description="يجب استدعاء هذا الرابط عند تشغيل النظام للتحقق مما إذا تمت الموافقة على العيادة وتفعيل الترخيص."
+              response={`{
+  "status": "active",
+  "license": {
+     "serial": "CLINIC-KEY-XXXX",
+     "expireDate": "2025-03-20"
+  },
+  "remainingDays": 365,
+  "forceLogout": false
+}`}
+            />
+          </div>
+        </section>
+      ) : (
+        <>
+          {/* POS Standard Documentation (Authentication, Plans, Licenses) */}
+          <section>
+            <SectionHeader
+              title="Authentication"
+              icon={Shield}
+              description="Manage user sessions and obtain access tokens."
+            />
+            <div className="space-y-4">
+              <Endpoint
+                isRtl={isRtl}
+                method="POST"
+                url="/login"
+                title="User Login"
+                description="Authenticate a user to receive access and refresh tokens."
+                payload={`{
   "email": "admin@sourceplus.com",
   "password": "your_password"
 }`}
-            response={`{
+                response={`{
   "accessToken": "eyJhbGciOiJIUzI1NiIs...",
   "refreshToken": "eyJhbGciOiJIUzI1NiIs...",
   "user": {
@@ -202,97 +259,27 @@ const ApiDocs: React.FC = () => {
     "role": "admin"
   }
 }`}
-          />
-          <Endpoint
-            isRtl={isRtl}
-            method="POST"
-            url="/refresh"
-            title="Refresh Token"
-            description="Obtain a new access token using a valid refresh token."
-            payload={`{
-  "refreshToken": "eyJhbGciOiJIUzI1NiIs..."
-}`}
-            response={`{
-  "accessToken": "eyJhbGciOiJIUzI1NiIs..."
-}`}
-          />
-        </div>
-      </section>
+              />
+            </div>
+          </section>
 
-      {/* Plans Section */}
-      <section>
-        <SectionHeader
-          title="Subscription Plans"
-          icon={CreditCard}
-          description="Retrieve available subscription plans for your application."
-        />
-        <div className="space-y-4">
-
-          <div className="space-y-4">
-            <Endpoint
-              isRtl={isRtl}
-              method="GET"
-              url="/api/plans"
-              title="List Active Plans"
-              description="Fetch a list of all active subscription plans with detailed multi-currency pricing."
-              response={`{
-  "plans": [
-    {
-      "id": "uuid...",
-      "name": "Professional Plan",
-      "durationMonths": 12,
-      "features": {
-        "pos": true,
-        "inventory": true
-      },
-      "limits": {
-        "maxUsers": 5
-      },
-      "is_active": true,
-      "prices": [
-        {
-          "currency": "USD",
-          "monthlyPrice": 10,
-          "periodPrice": 100,
-          "yearlyPrice": 100,
-          "discount": 16.6,
-          "isPrimary": true
-        },
-        {
-          "currency": "IQD",
-          "monthlyPrice": 15000,
-          "periodPrice": 150000,
-          "yearlyPrice": 150000,
-          "discount": 16.6,
-          "isPrimary": false
-        }
-      ]
-    }
-  ]
-}`}
+          <section>
+            <SectionHeader
+              title="Licensing & Activation"
+              icon={Zap}
+              description="Validate serial keys and activate devices."
             />
-          </div>
-        </div>
-      </section>
-
-      {/* Licensing Section */}
-      <section>
-        <SectionHeader
-          title="Licensing & Activation"
-          icon={Zap}
-          description="Validate serial keys and activate devices."
-        />
-        <div className="space-y-4">
-          <Endpoint
-            isRtl={isRtl}
-            method="POST"
-            url="/api/license/validate"
-            title="Validate Serial"
-            description="Check if a serial key is valid and available. Does not bind the device."
-            payload={`{
+            <div className="space-y-4">
+              <Endpoint
+                isRtl={isRtl}
+                method="POST"
+                url="/api/license/validate"
+                title="Validate Serial"
+                description="Check if a serial key is valid and available. Does not bind the device."
+                payload={`{
   "serial": "SP-2024-XXXX-YYYY"
 }`}
-            response={`{
+                response={`{
   "valid": true,
   "status": "active",
   "plan": {
@@ -301,41 +288,31 @@ const ApiDocs: React.FC = () => {
   },
   "expireDate": "2024-12-31T00:00:00Z"
 }`}
-          />
-          <Endpoint
-            isRtl={isRtl}
-            method="POST"
-            url="/api/license/activate"
-            title="Activate Device"
-            description="Bind a serial key to a specific device (Hardware ID)."
-            payload={`{
+              />
+              <Endpoint
+                isRtl={isRtl}
+                method="POST"
+                url="/api/license/activate"
+                title="Activate Device"
+                description="Bind a serial key to a specific device (Hardware ID)."
+                payload={`{
   "serial": "SP-2024-XXXX-YYYY",
   "hardwareId": "UUID-MAC-DISK-SERIAL",
   "deviceName": "Cashier-01",
   "appVersion": "1.0.0"
 }`}
-            response={`{
+                response={`{
   "success": true,
   "activationDate": "2024-01-01T10:00:00Z",
   "message": "Device activated successfully."
 }`}
-          />
-          <Endpoint
-            isRtl={isRtl}
-            method="GET"
-            url="/api/subscription/status"
-            title="Check Status"
-            description="Verify the current subscription status. Call this on app startup."
-            response={`{
-  "status": "active",
-  "remainingDays": 120,
-  "forceLogout": false
-}`}
-          />
-        </div>
-      </section>
+              />
+            </div>
+          </section>
+        </>
+      )}
 
-      {/* System Section */}
+      {/* Common System Section */}
       <section>
         <SectionHeader
           title="System & Config"
@@ -355,20 +332,6 @@ const ApiDocs: React.FC = () => {
   "downloadUrl": "https://cdn.sourceplus.com/v1.1.0.exe",
   "releaseNotes": "Fixed receipt printing bug.",
   "forceUpdate": false
-}`}
-          />
-          <Endpoint
-            isRtl={isRtl}
-            method="GET"
-            url="/api/config/sync"
-            title="Sync Configuration"
-            description="Fetch remote configuration settings (feature flags, support info)."
-            response={`{
-  "maintenance_mode": false,
-  "support_phone": "+9647700000000",
-  "features": {
-     "beta_reports": true
-  }
 }`}
           />
         </div>
