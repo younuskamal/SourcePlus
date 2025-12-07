@@ -122,4 +122,20 @@ export default async function clinicRoutes(app: FastifyInstance) {
         await logAudit(app, { userId: request.user?.id, action: 'TOGGLE_CLINIC_STATUS', details: `Toggled clinic ${clinic.name} to ${newStatus}`, ip: request.ip });
         return reply.send({ status: newStatus });
     });
+
+    app.delete('/:id', { preHandler: [app.authorize([Role.admin])] }, async (request, reply) => {
+        const { id } = request.params as { id: string };
+        const clinic = await app.prisma.clinic.findUnique({ where: { id }, include: { license: true } });
+        if (!clinic) return reply.code(404).send({ message: 'Clinic not found' });
+
+        // If license exists, delete it first (cascade should handle it depending on schema, but explicit is safer)
+        if (clinic.licenseId) {
+            await app.prisma.license.delete({ where: { id: clinic.licenseId } });
+        }
+
+        await app.prisma.clinic.delete({ where: { id } });
+
+        await logAudit(app, { userId: request.user?.id, action: 'DELETE_CLINIC', details: `Deleted clinic ${clinic.name}`, ip: request.ip });
+        return reply.send({ message: 'Clinic deleted successfully' });
+    });
 }

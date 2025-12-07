@@ -301,5 +301,8 @@ export const api = {
   },
   toggleClinicStatus(id: string) {
     return doRequest<any>(`/api/clinics/${id}/toggle-status`, { method: 'POST' });
+  },
+  deleteClinic(id: string) {
+    return doRequest<void>(`/api/clinics/${id}`, { method: 'DELETE' });
   }
 };
