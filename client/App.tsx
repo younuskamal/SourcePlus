@@ -169,8 +169,8 @@ function AppContent() {
       case 'team': return <Team currentLang={i18n.language} />;
       case 'api': return <ApiDocs currentLang={i18n.language} />;
       case 'audit-logs': return <AuditLogs currentLang={i18n.language} />;
-      case 'clinics': return <Clinics />;
-      case 'manage-clinics': return <Clinics />; // Reuse for now or separate if needed
+      case 'clinics': return <Clinics viewMode="requests" />;
+      case 'manage-clinics': return <Clinics viewMode="manage" />;
       default: return <Dashboard currentLang={i18n.language} setPage={setPage} />;
     }
   };

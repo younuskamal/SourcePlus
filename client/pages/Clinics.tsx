@@ -12,10 +12,15 @@ import {
     Mail,
     Phone,
     MapPin,
-    Cpu
+    Cpu,
+    LayoutDashboard
 } from 'lucide-react';
 
-const Clinics: React.FC = () => {
+interface ClinicsProps {
+    viewMode: 'requests' | 'manage';
+}
+
+const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
     const [clinics, setClinics] = useState<Clinic[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -24,6 +29,7 @@ const Clinics: React.FC = () => {
     const fetchClinics = async () => {
         try {
             setLoading(true);
+            // Fetch all and filter client side for flexibility in this view
             const { data } = await api.get('/api/clinics/requests');
             setClinics(data);
         } catch (e) {
@@ -35,7 +41,7 @@ const Clinics: React.FC = () => {
 
     useEffect(() => {
         fetchClinics();
-    }, []);
+    }, [viewMode]); // Re-fetch if view changes just in case
 
     const handleApprove = async (id: string) => {
         if (!confirm('Are you sure you want to approve this clinic? This will generate a new license.')) return;
@@ -67,11 +73,21 @@ const Clinics: React.FC = () => {
         }
     };
 
-    const filtered = clinics.filter(c =>
-        c.name.toLowerCase().includes(search.toLowerCase()) ||
-        c.email.toLowerCase().includes(search.toLowerCase()) ||
-        c.doctorName?.toLowerCase().includes(search.toLowerCase())
-    );
+    const filtered = clinics.filter(c => {
+        // Search Filter
+        const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
+            c.email.toLowerCase().includes(search.toLowerCase()) ||
+            c.doctorName?.toLowerCase().includes(search.toLowerCase());
+
+        if (!matchesSearch) return false;
+
+        // View Mode Filter
+        if (viewMode === 'requests') {
+            return c.status === RegistrationStatus.PENDING || c.status === RegistrationStatus.REJECTED;
+        } else {
+            return c.status === RegistrationStatus.APPROVED || c.status === RegistrationStatus.SUSPENDED;
+        }
+    });
 
     const getStatusColor = (status: RegistrationStatus) => {
         switch (status) {
@@ -82,15 +98,22 @@ const Clinics: React.FC = () => {
         }
     };
 
+    const pageTitle = viewMode === 'requests' ? 'Clinic Requests' : 'Manage Clinics';
+    const pageIcon = viewMode === 'requests' ? Stethoscope : LayoutDashboard;
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-                        <Stethoscope className="text-emerald-500" />
-                        Clinic Requests
+                        {React.createElement(pageIcon, { className: "text-emerald-500" })}
+                        {pageTitle}
                     </h1>
-                    <p className="text-slate-500 mt-1">Manage clinic registrations and licenses.</p>
+                    <p className="text-slate-500 mt-1">
+                        {viewMode === 'requests'
+                            ? 'Review and approve incoming registration requests.'
+                            : 'Monitor active clinics and manage their licenses.'}
+                    </p>
                 </div>
 
                 <div className="relative">
@@ -112,7 +135,11 @@ const Clinics: React.FC = () => {
                     </div>
                 ) : filtered.length === 0 ? (
                     <div className="p-12 text-center text-slate-500">
-                        No clinics found matching your criteria.
+                        {search ? "No clinics found matching your search." : (
+                            viewMode === 'requests'
+                                ? "No pending requests found."
+                                : "No active clinics found."
+                        )}
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
@@ -191,8 +218,8 @@ const Clinics: React.FC = () => {
                                                         onClick={() => handleToggle(clinic.id, clinic.status)}
                                                         disabled={!!processing}
                                                         className={`p-2 rounded-lg transition-colors ${clinic.status === RegistrationStatus.SUSPENDED
-                                                                ? 'text-emerald-500 hover:bg-emerald-500/10'
-                                                                : 'text-rose-500 hover:bg-rose-500/10'
+                                                            ? 'text-emerald-500 hover:bg-emerald-500/10'
+                                                            : 'text-rose-500 hover:bg-rose-500/10'
                                                             }`}
                                                         title={clinic.status === RegistrationStatus.SUSPENDED ? 'Activate' : 'Suspend'}
                                                     >
