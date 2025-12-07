@@ -106,7 +106,7 @@ const Layout: React.FC<LayoutProps> = ({
         {/* Navigation Area */}
         <nav className="flex-1 p-3 space-y-6 overflow-y-auto custom-scrollbar">
 
-          <SystemSwitcher />
+
 
           <div className="space-y-0.5">
             {filteredMainMenu.map((item) => (
@@ -190,6 +190,7 @@ const Layout: React.FC<LayoutProps> = ({
           <div className="flex-1" />
 
           <div className="flex items-center gap-4">
+            <SystemSwitcher />
             <button
               onClick={() => setDarkMode(!darkMode)}
               className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors"
