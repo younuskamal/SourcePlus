@@ -13,7 +13,10 @@ import {
     Phone,
     MapPin,
     Cpu,
-    LayoutDashboard
+    LayoutDashboard,
+    Key,
+    Calendar,
+    RefreshCw
 } from 'lucide-react';
 
 interface ClinicsProps {
@@ -29,7 +32,8 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
     const fetchClinics = async () => {
         try {
             setLoading(true);
-            // Fetch all and filter client side for flexibility in this view
+            // We fetch all requests. In a real large-scale app, we might pass ?status=X to the API.
+            // For now, the API returns everything and we filter client-side for immediate UI transitions.
             const { data } = await api.get('/api/clinics/requests');
             setClinics(data);
         } catch (e) {
@@ -41,7 +45,7 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
 
     useEffect(() => {
         fetchClinics();
-    }, [viewMode]); // Re-fetch if view changes just in case
+    }, [viewMode]);
 
     const handleApprove = async (id: string) => {
         if (!confirm('Are you sure you want to approve this clinic? This will generate a new license.')) return;
@@ -98,6 +102,11 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
         }
     };
 
+    const formatDate = (dateString: string) => {
+        if (!dateString) return '-';
+        return new Date(dateString).toLocaleDateString();
+    };
+
     const pageTitle = viewMode === 'requests' ? 'Clinic Requests' : 'Manage Clinics';
     const pageIcon = viewMode === 'requests' ? Stethoscope : LayoutDashboard;
 
@@ -112,24 +121,34 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                     <p className="text-slate-500 mt-1">
                         {viewMode === 'requests'
                             ? 'Review and approve incoming registration requests.'
-                            : 'Monitor active clinics and manage their licenses.'}
+                            : 'Monitor active clinics, license details, and status.'}
                     </p>
                 </div>
 
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input
-                        type="text"
-                        placeholder="Search clinics..."
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                        className="pl-10 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none w-full md:w-64"
-                    />
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={fetchClinics}
+                        disabled={loading}
+                        className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                        title="Refresh Data"
+                    >
+                        <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
+                    </button>
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <input
+                            type="text"
+                            placeholder="Search clinics..."
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            className="pl-10 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none w-full md:w-64"
+                        />
+                    </div>
                 </div>
             </div>
 
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                {loading ? (
+                {loading && clinics.length === 0 ? (
                     <div className="p-12 flex justify-center">
                         <Loader2 className="animate-spin text-emerald-500" size={32} />
                     </div>
@@ -137,7 +156,7 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                     <div className="p-12 text-center text-slate-500">
                         {search ? "No clinics found matching your search." : (
                             viewMode === 'requests'
-                                ? "No pending requests found."
+                                ? "No pending registration requests."
                                 : "No active clinics found."
                         )}
                     </div>
@@ -148,6 +167,12 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                                 <tr>
                                     <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Clinic Info</th>
                                     <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Contact</th>
+
+                                    {/* Conditional Columns for Manage View */}
+                                    {viewMode === 'manage' && (
+                                        <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">License Info</th>
+                                    )}
+
                                     <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">System Info</th>
                                     <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Status</th>
                                     <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300 text-right">Actions</th>
@@ -162,6 +187,8 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                                                 {clinic.doctorName && (
                                                     <p className="text-slate-500 text-xs flex items-center gap-1 mt-1">
                                                         Dr. {clinic.doctorName}
+                                                        <span className="mx-1">•</span>
+                                                        <span className='text-[10px]'>{formatDate(clinic.createdAt)}</span>
                                                     </p>
                                                 )}
                                             </div>
@@ -178,14 +205,32 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                                                         <span>{clinic.phone}</span>
                                                     </div>
                                                 )}
-                                                {clinic.address && (
-                                                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                                                        <MapPin size={14} />
-                                                        <span className="truncate max-w-[150px]" title={clinic.address}>{clinic.address}</span>
-                                                    </div>
-                                                )}
                                             </div>
                                         </td>
+
+                                        {/* License Data Column for Manage View */}
+                                        {viewMode === 'manage' && (
+                                            <td className="px-6 py-4">
+                                                {clinic.license ? (
+                                                    <div className="space-y-1 text-slate-600 dark:text-slate-400">
+                                                        <div className="flex items-center gap-2 font-mono text-xs text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-900 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 w-fit">
+                                                            <Key size={12} className="text-emerald-500" />
+                                                            {clinic.license.serial}
+                                                        </div>
+                                                        <div className={`flex items-center gap-2 text-xs ${new Date(clinic.license.expireDate || '') < new Date()
+                                                                ? 'text-rose-500 font-bold'
+                                                                : 'text-slate-500'
+                                                            }`}>
+                                                            <Calendar size={12} />
+                                                            Example: {formatDate(clinic.license.expireDate || '')}
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs text-slate-400 italic">No License Linked</span>
+                                                )}
+                                            </td>
+                                        )}
+
                                         <td className="px-6 py-4">
                                             <div className="space-y-1 text-slate-600 dark:text-slate-400">
                                                 <div className="flex items-center gap-2" title="Hardware ID">
@@ -206,10 +251,10 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                                                     <button
                                                         onClick={() => handleApprove(clinic.id)}
                                                         disabled={!!processing}
-                                                        className="p-2 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-colors"
-                                                        title="Approve"
+                                                        className="p-2 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-colors border border-emerald-500/10"
+                                                        title="Approve & Generate License"
                                                     >
-                                                        {processing === clinic.id ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
+                                                        {processing === clinic.id ? <Loader2 size={18} className="animate-spin" /> : <div className="flex items-center gap-2"><CheckCircle2 size={18} /> <span className="text-xs font-bold">Approve</span></div>}
                                                     </button>
                                                 )}
 
@@ -217,9 +262,9 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                                                     <button
                                                         onClick={() => handleToggle(clinic.id, clinic.status)}
                                                         disabled={!!processing}
-                                                        className={`p-2 rounded-lg transition-colors ${clinic.status === RegistrationStatus.SUSPENDED
-                                                            ? 'text-emerald-500 hover:bg-emerald-500/10'
-                                                            : 'text-rose-500 hover:bg-rose-500/10'
+                                                        className={`p-2 rounded-lg transition-colors border ${clinic.status === RegistrationStatus.SUSPENDED
+                                                            ? 'text-emerald-500 hover:bg-emerald-500/10 border-emerald-500/10'
+                                                            : 'text-rose-500 hover:bg-rose-500/10 border-rose-500/10'
                                                             }`}
                                                         title={clinic.status === RegistrationStatus.SUSPENDED ? 'Activate' : 'Suspend'}
                                                     >
