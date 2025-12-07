@@ -92,6 +92,8 @@ model License {
   lastRenewalDate DateTime?
   isPaused        Boolean       @default(false)
   lastCheckIn     DateTime?
+  productType     ProductType   @default(POS)
+  clinic          Clinic?
   createdAt       DateTime      @default(now())
   transactions    Transaction[]
   tickets         SupportTicket[]
@@ -297,4 +299,35 @@ model MessageReply {
   user      User           @relation(fields: [userId], references: [id])
   reply     String
   createdAt DateTime       @default(now())
+}
+
+model Clinic {
+  id            String             @id @default(uuid())
+  name          String
+  doctorName    String?
+  email         String             @unique
+  phone         String?
+  address       String?
+  hwid          String             @unique
+  systemVersion String?
+  status        RegistrationStatus @default(PENDING)
+  
+  licenseId     String?            @unique
+  license       License?           @relation(fields: [licenseId], references: [id])
+
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  @@map("clinics")
+}
+
+enum ProductType {
+  POS
+  CLINIC
+}
+
+enum RegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
 }

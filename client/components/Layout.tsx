@@ -18,10 +18,13 @@ import {
   ClipboardList,
   Monitor,
   PieChart,
-  ServerCog
+  ServerCog,
+  Stethoscope
 } from 'lucide-react';
 import { useTranslation } from '../hooks/useTranslation';
 import { User } from '../types';
+import SystemSwitcher from './SystemSwitcher';
+import { useSystem } from '../context/SystemContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -44,9 +47,10 @@ const Layout: React.FC<LayoutProps> = ({
 }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { t, i18n } = useTranslation();
+  const { product } = useSystem();
   const isRtl = i18n.language === 'ar';
 
-  const mainMenuItems = [
+  const posMenuItems = [
     { id: 'dashboard', label: t('nav.dashboard'), icon: LayoutDashboard, allowedRoles: ['admin', 'developer'] },
     { id: 'licenses', label: t('nav.licenses'), icon: Key, allowedRoles: ['admin', 'developer'] },
     { id: 'plans', label: t('nav.plans'), icon: CreditCard, allowedRoles: ['admin'] },
@@ -57,6 +61,17 @@ const Layout: React.FC<LayoutProps> = ({
     { id: 'currencies', label: t('nav.currencies'), icon: Coins, allowedRoles: ['admin'] },
     { id: 'api', label: t('nav.apiDocs'), icon: Code2, allowedRoles: ['admin', 'developer'] },
   ];
+
+  const clinicMenuItems = [
+    { id: 'dashboard', label: t('nav.dashboard'), icon: LayoutDashboard, allowedRoles: ['admin', 'developer'] },
+    { id: 'clinics', label: t('nav.clinics'), icon: Stethoscope, allowedRoles: ['admin', 'developer'] },
+    { id: 'manage-clinics', label: t('nav.manageClinics'), icon: LayoutDashboard, allowedRoles: ['admin'] },
+    { id: 'notifications', label: t('nav.notifications'), icon: Bell, allowedRoles: ['admin', 'developer'] },
+    { id: 'support', label: t('nav.support'), icon: LifeBuoy, allowedRoles: ['admin', 'developer'] },
+    { id: 'api', label: t('nav.apiDocs'), icon: Code2, allowedRoles: ['admin', 'developer'] },
+  ];
+
+  const mainMenuItems = product === 'POS' ? posMenuItems : clinicMenuItems;
 
   const systemMenuItems = [
     { id: 'team', label: t('nav.team'), icon: Users, allowedRoles: ['admin'] },
@@ -91,6 +106,8 @@ const Layout: React.FC<LayoutProps> = ({
         {/* Navigation Area */}
         <nav className="flex-1 p-3 space-y-6 overflow-y-auto custom-scrollbar">
 
+          <SystemSwitcher />
+
           <div className="space-y-0.5">
             {filteredMainMenu.map((item) => (
               <button
@@ -100,8 +117,8 @@ const Layout: React.FC<LayoutProps> = ({
                   setIsSidebarOpen(false);
                 }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${currentPage === item.id
-                    ? 'bg-primary-600 text-white shadow-lg shadow-primary-900/50'
-                    : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                  ? 'bg-primary-600 text-white shadow-lg shadow-primary-900/50'
+                  : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                   }`}
               >
                 <item.icon size={18} className={`transition-transform duration-200 ${currentPage === item.id ? 'scale-110' : 'group-hover:scale-110'}`} />
@@ -128,8 +145,8 @@ const Layout: React.FC<LayoutProps> = ({
                       setIsSidebarOpen(false);
                     }}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${currentPage === item.id
-                        ? 'bg-slate-800 text-white border border-slate-700'
-                        : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                      ? 'bg-slate-800 text-white border border-slate-700'
+                      : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                       }`}
                   >
                     <item.icon size={18} className={`transition-transform duration-200 ${currentPage === item.id ? 'scale-110' : 'group-hover:scale-110'}`} />

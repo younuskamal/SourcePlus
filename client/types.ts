@@ -205,3 +205,28 @@ export interface ServerHealth {
   activeConnections: number;
   lastUpdated: string;
 }
+
+export type ProductType = 'POS' | 'CLINIC';
+
+export enum RegistrationStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  SUSPENDED = 'SUSPENDED'
+}
+
+export interface Clinic {
+  id: string;
+  name: string;
+  doctorName?: string;
+  email: string;
+  phone?: string;
+  address?: string;
+  hwid: string;
+  systemVersion?: string;
+  status: RegistrationStatus;
+  licenseId?: string;
+  license?: LicenseKey;
+  createdAt: string;
+  updatedAt: string;
+}

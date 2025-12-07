@@ -62,6 +62,10 @@ export const translations = {
       notifications: "Notifications",
       auditLogs: "Audit Logs",
       financials: "Accounting",
+      clinics: "Clinic Requests",
+      manageClinics: "Manage Clinics",
+      posSystem: "POS System",
+      clinicSystem: "Clinic System",
       logout: "Logout"
     },
     settings: {
@@ -282,6 +286,10 @@ export const translations = {
       notifications: "الإشعارات",
       auditLogs: "سجلات التدقيق",
       financials: "المحاسبة",
+      clinics: "طلبات العيادات",
+      manageClinics: "إدارة العيادات",
+      posSystem: "نظام نقاط البيع",
+      clinicSystem: "نظام العيادات",
       logout: "تسجيل الخروج"
     },
     settings: {
