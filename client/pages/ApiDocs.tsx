@@ -235,20 +235,19 @@ const ApiDocs: React.FC = () => {
         <>
           {/* SourcePlus POS Licensing Documentation */}
 
-          {/* Licensing & Activation */}
           <section>
             <SectionHeader
               title="تفعيل الترخيص (Licensing & Activation)"
               icon={Zap}
-              description="المسارات الأساسية للتحقق من مفتاح الترخيص (Serial Key) وتفعيل الجهاز."
+              description="خطوات تفعيل وتشغيل نظام نقاط البيع (POS) خطوة بخطوة."
             />
             <div className="space-y-4">
               <Endpoint
                 isRtl={isRtl}
                 method="POST"
                 url="/client/validate"
-                title="التحقق من صحة المفتاح (Serial Validation)"
-                description="يستخدم للتحقق مما إذا كان مفتاح الترخيص صالحًا ومتوفرًا، دون ربطه بالجهاز."
+                title="1. التحضير: التحقق من المفتاح (Prepare: Validate Serial)"
+                description="اختياري: يستخدم للتحقق مما إذا كان مفتاح الترخيص صالحًا قبل محاولة تفعيله. مفيد لواجهات المستخدم لإظهار اسم الخطة."
                 payload={`{
   "serial": "SP-2024-XXXX-YYYY",
   "hardwareId": "Optional-HWID-Check"
@@ -267,8 +266,8 @@ const ApiDocs: React.FC = () => {
                 isRtl={isRtl}
                 method="POST"
                 url="/client/activate"
-                title="تفعيل الجهاز (Activate Device)"
-                description="يربط مفتاح الترخيص بجهاز محدد عبر (Hardware ID). هذه الخطوة مطلوبة عند الإعداد لأول مرة."
+                title="2. التفعيل لأول مرة (First-Time Activation)"
+                description="مطلوب: يربط مفتاح الترخيص بجهاز محدد عبر (Hardware ID). يجب القيام بهذه الخطوة عند تثبيت النظام لأول مرة."
                 payload={`{
   "serial": "SP-2024-XXXX-YYYY",
   "hardwareId": "UUID-MAC-DISK-SERIAL",
@@ -285,8 +284,8 @@ const ApiDocs: React.FC = () => {
                 isRtl={isRtl}
                 method="GET"
                 url="/client/check-license?serial=..."
-                title="فحص حالة الترخيص"
-                description="يستخدم للتحقق دوريًا من حالة الترخيص، تاريخ انتهاء الصلاحية، وتفاصيل الخطة."
+                title="3. التشغيل اليومي (Daily Startup Check)"
+                description="مطلوب: يجب استدعاء هذا الرابط عند بدء تشغيل التطبيق للتحقق من أن الترخيص لا يزال فعالاً ولم ينتهِ."
                 response={`{
   "valid": true,
   "status": "active",
@@ -313,8 +312,8 @@ const ApiDocs: React.FC = () => {
                 isRtl={isRtl}
                 method="POST"
                 url="/client/heartbeat"
-                title="نبض النظام (Heartbeat)"
-                description="إرسال إشارة دورية للسيرفر لتحديث حالة الجهاز (Last Seen)."
+                title="4. وقت التشغيل: نبض النظام (Runtime: Heartbeat)"
+                description="مطلوب: يجب إرسال هذا الطلب بشكل دوري (مثلاً كل 60 دقيقة) لتحديث حالة الجهاز في السيرفر وتجنب تعطيل الترخيص."
                 payload={`{
   "serial": "SP-2024-XXXX-YYYY",
   "hardwareId": "UUID-MAC-DISK-SERIAL",
