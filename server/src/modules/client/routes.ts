@@ -129,6 +129,23 @@ export default async function clientRoutes(app: FastifyInstance) {
 
 
 
+  app.post('/validate', async (request, reply) => {
+    const body = z.object({ serial: z.string(), hardwareId: z.string().optional() }).parse(request.body);
+    const license = await app.prisma.license.findUnique({ where: { serial: body.serial }, include: { plan: true } });
+    if (!license) return reply.code(404).send({ valid: false });
+    return reply.send({
+      valid: true,
+      status: license.status,
+      plan: license.plan ? {
+        name: license.plan.name,
+        features: license.plan.features,
+        deviceLimit: license.plan.deviceLimit, // Return device limit
+        limits: license.plan.limits // Return all limits
+      } : null,
+      expireDate: license.expireDate
+    });
+  });
+
   app.get('/check-license', async (request, reply) => {
     const serial = (request.query as any).serial as string | undefined;
     if (!serial) return reply.code(400).send({ valid: false, message: 'Serial required' });
@@ -147,7 +164,11 @@ export default async function clientRoutes(app: FastifyInstance) {
       status: license.status,
       expireDate: license.expireDate,
       daysLeft: license.expireDate ? Math.ceil((new Date(license.expireDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0,
-      plan: license.plan ? { name: license.plan.name, deviceLimit: license.plan.deviceLimit } : null
+      plan: license.plan ? {
+        name: license.plan.name,
+        deviceLimit: license.plan.deviceLimit,
+        limits: license.plan.limits
+      } : null
     });
   });
 
