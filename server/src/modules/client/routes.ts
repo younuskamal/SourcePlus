@@ -4,17 +4,7 @@ import { TicketStatus, LicenseStatus } from '@prisma/client';
 import { generateSerial } from '../../utils/serial.js';
 
 export default async function clientRoutes(app: FastifyInstance) {
-  app.post('/validate', async (request, reply) => {
-    const body = z.object({ serial: z.string(), hardwareId: z.string().optional() }).parse(request.body);
-    const license = await app.prisma.license.findUnique({ where: { serial: body.serial }, include: { plan: true } });
-    if (!license) return reply.code(404).send({ valid: false });
-    return reply.send({
-      valid: true,
-      status: license.status,
-      plan: license.plan ? { name: license.plan.name, features: license.plan.features } : null,
-      expireDate: license.expireDate
-    });
-  });
+
 
   app.post('/activate', async (request, reply) => {
     const body = z.object({
