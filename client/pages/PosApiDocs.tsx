@@ -106,8 +106,7 @@ const PosApiDocs: React.FC = () => {
 }`}
                         response={`{
   "success": true,
-  "activationDate": "2024-01-01T10:00:00Z",
-  "message": "Device activated successfully."
+  "activationDate": "2024-01-01T10:00:00Z"
 }`}
                     />
                     <Endpoint
@@ -181,6 +180,22 @@ const PosApiDocs: React.FC = () => {
                     description="استرجاع الإعدادات والبيانات عن بعد."
                 />
                 <div className="space-y-4">
+                    <Endpoint
+                        isRtl={isRtl}
+                        method="GET"
+                        url="/api/pos/plans"
+                        title="جلب الخطط (Get Plans)"
+                        description="استرجاع قائمة الخطط المتاحة في النظام لعرضها للمستخدم إذا لزم الأمر."
+                        response={`[
+  {
+    "id": "uuid...",
+    "name": "Basic Plan",
+    "durationMonths": 12,
+    "priceUSD": 100,
+    "features": { ... }
+  }
+]`}
+                    />
                     <Endpoint
                         isRtl={isRtl}
                         method="GET"
