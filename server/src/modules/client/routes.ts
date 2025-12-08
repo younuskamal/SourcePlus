@@ -43,15 +43,15 @@ export default async function clientRoutes(app: FastifyInstance) {
       activationCode: z.string().min(10),
       hardwareId: z.string().min(5)
     }).parse(request.body);
-    
+
     const license = await app.prisma.license.findFirst({
       where: { serial: body.activationCode.substring(0, 20) }
     });
-    
+
     if (!license) {
       return reply.code(404).send({ success: false, message: 'Invalid activation code' });
     }
-    
+
     const updated = await app.prisma.license.update({
       where: { id: license.id },
       data: {
@@ -62,9 +62,9 @@ export default async function clientRoutes(app: FastifyInstance) {
         lastCheckIn: new Date()
       }
     });
-    
-    return reply.send({ 
-      success: true, 
+
+    return reply.send({
+      success: true,
       license: {
         serial: updated.serial,
         expireDate: updated.expireDate,
@@ -93,16 +93,16 @@ export default async function clientRoutes(app: FastifyInstance) {
   app.get('/check-license', async (request, reply) => {
     const serial = (request.query as any).serial as string | undefined;
     if (!serial) return reply.code(400).send({ valid: false, message: 'Serial required' });
-    
-    const license = await app.prisma.license.findUnique({ 
-      where: { serial }, 
-      include: { plan: true } 
+
+    const license = await app.prisma.license.findUnique({
+      where: { serial },
+      include: { plan: true }
     });
-    
+
     if (!license) return reply.code(404).send({ valid: false });
-    
+
     const isExpired = license.expireDate && new Date(license.expireDate) < new Date();
-    
+
     return reply.send({
       valid: license.status === LicenseStatus.active && !isExpired,
       status: license.status,
@@ -119,15 +119,15 @@ export default async function clientRoutes(app: FastifyInstance) {
       appVersion: z.string(),
       deviceName: z.string().optional()
     }).parse(request.body);
-    
+
     const license = await app.prisma.license.findUnique({ where: { serial: body.serial } });
     if (!license) return reply.code(404).send({ success: false });
-    
+
     await app.prisma.license.update({
       where: { id: license.id },
       data: { lastCheckIn: new Date() }
     });
-    
+
     return reply.send({ success: true, timestamp: new Date() });
   });
 
@@ -137,15 +137,15 @@ export default async function clientRoutes(app: FastifyInstance) {
       oldHardwareId: z.string().optional(),
       newHardwareId: z.string()
     }).parse(request.body);
-    
+
     const license = await app.prisma.license.findUnique({ where: { serial: body.serial } });
     if (!license) return reply.code(404).send({ success: false });
-    
+
     const updated = await app.prisma.license.update({
       where: { id: license.id },
       data: { hardwareId: body.newHardwareId }
     });
-    
+
     return reply.send({ success: true, newHardwareId: updated.hardwareId });
   });
 
@@ -153,9 +153,9 @@ export default async function clientRoutes(app: FastifyInstance) {
     const version = (request.query as any).version as string | undefined;
     const latest = await app.prisma.appVersion.findFirst({ where: { isActive: true }, orderBy: { releaseDate: 'desc' } });
     if (!latest) return reply.send({ shouldUpdate: false });
-    
+
     const shouldUpdate = !version || version !== latest.version;
-    
+
     return reply.send({
       shouldUpdate,
       latest: {
@@ -170,6 +170,36 @@ export default async function clientRoutes(app: FastifyInstance) {
   app.get('/sync-config', async () => {
     const cfg = await app.prisma.remoteConfig.findMany();
     return Object.fromEntries(cfg.map((c) => [c.key, c.value]));
+  });
+
+  app.get('/notifications', async (request, reply) => {
+    const serial = (request.query as any).serial || request.headers['x-serial'] || request.headers['serial'];
+    if (!serial) return reply.code(400).send({ message: 'Serial is required' });
+
+    const notifications = await app.prisma.notification.findMany({
+      where: {
+        OR: [
+          { targetSerial: null },
+          { targetSerial: serial }
+        ],
+        productType: 'POS'
+      },
+      orderBy: { sentAt: 'desc' },
+      take: 20
+    });
+    return reply.send(notifications);
+  });
+
+  app.get('/support', async (request, reply) => {
+    const serial = (request.query as any).serial || request.headers['x-serial'] || request.headers['serial'];
+    if (!serial) return reply.code(400).send({ message: 'Serial is required' });
+
+    const tickets = await app.prisma.supportTicket.findMany({
+      where: { serial },
+      include: { replies: { orderBy: { createdAt: 'asc' } } },
+      orderBy: { createdAt: 'desc' }
+    });
+    return reply.send(tickets);
   });
 
   app.post('/support', async (request, reply) => {
