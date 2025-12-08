@@ -1,42 +1,71 @@
 import { FastifyInstance } from 'fastify';
-import authRoutes from './modules/auth/routes.js';
-import userRoutes from './modules/users/routes.js';
-import planRoutes from './modules/plans/routes.js';
-import currencyRoutes from './modules/currencies/routes.js';
-import licenseRoutes from './modules/licenses/routes.js';
-import notificationRoutes from './modules/notifications/routes.js';
-import ticketRoutes from './modules/tickets/routes.js';
-import versionRoutes from './modules/versions/routes.js';
-import settingsRoutes from './modules/settings/routes.js';
-import auditRoutes from './modules/audit/routes.js';
-import analyticsRoutes from './modules/analytics/routes.js';
-import backupRoutes from './modules/backup/routes.js';
-import clientRoutes from './modules/client/routes.js';
-import supportRoutes from './modules/support/routes.js';
-import clinicRoutes from './modules/clinics/routes.js';
-import subscriptionRoutes from './modules/subscription/routes.js';
+import { prisma } from '../../plugins/prisma.js'; // تأكد من مسار Prisma الصحيح
 
-import { trafficRoutes } from './modules/traffic/traffic.routes.js';
+export default async function clientRoutes(fastify: FastifyInstance) {
 
-import publicPlanRoutes from './modules/plans/public.routes.js';
+  // 1. Validate Serial (التحضير)
+  fastify.post('/validate', async (request, reply) => {
+    const { serial } = request.body as any;
+    // هنا منطق التحقق من قاعدة البيانات
+    // للتجربة سنعيد رد نجاح وهمي
+    return {
+      valid: true,
+      status: "active",
+      plan: { name: "Standard Plan", features: ["Offline Mode"] },
+      expireDate: "2025-12-31T00:00:00Z"
+    };
+  });
 
-export const registerRoutes = (app: FastifyInstance) => {
-  app.register(authRoutes, { prefix: '/auth' });
-  app.register(userRoutes, { prefix: '/users' });
-  app.register(planRoutes, { prefix: '/plans' });
-  app.register(publicPlanRoutes, { prefix: '/api/plans' });
-  app.register(currencyRoutes, { prefix: '/currencies' });
-  app.register(licenseRoutes, { prefix: '/licenses' });
-  app.register(notificationRoutes, { prefix: '/notifications' });
-  app.register(ticketRoutes, { prefix: '/tickets' });
-  app.register(versionRoutes, { prefix: '/versions' });
-  app.register(settingsRoutes, { prefix: '/settings' });
-  app.register(auditRoutes, { prefix: '/audit-logs' });
-  app.register(analyticsRoutes, { prefix: '/analytics' });
-  app.register(backupRoutes, { prefix: '/backup' });
-  app.register(clientRoutes, { prefix: '/api/pos' });
-  app.register(clinicRoutes, { prefix: '/api/clinics' });
-  app.register(subscriptionRoutes, { prefix: '/api/subscription' });
-  app.register(supportRoutes, { prefix: '/api/support' });
-  app.register(trafficRoutes, { prefix: '/traffic' });
-};
+  // 2. Activate (التفعيل)
+  fastify.post('/activate', async (request, reply) => {
+    const { serial, hardwareId } = request.body as any;
+    return {
+      success: true,
+      message: "Device activated successfully",
+      licenseToken: "JWT-OR-KEY-HERE"
+    };
+  });
+
+  // 3. Check License (الفحص اليومي)
+  fastify.get('/check-license', async (request, reply) => {
+    return {
+      valid: true,
+      status: "active",
+      daysLeft: 365
+    };
+  });
+
+  // 4. Heartbeat (نبض النظام)
+  fastify.post('/heartbeat', async (request, reply) => {
+    return { success: true, timestamp: new Date() };
+  });
+
+  // 5. Check Updates (التحديثات)
+  fastify.get('/check-update', async (request, reply) => {
+    return {
+      shouldUpdate: false,
+      latest: { version: "1.0.0" }
+    };
+  });
+
+  // 6. Sync Config (المزامنة)
+  fastify.get('/sync-config', async (request, reply) => {
+    return { maintenance_mode: false, min_version: "1.0.0" };
+  });
+
+  // 7. Support (الدعم الفني)
+  fastify.post('/support', async (request, reply) => {
+    return { ticketId: "TICKET-12345", status: "open" };
+  });
+
+  fastify.get('/support', async (request, reply) => {
+    return []; // إرجاع قائمة فارغة أو تذاكر وهمية
+  });
+
+  // 8. Notifications (الإشعارات)
+  fastify.get('/notifications', async (request, reply) => {
+    return [
+      { id: 1, title: "مرحباً", body: "تم تفعيل النظام بنجاح", sentAt: new Date() }
+    ];
+  });
+}

@@ -85,10 +85,7 @@ export default async function clientRoutes(app: FastifyInstance) {
     })));
   });
 
-  app.get('/config', async (request, reply) => {
-    const cfg = await app.prisma.remoteConfig.findMany();
-    return Object.fromEntries(cfg.map((c) => [c.key, c.value]));
-  });
+
 
   app.get('/check-license', async (request, reply) => {
     const serial = (request.query as any).serial as string | undefined;
