@@ -74,15 +74,57 @@ export default async function clientRoutes(app: FastifyInstance) {
   });
 
   app.get('/plans', async (request, reply) => {
-    const plans = await app.prisma.plan.findMany({ where: { isActive: true } });
-    return reply.send(plans.map(p => ({
-      id: p.id,
-      name: p.name,
-      durationMonths: p.durationMonths,
-      priceUSD: p.priceUSD,
-      deviceLimit: p.deviceLimit,
-      features: p.features
-    })));
+    const plans = await app.prisma.plan.findMany({
+      where: { isActive: true },
+      include: { prices: true }
+    });
+    const currencies = await app.prisma.currency.findMany();
+
+    return reply.send(plans.map(p => {
+      // Calculate prices for all active currencies
+      const computedPrices = currencies.map(c => {
+        const existing = p.prices.find(price => price.currency === c.code);
+
+        // If explicit price exists, use it and ensure no nulls
+        if (existing) {
+          return {
+            currency: c.code,
+            monthlyPrice: existing.monthlyPrice || 0,
+            periodPrice: existing.periodPrice || 0,
+            yearlyPrice: existing.yearlyPrice || 0,
+            discount: existing.discount || 0,
+            isPrimary: existing.isPrimary
+          };
+        }
+
+        // Otherwise, calculate from base USD
+        const baseUsd = p.priceUSD || 0;
+        const rate = c.rate;
+        const periodPrice = baseUsd * rate;
+        const monthlyPrice = p.durationMonths > 0 ? periodPrice / p.durationMonths : 0;
+        // Estimate yearly based on monthly
+        const yearlyPrice = monthlyPrice * 12;
+
+        return {
+          currency: c.code,
+          monthlyPrice: Number(monthlyPrice.toFixed(0)), // Round to whole numbers for cleanliness
+          periodPrice: Number(periodPrice.toFixed(0)),
+          yearlyPrice: Number(yearlyPrice.toFixed(0)),
+          discount: 0,
+          isPrimary: c.code === 'USD'
+        };
+      });
+
+      return {
+        id: p.id,
+        name: p.name,
+        durationMonths: p.durationMonths,
+        priceUSD: p.priceUSD,
+        deviceLimit: p.deviceLimit,
+        features: p.features,
+        prices: computedPrices
+      };
+    }));
   });
 
 
