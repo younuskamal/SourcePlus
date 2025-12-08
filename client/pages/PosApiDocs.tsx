@@ -75,7 +75,7 @@ const PosApiDocs: React.FC = () => {
                     <Endpoint
                         isRtl={isRtl}
                         method="POST"
-                        url="/client/validate"
+                        url="/api/pos/validate"
                         title="1. التحضير: التحقق من المفتاح (Prepare: Validate Serial)"
                         description="اختياري: يستخدم للتحقق مما إذا كان مفتاح الترخيص صالحًا قبل محاولة تفعيله. مفيد لواجهات المستخدم لإظهار اسم الخطة."
                         payload={`{
@@ -95,7 +95,7 @@ const PosApiDocs: React.FC = () => {
                     <Endpoint
                         isRtl={isRtl}
                         method="POST"
-                        url="/client/activate"
+                        url="/api/pos/activate"
                         title="2. التفعيل لأول مرة (First-Time Activation)"
                         description="مطلوب: يربط مفتاح الترخيص بجهاز محدد عبر (Hardware ID). يجب القيام بهذه الخطوة عند تثبيت النظام لأول مرة."
                         payload={`{
@@ -113,7 +113,7 @@ const PosApiDocs: React.FC = () => {
                     <Endpoint
                         isRtl={isRtl}
                         method="GET"
-                        url="/client/check-license?serial=..."
+                        url="/api/pos/check-license?serial=..."
                         title="3. التشغيل اليومي (Daily Startup Check)"
                         description="مطلوب: يجب استدعاء هذا الرابط عند بدء تشغيل التطبيق للتحقق من أن الترخيص لا يزال فعالاً ولم ينتهِ."
                         response={`{
@@ -141,7 +141,7 @@ const PosApiDocs: React.FC = () => {
                     <Endpoint
                         isRtl={isRtl}
                         method="POST"
-                        url="/client/heartbeat"
+                        url="/api/pos/heartbeat"
                         title="4. وقت التشغيل: نبض النظام (Runtime: Heartbeat)"
                         description="مطلوب: يجب إرسال هذا الطلب بشكل دوري (مثلاً كل 60 دقيقة) لتحديث حالة الجهاز في السيرفر وتجنب تعطيل الترخيص."
                         payload={`{
@@ -157,7 +157,7 @@ const PosApiDocs: React.FC = () => {
                     <Endpoint
                         isRtl={isRtl}
                         method="GET"
-                        url="/client/check-update?version=1.0.0"
+                        url="/api/pos/check-update?version=1.0.0"
                         title="التحقق من التحديثات"
                         description="التحقق مما إذا كان هناك إصدار جديد متاح للتطبيق."
                         response={`{
@@ -184,7 +184,7 @@ const PosApiDocs: React.FC = () => {
                     <Endpoint
                         isRtl={isRtl}
                         method="GET"
-                        url="/client/sync-config"
+                        url="/api/pos/sync-config"
                         title="مزامنة الإعدادات (Sync Config)"
                         description="استرجاع مفاتيح الإعدادات عن بعد (Remote Config)."
                         response={`{
@@ -206,7 +206,7 @@ const PosApiDocs: React.FC = () => {
                     <Endpoint
                         isRtl={isRtl}
                         method="POST"
-                        url="/client/support"
+                        url="/api/pos/support"
                         title="إنشاء تذكرة دعم"
                         description="إرسال طلب دعم جديد / إبلاغ عن مشكلة."
                         payload={`{
@@ -226,7 +226,7 @@ const PosApiDocs: React.FC = () => {
                     <Endpoint
                         isRtl={isRtl}
                         method="GET"
-                        url="/client/support?serial=..."
+                        url="/api/pos/support?serial=..."
                         title="سجل التذاكر والردود (Ticket History)"
                         description="استرجاع جميع التذاكر السابقة والردود الخاصة بهذا السيريال."
                         response={`[
@@ -255,7 +255,7 @@ const PosApiDocs: React.FC = () => {
                     <Endpoint
                         isRtl={isRtl}
                         method="GET"
-                        url="/client/notifications?serial=..."
+                        url="/api/pos/notifications?serial=..."
                         title="جلب الإشعارات"
                         description="التحقق من وجود رسائل جديدة (عامة أو موجهة لهذا السيريال بالتحديد)."
                         response={`[

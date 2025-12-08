@@ -212,7 +212,17 @@ export default async function clientRoutes(app: FastifyInstance) {
       appVersion: z.string(),
       description: z.string()
     }).parse(request.body);
-    const ticket = await app.prisma.supportTicket.create({ data: { ...body, status: TicketStatus.open } });
+
+    const license = await app.prisma.license.findUnique({ where: { serial: body.serial } });
+
+    const ticket = await app.prisma.supportTicket.create({
+      data: {
+        ...body,
+        status: TicketStatus.open,
+        licenseId: license?.id // Connect to license if found
+      }
+    });
+
     return reply.code(201).send({ ticketId: ticket.id, status: ticket.status });
   });
 }

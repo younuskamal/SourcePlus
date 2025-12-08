@@ -34,7 +34,7 @@ export const registerRoutes = (app: FastifyInstance) => {
   app.register(auditRoutes, { prefix: '/audit-logs' });
   app.register(analyticsRoutes, { prefix: '/analytics' });
   app.register(backupRoutes, { prefix: '/backup' });
-  app.register(clientRoutes, { prefix: '/client' });
+  app.register(clientRoutes, { prefix: '/api/pos' });
   app.register(clinicRoutes, { prefix: '/api/clinics' });
   app.register(subscriptionRoutes, { prefix: '/api/subscription' });
   app.register(supportRoutes, { prefix: '/api/support' });
