@@ -3,12 +3,13 @@ import { useTranslation } from '../hooks/useTranslation';
 import {
   Server, Shield, Globe, Terminal, Copy, Check,
   ChevronRight, ChevronDown, Code2, Database, Zap,
-  CreditCard, Stethoscope
+  CreditCard, Stethoscope, HeartPulse, LifeBuoy, Settings
 } from 'lucide-react';
 import { useSystem } from '../context/SystemContext';
 
-const LICENSING_BASE = 'https://sourcef.onrender.com/api';
-const AUTH_BASE = 'https://sourcef.onrender.com/auth';
+const LICENSING_BASE = 'https://sourceplus.onrender.com';
+const AUTH_BASE = 'https://sourceplus.onrender.com/auth';
+
 
 const CodeBlock: React.FC<{ children: string; language?: string }> = ({ children, language = 'json' }) => {
   const [copied, setCopied] = useState(false);
@@ -215,9 +216,9 @@ const ApiDocs: React.FC = () => {
             <Endpoint
               isRtl={isRtl}
               method="GET"
-              url="/api/subscription/status"
+              url="/api/subscription/status?hwid=HWID-..."
               title="التحقق من حالة التفعيل"
-              description="يجب استدعاء هذا الرابط عند تشغيل النظام للتحقق مما إذا تمت الموافقة على العيادة وتفعيل الترخيص."
+              description="يجب استدعاء هذا الرابط عند تشغيل النظام للتحقق مما إذا تمت الموافقة على العيادة وتفعيل الترخيص. يجب إرسال HWID كمعامل (Query Parameter) أو في الترويسة (Header)."
               response={`{
   "status": "active",
   "license": {
@@ -232,52 +233,25 @@ const ApiDocs: React.FC = () => {
         </section>
       ) : (
         <>
-          {/* POS Standard Documentation (Authentication, Plans, Licenses) */}
-          <section>
-            <SectionHeader
-              title="Authentication"
-              icon={Shield}
-              description="Manage user sessions and obtain access tokens."
-            />
-            <div className="space-y-4">
-              <Endpoint
-                isRtl={isRtl}
-                method="POST"
-                url="/login"
-                title="User Login"
-                description="Authenticate a user to receive access and refresh tokens."
-                payload={`{
-  "email": "admin@sourceplus.com",
-  "password": "your_password"
-}`}
-                response={`{
-  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
-  "refreshToken": "eyJhbGciOiJIUzI1NiIs...",
-  "user": {
-    "id": "cl...",
-    "email": "admin@sourceplus.com",
-    "role": "admin"
-  }
-}`}
-              />
-            </div>
-          </section>
+          {/* POS Standard Documentation */}
 
+          {/* Licensing & Activation */}
           <section>
             <SectionHeader
               title="Licensing & Activation"
               icon={Zap}
-              description="Validate serial keys and activate devices."
+              description="Core endpoints for validating serial keys and activating devices."
             />
             <div className="space-y-4">
               <Endpoint
                 isRtl={isRtl}
                 method="POST"
-                url="/api/license/validate"
+                url="/client/validate"
                 title="Validate Serial"
                 description="Check if a serial key is valid and available. Does not bind the device."
                 payload={`{
-  "serial": "SP-2024-XXXX-YYYY"
+  "serial": "SP-2024-XXXX-YYYY",
+  "hardwareId": "Optional-Check"
 }`}
                 response={`{
   "valid": true,
@@ -292,9 +266,9 @@ const ApiDocs: React.FC = () => {
               <Endpoint
                 isRtl={isRtl}
                 method="POST"
-                url="/api/license/activate"
+                url="/client/activate"
                 title="Activate Device"
-                description="Bind a serial key to a specific device (Hardware ID)."
+                description="Bind a serial key to a specific device (Hardware ID). Required for first-time setup."
                 payload={`{
   "serial": "SP-2024-XXXX-YYYY",
   "hardwareId": "UUID-MAC-DISK-SERIAL",
@@ -307,33 +281,148 @@ const ApiDocs: React.FC = () => {
   "message": "Device activated successfully."
 }`}
               />
+              <Endpoint
+                isRtl={isRtl}
+                method="GET"
+                url="/client/check-license?serial=..."
+                title="Check License Status"
+                description="Periodically check the license status, expiry date, and plan details."
+                response={`{
+  "valid": true,
+  "status": "active",
+  "expireDate": "2024-12-31T00:00:00Z",
+  "daysLeft": 200,
+  "plan": {
+    "name": "Premium",
+    "deviceLimit": 3
+  }
+}`}
+              />
+            </div>
+          </section>
+
+          {/* System Health */}
+          <section>
+            <SectionHeader
+              title="System Health & Updates"
+              icon={HeartPulse}
+              description="Keep the application healthy and up to date."
+            />
+            <div className="space-y-4">
+              <Endpoint
+                isRtl={isRtl}
+                method="POST"
+                url="/client/heartbeat"
+                title="Heartbeat"
+                description="Send a periodic heartbeat to indicate the device is online and active. Updates 'Last Seen'."
+                payload={`{
+  "serial": "SP-2024-XXXX-YYYY",
+  "hardwareId": "UUID-MAC-DISK-SERIAL",
+  "appVersion": "1.0.0"
+}`}
+                response={`{
+  "success": true,
+  "timestamp": "2024-01-01T12:00:00Z"
+}`}
+              />
+              <Endpoint
+                isRtl={isRtl}
+                method="GET"
+                url="/client/check-update?version=1.0.0"
+                title="Check for Updates"
+                description="Check if a new version of the application is available."
+                response={`{
+  "shouldUpdate": true,
+  "latest": {
+    "version": "1.1.0",
+    "downloadUrl": "https://cdn.sourceplus.com/v1.1.0.exe",
+    "releaseNotes": "Bug fixes and improvements.",
+    "forceUpdate": false
+  }
+}`}
+              />
+            </div>
+          </section>
+
+          {/* Configuration & Data */}
+          <section>
+            <SectionHeader
+              title="Configuration & Data"
+              icon={Settings}
+              description="Retrieve remote calculations and configurations."
+            />
+            <div className="space-y-4">
+              <Endpoint
+                isRtl={isRtl}
+                method="GET"
+                url="/client/plans"
+                title="Get Plans"
+                description="Retrieve a list of available public subscription plans."
+                response={`[
+  {
+    "id": "uuid...",
+    "name": "Standard",
+    "priceUSD": 100,
+    "durationMonths": 12,
+    "features": {}
+  }
+]`}
+              />
+              <Endpoint
+                isRtl={isRtl}
+                method="GET"
+                url="/client/sync-config"
+                title="Sync Config"
+                description="Retrieve remote configuration key-values."
+                response={`{
+  "maintenance_mode": false,
+  "min_version": "1.0.0"
+}`}
+              />
+            </div>
+          </section>
+
+          {/* Support */}
+          <section>
+            <SectionHeader
+              title="Support"
+              icon={LifeBuoy}
+              description="Submit support tickets directly from the application."
+            />
+            <div className="space-y-4">
+              <Endpoint
+                isRtl={isRtl}
+                method="POST"
+                url="/client/support"
+                title="Create Support Ticket"
+                description="Submit a new support request/ticket."
+                payload={`{
+  "serial": "SP-2024...",
+  "hardwareId": "...",
+  "deviceName": "POS-01",
+  "systemVersion": "Windows 11",
+  "phoneNumber": "0770...",
+  "appVersion": "1.0.0",
+  "description": "Printer not working"
+}`}
+                response={`{
+  "ticketId": "uuid...",
+  "status": "open"
+}`}
+              />
             </div>
           </section>
         </>
       )}
 
-      {/* Common System Section */}
-      <section>
-        <SectionHeader
-          title="System & Config"
-          icon={Database}
-          description="Remote configuration and updates."
-        />
-        <div className="space-y-4">
-          <Endpoint
-            isRtl={isRtl}
-            method="GET"
-            url="/api/app/update"
-            title="Check for Updates"
-            description="Check if a new version of the application is available."
-            response={`{
-  "hasUpdate": true,
-  "version": "1.1.0",
-  "downloadUrl": "https://cdn.sourceplus.com/v1.1.0.exe",
-  "releaseNotes": "Fixed receipt printing bug.",
-  "forceUpdate": false
-}`}
-          />
+      {/* Common System Section (Footer or extra) */}
+      <section className="pt-8 border-t border-slate-200 dark:border-slate-800">
+        <div className="bg-slate-50 dark:bg-slate-900 p-6 rounded-2xl text-center">
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Need more help?</h3>
+          <p className="text-slate-500 dark:text-slate-400 mb-4">Contact the developer team for specialized integration support.</p>
+          <a href="mailto:support@sourceplus.com" className="inline-flex items-center gap-2 px-6 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg font-bold hover:opacity-90 transition-opacity">
+            Contact Support
+          </a>
         </div>
       </section>
 
