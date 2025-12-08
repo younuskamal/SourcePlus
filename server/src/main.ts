@@ -1,12 +1,9 @@
 import { buildApp } from './app.js';
-import licensingRoutes from './modules/licensing/routes.js';
 import { runSeed } from './seed.js';
 
 const start = async () => {
   const app = buildApp();
   const port = Number(process.env.PORT) || 3001;
-
-  app.register(licensingRoutes, { prefix: '/api' });
 
   try {
     await app.ready();
