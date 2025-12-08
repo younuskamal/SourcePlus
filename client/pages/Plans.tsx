@@ -417,6 +417,22 @@ const Plans: React.FC = () => {
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editingPlan ? "Edit Plan" : "New Plan"} subtitle={editingPlan ? "Update details" : "Create new subscription tier"} isRtl={isRtl}>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 p-6 bg-slate-50 dark:bg-slate-900 rounded-b-2xl">
           <div className="space-y-4">
+
+            {/* Quick Templates - Only show when creating new */}
+            {!editingPlan && (
+              <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800/50">
+                <p className="text-xs font-bold text-indigo-600 dark:text-indigo-300 mb-3 uppercase tracking-wider flex items-center gap-2">
+                  <Zap size={12} /> {t('plans.quickTemplates') || 'Quick Templates'}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {DEFAULT_TEMPLATES.map((tpl) => (
+                    <button key={tpl.name} onClick={() => setFormData({ ...tpl, isActive: true })} className="px-3 py-1.5 rounded-lg border border-indigo-200 dark:border-indigo-700 bg-white dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 transition-colors text-xs font-bold shadow-sm">
+                      {tpl.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div>
               <label className="text-sm font-bold block mb-1">Plan Name</label>
               <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className={`w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 ${colors.ring[500]}`} />
