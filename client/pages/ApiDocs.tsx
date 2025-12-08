@@ -195,8 +195,8 @@ const ApiDocs: React.FC = () => {
               isRtl={isRtl}
               method="POST"
               url="/api/clinics/register"
-              title="تسجيل طلب عيادة جديد"
-              description="يستخدم هذا الرابط لإرسال بيانات العيادة لأول مرة عند التثبيت. سيتم وضع الطلب في حالة انتظار (PENDING) لحين الموافقة من قبل الإدارة."
+              title="1. إرسال طلب التسجيل (Registration Request)"
+              description="الخطوة الأولى: يتم استدعاء هذا الرابط مرة واحدة فقط عند تثبيت النظام لأول مرة. يقوم بإرسال بيانات العيادة و HWID الخاص بالسيرفر. ستكون حالة العيادة PENDING بانتظار الموافقة من الإدارة."
               payload={`{
   "name": "عيادة الأمل الطبية",
   "doctorName": "د. أحمد علي",
@@ -217,8 +217,8 @@ const ApiDocs: React.FC = () => {
               isRtl={isRtl}
               method="GET"
               url="/api/subscription/status?hwid=HWID-..."
-              title="التحقق من حالة التفعيل"
-              description="يجب استدعاء هذا الرابط عند تشغيل النظام للتحقق مما إذا تمت الموافقة على العيادة وتفعيل الترخيص. يجب إرسال HWID كمعامل (Query Parameter) أو في الترويسة (Header)."
+              title="2. التحقق من التفعيل (Check Activation)"
+              description="الخطوة الثانية: يستخدم هذا الرابط للتحقق دورياً من حالة التفعيل. يجب استدعاؤه عند بدء التشغيل. إذا كانت الحالة 'pending' يفضل عرض شاشة انتظار، وعندما تتحول إلى 'active' يتم الدخول للنظام."
               response={`{
   "status": "active",
   "license": {
@@ -233,25 +233,25 @@ const ApiDocs: React.FC = () => {
         </section>
       ) : (
         <>
-          {/* POS Standard Documentation */}
+          {/* SourcePlus POS Licensing Documentation */}
 
           {/* Licensing & Activation */}
           <section>
             <SectionHeader
-              title="Licensing & Activation"
+              title="تفعيل الترخيص (Licensing & Activation)"
               icon={Zap}
-              description="Core endpoints for validating serial keys and activating devices."
+              description="المسارات الأساسية للتحقق من مفتاح الترخيص (Serial Key) وتفعيل الجهاز."
             />
             <div className="space-y-4">
               <Endpoint
                 isRtl={isRtl}
                 method="POST"
                 url="/client/validate"
-                title="Validate Serial"
-                description="Check if a serial key is valid and available. Does not bind the device."
+                title="التحقق من صحة المفتاح (Serial Validation)"
+                description="يستخدم للتحقق مما إذا كان مفتاح الترخيص صالحًا ومتوفرًا، دون ربطه بالجهاز."
                 payload={`{
   "serial": "SP-2024-XXXX-YYYY",
-  "hardwareId": "Optional-Check"
+  "hardwareId": "Optional-HWID-Check"
 }`}
                 response={`{
   "valid": true,
@@ -267,8 +267,8 @@ const ApiDocs: React.FC = () => {
                 isRtl={isRtl}
                 method="POST"
                 url="/client/activate"
-                title="Activate Device"
-                description="Bind a serial key to a specific device (Hardware ID). Required for first-time setup."
+                title="تفعيل الجهاز (Activate Device)"
+                description="يربط مفتاح الترخيص بجهاز محدد عبر (Hardware ID). هذه الخطوة مطلوبة عند الإعداد لأول مرة."
                 payload={`{
   "serial": "SP-2024-XXXX-YYYY",
   "hardwareId": "UUID-MAC-DISK-SERIAL",
@@ -285,8 +285,8 @@ const ApiDocs: React.FC = () => {
                 isRtl={isRtl}
                 method="GET"
                 url="/client/check-license?serial=..."
-                title="Check License Status"
-                description="Periodically check the license status, expiry date, and plan details."
+                title="فحص حالة الترخيص"
+                description="يستخدم للتحقق دوريًا من حالة الترخيص، تاريخ انتهاء الصلاحية، وتفاصيل الخطة."
                 response={`{
   "valid": true,
   "status": "active",
@@ -304,17 +304,17 @@ const ApiDocs: React.FC = () => {
           {/* System Health */}
           <section>
             <SectionHeader
-              title="System Health & Updates"
+              title="صحة النظام والتحديثات (Health & Updates)"
               icon={HeartPulse}
-              description="Keep the application healthy and up to date."
+              description="الحفاظ على حالة التطبيق والتحقق من التحديثات."
             />
             <div className="space-y-4">
               <Endpoint
                 isRtl={isRtl}
                 method="POST"
                 url="/client/heartbeat"
-                title="Heartbeat"
-                description="Send a periodic heartbeat to indicate the device is online and active. Updates 'Last Seen'."
+                title="نبض النظام (Heartbeat)"
+                description="إرسال إشارة دورية للسيرفر لتحديث حالة الجهاز (Last Seen)."
                 payload={`{
   "serial": "SP-2024-XXXX-YYYY",
   "hardwareId": "UUID-MAC-DISK-SERIAL",
@@ -329,8 +329,8 @@ const ApiDocs: React.FC = () => {
                 isRtl={isRtl}
                 method="GET"
                 url="/client/check-update?version=1.0.0"
-                title="Check for Updates"
-                description="Check if a new version of the application is available."
+                title="التحقق من التحديثات"
+                description="التحقق مما إذا كان هناك إصدار جديد متاح للتطبيق."
                 response={`{
   "shouldUpdate": true,
   "latest": {
@@ -347,33 +347,17 @@ const ApiDocs: React.FC = () => {
           {/* Configuration & Data */}
           <section>
             <SectionHeader
-              title="Configuration & Data"
+              title="الإعدادات والبيانات (Configuration)"
               icon={Settings}
-              description="Retrieve remote calculations and configurations."
+              description="استرجاع الإعدادات والبيانات عن بعد."
             />
             <div className="space-y-4">
               <Endpoint
                 isRtl={isRtl}
                 method="GET"
-                url="/client/plans"
-                title="Get Plans"
-                description="Retrieve a list of available public subscription plans."
-                response={`[
-  {
-    "id": "uuid...",
-    "name": "Standard",
-    "priceUSD": 100,
-    "durationMonths": 12,
-    "features": {}
-  }
-]`}
-              />
-              <Endpoint
-                isRtl={isRtl}
-                method="GET"
                 url="/client/sync-config"
-                title="Sync Config"
-                description="Retrieve remote configuration key-values."
+                title="مزامنة الإعدادات (Sync Config)"
+                description="استرجاع مفاتيح الإعدادات عن بعد (Remote Config)."
                 response={`{
   "maintenance_mode": false,
   "min_version": "1.0.0"
@@ -385,17 +369,17 @@ const ApiDocs: React.FC = () => {
           {/* Support */}
           <section>
             <SectionHeader
-              title="Support"
+              title="الدعم الفني (Support)"
               icon={LifeBuoy}
-              description="Submit support tickets directly from the application."
+              description="إرسال تذاكر الدعم الفني مباشرة من التطبيق."
             />
             <div className="space-y-4">
               <Endpoint
                 isRtl={isRtl}
                 method="POST"
                 url="/client/support"
-                title="Create Support Ticket"
-                description="Submit a new support request/ticket."
+                title="إنشاء تذكرة دعم"
+                description="إرسال طلب دعم جديد / إبلاغ عن مشكلة."
                 payload={`{
   "serial": "SP-2024...",
   "hardwareId": "...",
@@ -416,16 +400,7 @@ const ApiDocs: React.FC = () => {
       )}
 
       {/* Common System Section (Footer or extra) */}
-      <section className="pt-8 border-t border-slate-200 dark:border-slate-800">
-        <div className="bg-slate-50 dark:bg-slate-900 p-6 rounded-2xl text-center">
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Need more help?</h3>
-          <p className="text-slate-500 dark:text-slate-400 mb-4">Contact the developer team for specialized integration support.</p>
-          <a href="mailto:support@sourceplus.com" className="inline-flex items-center gap-2 px-6 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg font-bold hover:opacity-90 transition-opacity">
-            Contact Support
-          </a>
-        </div>
-      </section>
-
+      {/* No Footer */}
     </div>
   );
 };
