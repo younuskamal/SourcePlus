@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { TicketStatus, Role } from '@prisma/client';
+import { TicketStatus, Role, ProductType } from '@prisma/client';
 import { logAudit } from '../../utils/audit.js';
 
 const createTicketSchema = z.object({
@@ -14,10 +14,17 @@ const createTicketSchema = z.object({
 });
 
 export default async function ticketRoutes(app: FastifyInstance) {
-  app.get('/', { preHandler: [app.authenticate] }, async () => {
+  app.get('/', { preHandler: [app.authenticate] }, async (request) => {
+    const { productType } = request.query as { productType?: ProductType };
+
+    const where = productType ? {
+      license: { productType }
+    } : {};
+
     return app.prisma.supportTicket.findMany({
+      where,
       orderBy: { createdAt: 'desc' },
-      include: { replies: true, attachments: true }
+      include: { replies: true, attachments: true, license: true }
     });
   });
 
@@ -39,14 +46,14 @@ export default async function ticketRoutes(app: FastifyInstance) {
     return reply.send(replyRow);
   });
 
-  app.post('/:id/resolve', { preHandler: [app.authorize([Role.admin, Role.developer])]}, async (request, reply) => {
+  app.post('/:id/resolve', { preHandler: [app.authorize([Role.admin, Role.developer])] }, async (request, reply) => {
     const id = (request.params as { id: string }).id;
     const ticket = await app.prisma.supportTicket.update({ where: { id }, data: { status: TicketStatus.resolved } });
     await logAudit(app, { userId: request.user?.id, action: 'RESOLVE_TICKET', details: id, ip: request.ip });
     return reply.send(ticket);
   });
 
-  app.delete('/:id', { preHandler: [app.authorize([Role.admin, Role.developer])]}, async (request, reply) => {
+  app.delete('/:id', { preHandler: [app.authorize([Role.admin, Role.developer])] }, async (request, reply) => {
     const id = (request.params as { id: string }).id;
     await app.prisma.supportTicket.delete({ where: { id } });
     await logAudit(app, { userId: request.user?.id, action: 'DELETE_TICKET', details: id, ip: request.ip });

@@ -117,6 +117,7 @@ model Notification {
   body         String
   targetSerial String?
   channel      String?
+  productType  ProductType @default(POS)
   isRead       Boolean  @default(false)
   sentAt       DateTime @default(now())
 }
@@ -181,6 +182,7 @@ model AuditLog {
   action    String
   details   String
   ipAddress String?
+  productType ProductType @default(POS)
   createdAt DateTime @default(now())
 }
 

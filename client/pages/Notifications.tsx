@@ -56,8 +56,11 @@ const TEMPLATES = [
     }
 ];
 
+import { useSystem } from '../context/SystemContext';
+
 const Notifications: React.FC = () => {
     const { t } = useTranslation();
+    const { product } = useSystem();
     const [notifications, setNotifications] = useState<any[]>([]);
     const { tick: autoRefreshTick, requestRefresh } = useAutoRefresh();
 
@@ -76,15 +79,18 @@ const Notifications: React.FC = () => {
     const [showTemplates, setShowTemplates] = useState(false);
 
     useEffect(() => {
-        api.getNotifications().then(setNotifications).catch(console.error);
-    }, [autoRefreshTick]);
+        api.getNotifications(product).then(setNotifications).catch(console.error);
+    }, [autoRefreshTick, product]);
 
     const handleSend = () => {
         if (!title || !body) return;
 
-        const payload = targetType === 'serial' ? { title, body, targetSerial } : { title, body };
+        const payload = targetType === 'serial'
+            ? { title, body, targetSerial, productType: product }
+            : { title, body, productType: product };
+
         api.sendNotification(payload).then(async () => {
-            setNotifications(await api.getNotifications());
+            setNotifications(await api.getNotifications(product));
             requestRefresh();
             // Reset
             setTitle('');
@@ -106,7 +112,7 @@ const Notifications: React.FC = () => {
 
     const confirmClearHistory = () => {
         api.clearNotifications().then(async () => {
-            setNotifications(await api.getNotifications());
+            setNotifications(await api.getNotifications(product));
             requestRefresh();
             setIsClearHistoryModalOpen(false);
         });
@@ -114,7 +120,7 @@ const Notifications: React.FC = () => {
 
     const handleDeleteOne = (id: string) => {
         api.deleteNotification(id).then(async () => {
-            setNotifications(await api.getNotifications());
+            setNotifications(await api.getNotifications(product));
             requestRefresh();
         });
     };
@@ -281,8 +287,8 @@ const Notifications: React.FC = () => {
                                     <button
                                         onClick={() => setTargetType('broadcast')}
                                         className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm border transition-all ${targetType === 'broadcast'
-                                                ? 'bg-sky-50 dark:bg-sky-900/30 border-sky-500 text-sky-700 dark:text-sky-300 font-bold shadow-sm'
-                                                : 'border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
+                                            ? 'bg-sky-50 dark:bg-sky-900/30 border-sky-500 text-sky-700 dark:text-sky-300 font-bold shadow-sm'
+                                            : 'border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
                                             }`}
                                     >
                                         <Users size={16} /> {t('notifications.broadcast')}
@@ -290,8 +296,8 @@ const Notifications: React.FC = () => {
                                     <button
                                         onClick={() => setTargetType('serial')}
                                         className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm border transition-all ${targetType === 'serial'
-                                                ? 'bg-sky-50 dark:bg-sky-900/30 border-sky-500 text-sky-700 dark:text-sky-300 font-bold shadow-sm'
-                                                : 'border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
+                                            ? 'bg-sky-50 dark:bg-sky-900/30 border-sky-500 text-sky-700 dark:text-sky-300 font-bold shadow-sm'
+                                            : 'border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
                                             }`}
                                     >
                                         <User size={16} /> {t('notifications.target')}
@@ -396,8 +402,8 @@ const Notifications: React.FC = () => {
                                 <div key={notif.id} className="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 hover:border-sky-500 dark:hover:border-sky-500 transition-all group">
                                     <div className="flex gap-4">
                                         <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${notif.targetSerial
-                                                ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
-                                                : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
+                                            ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
+                                            : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
                                             }`}>
                                             {notif.targetSerial ? <User size={20} /> : <Users size={20} />}
                                         </div>

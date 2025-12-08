@@ -1,4 +1,4 @@
-import { LicenseKey, SubscriptionPlan, CurrencyRate, Notification, SupportRequest, AppVersion, SystemSettings, AuditLog, Transaction, User } from '../types';
+import { LicenseKey, SubscriptionPlan, CurrencyRate, Notification, SupportRequest, AppVersion, SystemSettings, AuditLog, Transaction, User, ProductType } from '../types';
 
 const API_URL =
   import.meta.env.VITE_API_URL ||
@@ -177,8 +177,9 @@ export const api = {
   syncCurrencies() {
     return doRequest<{ updated: number }>('/currencies/sync', { method: 'POST' });
   },
-  getNotifications() {
-    return doRequest<Notification[]>('/notifications');
+  getNotifications(productType?: ProductType) {
+    const q = productType ? `?productType=${productType}` : '';
+    return doRequest<Notification[]>(`/notifications${q}`);
   },
   sendNotification(payload: any) {
     return doRequest<Notification>('/notifications', { method: 'POST', body: JSON.stringify(payload) });
@@ -189,8 +190,9 @@ export const api = {
   clearNotifications() {
     return doRequest<void>('/notifications', { method: 'DELETE' });
   },
-  getTickets() {
-    return doRequest<SupportRequest[]>('/tickets');
+  getTickets(productType?: ProductType) {
+    const q = productType ? `?productType=${productType}` : '';
+    return doRequest<SupportRequest[]>(`/tickets${q}`);
   },
   createTicket(payload: any) {
     return doRequest<SupportRequest>('/tickets', { method: 'POST', body: JSON.stringify(payload) });
@@ -234,8 +236,9 @@ export const api = {
   updateRemoteConfig(payload: Record<string, any>) {
     return doRequest('/settings/remote', { method: 'PUT', body: JSON.stringify(payload) });
   },
-  getAuditLogs() {
-    return doRequest<AuditLog[]>('/audit-logs');
+  getAuditLogs(productType?: ProductType) {
+    const q = productType ? `?productType=${productType}` : '';
+    return doRequest<AuditLog[]>(`/audit-logs${q}`);
   },
   clearAuditLogs() {
     return doRequest<void>('/audit-logs', { method: 'DELETE' });

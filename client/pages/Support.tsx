@@ -7,8 +7,11 @@ import { MessageSquare, CheckCircle, Monitor, HardDrive, Phone, Clock, Search, S
 import { api } from '../services/api';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 
+import { useSystem } from '../context/SystemContext';
+
 const Support: React.FC = () => {
   const { t } = useTranslation();
+  const { product } = useSystem();
   const { tick: autoRefreshTick, requestRefresh } = useAutoRefresh();
   const [tickets, setTickets] = useState<SupportRequest[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<SupportRequest | null>(null);
@@ -16,12 +19,12 @@ const Support: React.FC = () => {
   const [deleteTicketId, setDeleteTicketId] = useState<string | null>(null);
 
   useEffect(() => {
-    api.getTickets().then(setTickets).catch(console.error);
-  }, [autoRefreshTick]);
+    api.getTickets(product).then(setTickets).catch(console.error);
+  }, [autoRefreshTick, product]);
 
   const handleResolve = (id: string) => {
     api.resolveTicket(id).then(async () => {
-      const data = await api.getTickets();
+      const data = await api.getTickets(product);
       setTickets(data);
       requestRefresh();
       if (selectedTicket?.id === id) setSelectedTicket(null);
@@ -31,7 +34,7 @@ const Support: React.FC = () => {
   const handleReply = () => {
     if (selectedTicket && replyText) {
       api.replyTicket(selectedTicket.id, replyText).then(async () => {
-        setTickets(await api.getTickets());
+        setTickets(await api.getTickets(product));
         requestRefresh();
         setReplyText('');
         setSelectedTicket(null);
@@ -46,7 +49,7 @@ const Support: React.FC = () => {
   const confirmDelete = () => {
     if (!deleteTicketId) return;
     api.deleteTicket(deleteTicketId).then(async () => {
-      const updated = await api.getTickets();
+      const updated = await api.getTickets(product);
       setTickets(updated);
       requestRefresh();
       if (selectedTicket?.id === deleteTicketId) {

@@ -6,6 +6,7 @@ import { translations, Language } from '../locales';
 import { ClipboardList, Search, User, Trash2, Download, Filter, Calendar, CheckCircle2, Activity, Server } from 'lucide-react';
 import { api } from '../services/api';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
+import { useSystem } from '../context/SystemContext';
 
 interface AuditLogsProps {
   currentLang: Language;
@@ -13,6 +14,7 @@ interface AuditLogsProps {
 
 const AuditLogs: React.FC<AuditLogsProps> = ({ currentLang }) => {
   const t = translations[currentLang];
+  const { product } = useSystem();
   const { tick: autoRefreshTick, requestRefresh } = useAutoRefresh();
   const [activeTab, setActiveTab] = useState<'system' | 'traffic'>('system');
 
@@ -25,9 +27,9 @@ const AuditLogs: React.FC<AuditLogsProps> = ({ currentLang }) => {
 
   useEffect(() => {
     if (activeTab === 'system') {
-      api.getAuditLogs().then(setLogs).catch(console.error);
+      api.getAuditLogs(product).then(setLogs).catch(console.error);
     }
-  }, [autoRefreshTick, activeTab]);
+  }, [autoRefreshTick, activeTab, product]);
 
   const handleClearLogs = () => {
     setIsClearModalOpen(true);
