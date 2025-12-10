@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { exportToExcel } from '../utils/excelExport';
 import { useTranslation } from '../hooks/useTranslation';
@@ -44,6 +43,7 @@ const Financials: React.FC = () => {
             "Plan": tx.planName,
             "Type": tx.type,
             "Amount": tx.amount,
+            "Currency": tx.currency,
             "Status": tx.status,
             "Reference": tx.reference || ''
         }));
@@ -60,7 +60,9 @@ const Financials: React.FC = () => {
 
     const netProfit = stats.totalRevenue * 0.85;
 
-    const formatCurrency = (amount: number) => `$${amount.toFixed(2)}`;
+    const formatCurrency = (amount: number, currency: string = 'USD') => {
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
+    };
 
     const handleInvoiceClick = (tx: Transaction) => {
         setSelectedInvoice(tx);
@@ -100,11 +102,11 @@ const Financials: React.FC = () => {
                 <tr>
                   <td>${selectedInvoice.planName}</td>
                   <td>${selectedInvoice.type}</td>
-                  <td align="right">${formatCurrency(selectedInvoice.amount)}</td>
+                  <td align="right">${formatCurrency(selectedInvoice.amount, selectedInvoice.currency)}</td>
                 </tr>
               </tbody>
             </table>
-            <p class="total">Total: ${formatCurrency(selectedInvoice.amount)}</p>
+            <p class="total">Total: ${formatCurrency(selectedInvoice.amount, selectedInvoice.currency)}</p>
           </body>
         </html>`;
 
@@ -144,7 +146,7 @@ const Financials: React.FC = () => {
                     </div>
                     <div className="relative z-10">
                         <p className="text-xs font-bold text-indigo-100 uppercase tracking-wider mb-2">{t('financials.totalRevenue')}</p>
-                        <h3 className="text-3xl font-extrabold">${stats.totalRevenue.toLocaleString()}</h3>
+                        <h3 className="text-3xl font-extrabold">{formatCurrency(stats.totalRevenue, 'USD')}</h3>
                         <div className="flex items-center gap-1 mt-3 text-indigo-100 text-sm font-medium bg-white/10 w-fit px-2 py-1 rounded-lg backdrop-blur-sm">
                             <TrendingUp size={14} /> +12% growth
                         </div>
@@ -157,7 +159,7 @@ const Financials: React.FC = () => {
                             <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('financials.monthlyRevenue')}</p>
                             <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg text-emerald-600"><Calendar size={18} /></div>
                         </div>
-                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-2">${stats.monthlyRevenue.toLocaleString()}</h3>
+                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-2">{formatCurrency(stats.monthlyRevenue, 'USD')}</h3>
                         <p className="text-xs text-slate-400 mt-1">Current Month</p>
                     </div>
                 </div>
@@ -168,7 +170,7 @@ const Financials: React.FC = () => {
                             <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('financials.dailyRevenue')}</p>
                             <div className="p-2 bg-sky-50 dark:bg-sky-900/30 rounded-lg text-sky-600"><ArrowUpRight size={18} /></div>
                         </div>
-                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-2">${stats.dailyRevenue.toLocaleString()}</h3>
+                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-2">{formatCurrency(stats.dailyRevenue, 'USD')}</h3>
                         <p className="text-xs text-slate-400 mt-1">{new Date().toLocaleDateString()}</p>
                     </div>
                 </div>
@@ -179,7 +181,7 @@ const Financials: React.FC = () => {
                             <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('financials.netProfit')}</p>
                             <div className="p-2 bg-amber-50 dark:bg-amber-900/30 rounded-lg text-amber-600"><Wallet size={18} /></div>
                         </div>
-                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-2">${netProfit.toLocaleString()}</h3>
+                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-2">{formatCurrency(netProfit, 'USD')}</h3>
                         <p className="text-xs text-slate-400 mt-1">~85% Margin</p>
                     </div>
                 </div>
@@ -256,7 +258,7 @@ const Financials: React.FC = () => {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-right">
-                                        <span className="font-mono font-bold text-slate-900 dark:text-white">${tx.amount.toFixed(2)}</span>
+                                        <span className="font-mono font-bold text-slate-900 dark:text-white">{formatCurrency(tx.amount, tx.currency)}</span>
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <button
@@ -330,7 +332,7 @@ const Financials: React.FC = () => {
                                             <td className="px-4 py-3">{selectedInvoice.planName}</td>
                                             <td className="px-4 py-3 capitalize">{selectedInvoice.type}</td>
                                             <td className="px-4 py-3 text-right font-mono font-semibold">
-                                                {formatCurrency(selectedInvoice.amount)}
+                                                {formatCurrency(selectedInvoice.amount, selectedInvoice.currency)}
                                             </td>
                                         </tr>
                                     </tbody>
@@ -339,7 +341,7 @@ const Financials: React.FC = () => {
                             <div className="flex justify-between items-center pt-4 border-t border-dashed border-slate-200 dark:border-slate-700">
                                 <span className="text-sm text-slate-500">Total</span>
                                 <span className="text-2xl font-bold text-slate-900 dark:text-white">
-                                    {formatCurrency(selectedInvoice.amount)}
+                                    {formatCurrency(selectedInvoice.amount, selectedInvoice.currency)}
                                 </span>
                             </div>
                         </div>
