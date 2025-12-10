@@ -139,7 +139,10 @@ const PosApiDocs: React.FC = () => {
     "deviceLimit": 3,
     "limits": {
        "maxUsers": 5,
-       "maxBranches": 2
+       "maxBranches": 2,
+       "maxInvoices": -1,  // -1 indicates Unlimited (∞)
+       "maxProducts": 1000,
+       "maxCustomers": -1
     }
   }
 }`}
@@ -209,8 +212,14 @@ const PosApiDocs: React.FC = () => {
     "id": "uuid...",
     "name": "Professional",
     "durationMonths": 12,
-    "features": { "pos": true, "inventory": true },
-    "limits": { "maxUsers": 5 },
+    "features": { "pos": true, "inventory": true, "customers": true, "reports": true },
+    "limits": { 
+      "maxUsers": 5, 
+      "maxBranches": 2,
+      "maxInvoices": -1,  // -1 indicates Unlimited (∞)
+      "maxProducts": 1000,
+      "maxCustomers": -1
+    },
     "deviceLimit": 3,
     "prices": [
        { "currency": "USD", "periodPrice": 100, "isPrimary": true },

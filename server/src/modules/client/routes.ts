@@ -182,11 +182,11 @@ export default async function clientRoutes(app: FastifyInstance) {
         priceUSD: p.priceUSD,
         deviceLimit: p.deviceLimit,
         features: p.features,
+        limits: p.limits, // Updated: include limits in plan list
         prices: computedPrices
       };
     }));
   });
-
 
 
   app.post('/validate', async (request, reply) => {
@@ -208,8 +208,8 @@ export default async function clientRoutes(app: FastifyInstance) {
         name: license.plan.name,
         durationMonths: license.plan.durationMonths,
         features: license.plan.features,
-        deviceLimit: license.plan.deviceLimit, // Return device limit
-        limits: license.plan.limits // Return all limits
+        deviceLimit: license.plan.deviceLimit,
+        limits: license.plan.limits // Updated: include limits here
       } : null,
       licenseId: license.id
     });
@@ -234,9 +234,11 @@ export default async function clientRoutes(app: FastifyInstance) {
       expireDate: license.expireDate,
       daysLeft: license.expireDate ? Math.ceil((new Date(license.expireDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0,
       plan: license.plan ? {
+        id: license.plan.id, // Added ID
         name: license.plan.name,
         deviceLimit: license.plan.deviceLimit,
-        limits: license.plan.limits
+        features: license.plan.features,
+        limits: license.plan.limits // Updated: include limits here
       } : null
     });
   });
