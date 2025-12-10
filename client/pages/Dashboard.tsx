@@ -387,17 +387,25 @@ const Dashboard: React.FC<DashboardProps> = ({ setPage }) => {
             </div>
 
             <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-center">
-              <div className="text-center">
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 mb-2">
-                  <CreditCard size={24} />
-                </div>
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Pro Plan</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">Best Performing</p>
-                <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1.5 mb-2 overflow-hidden">
-                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: '68%' }}></div>
-                </div>
-                <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">68% of total revenue</span>
-              </div>
+              {(() => {
+                const bestPlan = plansData.reduce((prev, current) => (prev.count > current.count ? prev : current), { name: 'No Data', count: 0, price: 0 });
+                const totalLicenses = plansData.reduce((sum, item) => sum + item.count, 0);
+                const percent = totalLicenses > 0 ? Math.round((bestPlan.count / totalLicenses) * 100) : 0;
+
+                return (
+                  <div className="text-center">
+                    <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 mb-2">
+                      <CreditCard size={24} />
+                    </div>
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">{bestPlan.name || 'No Plans Yet'}</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">Best Performing Plan</p>
+                    <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1.5 mb-2 overflow-hidden">
+                      <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${percent}%` }}></div>
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">{percent}% of active licenses</span>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>

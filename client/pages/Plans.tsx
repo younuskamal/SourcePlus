@@ -381,14 +381,14 @@ const Plans: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this plan? This action cannot be undone.')) return;
+  const handleDelete = async (id: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to delete the plan "${name}"? This action cannot be undone and might affect existing licenses.`)) return;
     try {
       await api.deletePlan(id);
-      setPlans(plans.filter(p => p.id !== id));
-      setToast({ open: true, message: 'Plan deleted', type: 'success' });
-    } catch (e) {
-      setToast({ open: true, message: 'Failed to delete plan', type: 'error' });
+      setPlans(prev => prev.filter(p => p.id !== id));
+      setToast({ open: true, message: 'Plan deleted successfully', type: 'success' });
+    } catch (e: any) {
+      setToast({ open: true, message: e.message || 'Failed to delete plan. It might be in use.', type: 'error' });
     }
   };
 
@@ -572,7 +572,7 @@ const Plans: React.FC = () => {
                     <Copy size={16} />
                   </button>
                   <button
-                    onClick={() => handleDelete(plan.id)}
+                    onClick={() => handleDelete(plan.id, plan.name)}
                     className="w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-200 transition-all"
                     title="Delete Plan"
                   >
