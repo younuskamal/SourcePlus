@@ -13,19 +13,89 @@ export default async function clientRoutes(app: FastifyInstance) {
       deviceName: z.string(),
       appVersion: z.string()
     }).parse(request.body);
+
+    // 1. Find License
     const license = await app.prisma.license.findUnique({ where: { serial: body.serial } });
-    if (!license) return reply.code(404).send({ success: false });
-    const updated = await app.prisma.license.update({
-      where: { id: license.id },
-      data: {
-        hardwareId: body.hardwareId,
-        activationCount: { increment: 1 },
-        activationDate: new Date(),
-        status: LicenseStatus.active,
-        lastCheckIn: new Date()
+    if (!license) return reply.code(404).send({ success: false, message: 'License not found' });
+
+    // 2. Check if this device (HWID) is already registered
+    const existingDevice = await app.prisma.device.findUnique({
+      where: {
+        licenseId_hardwareId: {
+          licenseId: license.id,
+          hardwareId: body.hardwareId
+        }
       }
     });
-    return reply.send({ success: true, activationDate: updated.activationDate });
+
+    // If device exists, just update its info and return success (idempotent)
+    if (existingDevice) {
+      await app.prisma.device.update({
+        where: { id: existingDevice.id },
+        data: {
+          lastCheckIn: new Date(),
+          deviceName: body.deviceName,
+          appVersion: body.appVersion,
+          isActive: true
+        }
+      });
+
+      // Also update license last checkin for good measure
+      await app.prisma.license.update({
+        where: { id: license.id },
+        data: { lastCheckIn: new Date(), hardwareId: body.hardwareId } // Update main HWID to latest
+      });
+
+      return reply.send({ success: true, activationDate: existingDevice.activationDate });
+    }
+
+    // 3. New Device - Check Limit
+    // We count *active* devices. Or total? Usually total registered slots.
+    // Let's use validation count from License table which is incremented.
+    // Or validly count from Device table.
+
+    // Using License.activationCount is safer/faster if maintained correctly.
+    // But let's verify with real count from DB to be self-healing if counts drifted.
+    const currentDeviceCount = await app.prisma.device.count({
+      where: { licenseId: license.id, isActive: true }
+    });
+
+    if (currentDeviceCount >= license.deviceLimit) {
+      return reply.code(403).send({
+        success: false,
+        message: 'Device limit reached. Contact support to reset or upgrade.'
+      });
+    }
+
+    // 4. Activate New Device
+    const result = await app.prisma.$transaction(async (tx) => {
+      // Create Device record
+      const device = await tx.device.create({
+        data: {
+          licenseId: license.id,
+          hardwareId: body.hardwareId,
+          deviceName: body.deviceName,
+          appVersion: body.appVersion,
+          isActive: true
+        }
+      });
+
+      // Update License
+      const updatedLicense = await tx.license.update({
+        where: { id: license.id },
+        data: {
+          activationCount: { increment: 1 },
+          status: LicenseStatus.active,
+          activationDate: license.activationDate || new Date(),
+          lastCheckIn: new Date(),
+          hardwareId: body.hardwareId // Set latest as primary/reference
+        }
+      });
+
+      return { device, license: updatedLicense };
+    });
+
+    return reply.send({ success: true, activationDate: result.device.activationDate });
   });
 
   app.post('/offline-activation', async (request, reply) => {

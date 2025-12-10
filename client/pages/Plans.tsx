@@ -23,6 +23,7 @@ interface FormData {
   features: Record<string, any>;
   limits: Record<string, any>;
   isActive: boolean;
+  deviceLimit: number;
 }
 
 // --- Constants ---
@@ -106,8 +107,8 @@ const Toast: React.FC<{ toast: Toast; onClose: () => void; isRtl: boolean }> = (
   return (
     <div className={`fixed bottom-6 ${isRtl ? 'left-6' : 'right-6'} z-[100] animate-in slide-in-from-bottom-5 duration-300`}>
       <div className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border backdrop-blur-md ${toast.type === 'success'
-          ? 'bg-emerald-50/90 text-emerald-800 border-emerald-200'
-          : 'bg-rose-50/90 text-rose-800 border-rose-200'
+        ? 'bg-emerald-50/90 text-emerald-800 border-emerald-200'
+        : 'bg-rose-50/90 text-rose-800 border-rose-200'
         }`}>
         {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <X className="w-5 h-5" />}
         <span className="text-sm font-bold">{toast.message}</span>
@@ -230,7 +231,7 @@ const Plans: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
 
   const [formData, setFormData] = useState<FormData>({
-    name: '', durationMonths: 12, prices: [], features: {}, limits: {}, isActive: true
+    name: '', durationMonths: 12, prices: [], features: {}, limits: {}, isActive: true, deviceLimit: 1
   });
 
   // Fetch Data
@@ -259,7 +260,8 @@ const Plans: React.FC = () => {
         prices: plan.prices || [],
         features: plan.features || {},
         limits: plan.limits || {},
-        isActive: plan.isActive
+        isActive: plan.isActive,
+        deviceLimit: plan.deviceLimit || 1
       });
     } else {
       setEditingPlan(null);
@@ -269,7 +271,8 @@ const Plans: React.FC = () => {
         prices: [{ currency: currencies[0]?.code || 'IQD', monthlyPrice: 0, periodPrice: 0, yearlyPrice: 0, discount: 0, isPrimary: true }],
         features: {},
         limits: {},
-        isActive: true
+        isActive: true,
+        deviceLimit: 1
       });
     }
     setModalOpen(true);
@@ -431,8 +434,8 @@ const Plans: React.FC = () => {
                   <button
                     onClick={() => handleToggleStatus(plan)}
                     className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border shadow-sm transition-all ${plan.isActive
-                        ? 'bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200'
-                        : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                      ? 'bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-200'
+                      : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
                       }`}
                   >
                     {plan.isActive ? 'Active' : 'Inactive'}
@@ -580,10 +583,27 @@ const Plans: React.FC = () => {
                       <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Duration (Months)</label>
                       <input
                         type="number"
+                        min="1"
                         value={formData.durationMonths}
                         onChange={e => setFormData({ ...formData, durationMonths: Number(e.target.value) })}
                         className={`w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:bg-white transition-all outline-none focus:ring-2 ${colors.ring[500]}`}
                       />
+                    </div>
+                    <div className="space-y-2 col-span-2">
+                      <label className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                        <LayoutGrid size={14} /> Device Limit
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="1"
+                          max="100"
+                          value={formData.deviceLimit}
+                          onChange={e => setFormData({ ...formData, deviceLimit: Number(e.target.value) })}
+                          className={`w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:bg-white transition-all outline-none focus:ring-2 ${colors.ring[500]}`}
+                        />
+                        <p className="text-[10px] text-slate-500 mt-1">Number of devices allowed per license.</p>
+                      </div>
                     </div>
                   </div>
 

@@ -19,7 +19,8 @@ const planSchema = z.object({
   prices: z.array(priceSchema).default([]),
   features: z.any().optional(), // JSON
   limits: z.any().optional(), // JSON
-  isActive: z.boolean().default(true)
+  isActive: z.boolean().default(true),
+  deviceLimit: z.number().int().min(1).default(1)
 });
 
 export default async function planRoutes(app: FastifyInstance) {
@@ -39,6 +40,7 @@ export default async function planRoutes(app: FastifyInstance) {
       durationMonths: plan.durationMonths,
       features: plan.features,
       limits: plan.limits,
+      deviceLimit: plan.deviceLimit,
       is_active: plan.isActive,
       prices: plan.prices.map(p => ({
         currency: p.currency,
@@ -68,12 +70,12 @@ export default async function planRoutes(app: FastifyInstance) {
         features: data.features || {},
         limits: data.limits || {},
         isActive: data.isActive,
+        deviceLimit: data.deviceLimit,
         // Legacy fields defaults - Populate them for safety
         priceUSD: 0,
         price_monthly: primaryPrice?.monthlyPrice || 0,
         price_yearly: primaryPrice?.yearlyPrice || 0,
         currency: primaryPrice?.currency || 'IQD',
-        deviceLimit: 1,
         prices: {
           create: data.prices.map(p => ({
             currency: p.currency,
@@ -124,6 +126,7 @@ export default async function planRoutes(app: FastifyInstance) {
           features: data.features || {},
           limits: data.limits || {},
           isActive: data.isActive,
+          deviceLimit: data.deviceLimit,
           // Update legacy fields
           price_monthly: primaryPrice?.monthlyPrice || 0,
           price_yearly: primaryPrice?.yearlyPrice || 0,
