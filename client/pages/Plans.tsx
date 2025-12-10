@@ -34,7 +34,8 @@ const FIXED_SLOTS = [
   { defaultName: 'Enterprise', color: 'emerald', description: 'Maximum power and unlimited potential' }
 ];
 
-const COMMON_FEATURES = ['pos', 'inventory', 'reports', 'support', 'api', 'backups', 'dashboard_access'];
+// Added requested features: customers, suppliers, purchase_orders
+const COMMON_FEATURES = ['pos', 'inventory', 'reports', 'customers', 'suppliers', 'purchase_orders', 'support', 'api', 'backups', 'dashboard_access'];
 const COMMON_LIMITS = ['maxUsers', 'maxBranches', 'maxInvoices', 'maxProducts', 'maxCustomers'];
 
 // --- Theme Hook ---
