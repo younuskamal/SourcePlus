@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import {
   Plus, Edit2, Trash2, Check, X, Loader, AlertTriangle,
   CheckCircle2, Zap, Search, LayoutGrid, List, MoreVertical,
-  DollarSign, Shield, Calendar, Tag, Layers
+  DollarSign, Shield, Calendar, Tag, Layers, Copy, Hash, Users, Activity
 } from 'lucide-react';
 import { api } from '../services/api';
-import { CurrencyRate, SubscriptionPlan, PlanPrice } from '../types';
+import { CurrencyRate, SubscriptionPlan, PlanPrice, LicenseKey } from '../types';
 import { useTranslation } from '../hooks/useTranslation';
 import { useSystem } from '../context/SystemContext';
 
@@ -53,6 +53,9 @@ const DEFAULT_TEMPLATES = [
     limits: { maxUsers: 999, maxProducts: 99999, maxBranches: 10 }
   }
 ];
+
+const COMMON_FEATURES = ['pos', 'inventory', 'reports', 'support', 'api', 'backups', 'dashboard_access'];
+const COMMON_LIMITS = ['maxUsers', 'maxProducts', 'maxBranches', 'maxCustomers', 'maxInvoices'];
 
 // --- Theme Hook ---
 const useThemeColors = () => {
@@ -121,9 +124,9 @@ const FeatureEditor: React.FC<{ features: Record<string, any>; onChange: (f: Rec
   const [newFeature, setNewFeature] = useState('');
   const { colors } = useThemeColors();
 
-  const handleAdd = () => {
-    if (newFeature.trim()) {
-      onChange({ ...features, [newFeature.trim()]: true });
+  const handleAdd = (feat: string = newFeature) => {
+    if (feat.trim()) {
+      onChange({ ...features, [feat.trim()]: true });
       setNewFeature('');
     }
   };
@@ -152,9 +155,22 @@ const FeatureEditor: React.FC<{ features: Record<string, any>; onChange: (f: Rec
           placeholder="e.g. Free Domain"
           className={`flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 ${colors.ring[500]}`}
         />
-        <button onClick={handleAdd} className={`px-3 py-2 ${colors.bg[600]} hover:${colors.bg[700]} text-white rounded-lg transition-colors`}>
+        <button onClick={() => handleAdd()} className={`px-3 py-2 ${colors.bg[600]} hover:${colors.bg[700]} text-white rounded-lg transition-colors`}>
           <Plus size={18} />
         </button>
+      </div>
+
+      {/* Common Suggestions */}
+      <div className="mb-3 flex flex-wrap gap-1.5">
+        {COMMON_FEATURES.filter(f => !features[f]).map(f => (
+          <button
+            key={f}
+            onClick={() => handleAdd(f)}
+            className="px-2 py-1 text-[10px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-md text-slate-500 hover:text-indigo-500 hover:border-indigo-200 transition-colors"
+          >
+            + {f}
+          </button>
+        ))}
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -175,10 +191,10 @@ const LimitEditor: React.FC<{ limits: Record<string, any>; onChange: (l: Record<
   const [newValue, setNewValue] = useState('');
   const { colors } = useThemeColors();
 
-  const handleAdd = () => {
-    if (newKey.trim() && newValue.trim()) {
-      const val = !isNaN(Number(newValue)) ? Number(newValue) : newValue;
-      onChange({ ...limits, [newKey.trim()]: val });
+  const handleAdd = (key: string = newKey, val: string = newValue) => {
+    if (key.trim() && val.trim()) {
+      const numVal = !isNaN(Number(val)) ? Number(val) : val;
+      onChange({ ...limits, [key.trim()]: numVal });
       setNewKey('');
       setNewValue('');
     }
@@ -196,9 +212,21 @@ const LimitEditor: React.FC<{ limits: Record<string, any>; onChange: (l: Record<
         <Zap size={14} /> Limits / Quotas
       </label>
       <div className="grid grid-cols-5 gap-2 mb-3">
-        <input type="text" value={newKey} onChange={(e) => setNewKey(e.target.value)} placeholder="Limit Name (e.g. Users)" className="col-span-2 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2" />
+        <input type="text" value={newKey} onChange={(e) => setNewKey(e.target.value)} placeholder="Limit Name" className="col-span-2 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2" />
         <input type="text" value={newValue} onChange={(e) => setNewValue(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleAdd()} placeholder="Value" className="col-span-2 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2" />
-        <button onClick={handleAdd} className={`col-span-1 flex items-center justify-center ${colors.bg[600]} text-white rounded-lg`}><Plus size={18} /></button>
+        <button onClick={() => handleAdd()} className={`col-span-1 flex items-center justify-center ${colors.bg[600]} text-white rounded-lg`}><Plus size={18} /></button>
+      </div>
+      {/* Common Limits Suggestions */}
+      <div className="mb-3 flex flex-wrap gap-1.5">
+        {COMMON_LIMITS.filter(l => limits[l] === undefined).map(l => (
+          <button
+            key={l}
+            onClick={() => { setNewKey(l); }}
+            className="px-2 py-1 text-[10px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-md text-slate-500 hover:text-amber-500 hover:border-amber-200 transition-colors"
+          >
+            {l}
+          </button>
+        ))}
       </div>
       <div className="flex flex-wrap gap-2">
         {Object.entries(limits).map(([key, value]) => (
@@ -221,6 +249,7 @@ const Plans: React.FC = () => {
 
   // State
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [licenses, setLicenses] = useState<LicenseKey[]>([]);
   const [currencies, setCurrencies] = useState<CurrencyRate[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -238,9 +267,14 @@ const Plans: React.FC = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [plansRes, currenciesRes] = await Promise.all([api.getPlans(), api.getCurrencies()]);
+      const [plansRes, currenciesRes, licensesRes] = await Promise.all([
+        api.getPlans(),
+        api.getCurrencies(),
+        api.getLicenses().catch(e => [])
+      ]);
       setPlans(Array.isArray(plansRes) ? plansRes : (plansRes as any)?.plans || []);
       setCurrencies(Array.isArray(currenciesRes) ? currenciesRes : (currenciesRes as any)?.currencies || []);
+      setLicenses(Array.isArray(licensesRes) ? licensesRes : []);
     } catch (err: any) {
       setToast({ open: true, message: err.message, type: 'error' });
     } finally {
@@ -276,6 +310,22 @@ const Plans: React.FC = () => {
       });
     }
     setModalOpen(true);
+  };
+
+
+  const handleDuplicate = (plan: SubscriptionPlan) => {
+    setEditingPlan(null); // Create mode
+    setFormData({
+      name: `${plan.name} (Copy)`,
+      durationMonths: plan.durationMonths || 12,
+      prices: plan.prices || [],
+      features: plan.features || {},
+      limits: plan.limits || {},
+      isActive: true,
+      deviceLimit: plan.deviceLimit || 1
+    });
+    setModalOpen(true);
+    setToast({ open: true, message: 'Plan copied. Review and save.', type: 'success' });
   };
 
   const handlePriceChange = (index: number, field: keyof PlanPrice, value: any) => {
@@ -424,6 +474,8 @@ const Plans: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredPlans.map((plan) => {
             const primaryPrice = plan.prices.find(p => p.isPrimary) || plan.prices[0];
+            const activeLicenses = licenses.filter(l => l.planId === plan.id && l.status === 'active').length;
+
             return (
               <div
                 key={plan.id}
@@ -446,8 +498,9 @@ const Plans: React.FC = () => {
                 <div className={`p-6 bg-gradient-to-br ${plan.isActive ? colors.lightGradient : 'from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900'}`}>
                   <div className="mb-6">
                     <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mb-1">{plan.name}</h3>
-                    <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
-                      <Calendar size={12} /> {plan.durationMonths} Months Duration
+                    <div className="flex items-center gap-3 text-xs font-bold text-slate-500">
+                      <span className="flex items-center gap-1"><Calendar size={12} /> {plan.durationMonths} Mo</span>
+                      {activeLicenses > 0 && <span className="flex items-center gap-1 text-emerald-600"><Users size={12} /> {activeLicenses} Subs</span>}
                     </div>
                   </div>
 
@@ -470,16 +523,19 @@ const Plans: React.FC = () => {
                 {/* Features & Limits */}
                 <div className="p-6 flex-1 flex flex-col gap-6">
                   {/* Limits Mini Grid */}
-                  {Object.keys(plan.limits).length > 0 && (
-                    <div className="grid grid-cols-2 gap-2">
-                      {Object.entries(plan.limits).slice(0, 4).map(([k, v]) => (
-                        <div key={k} className="bg-slate-50 dark:bg-slate-900/50 p-2 rounded-lg border border-slate-100 dark:border-slate-700/50 text-center">
-                          <div className={`text-sm font-black ${colors.text[600]}`}>{v}</div>
-                          <div className="text-[10px] text-slate-400 uppercase font-bold truncate">{k}</div>
-                        </div>
-                      ))}
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* Device Limit Badge */}
+                    <div className="bg-slate-50 dark:bg-slate-900/50 p-2 rounded-lg border border-slate-100 dark:border-slate-700/50 text-center">
+                      <div className={`text-sm font-black ${colors.text[600]}`}>{plan.deviceLimit || 1}</div>
+                      <div className="text-[10px] text-slate-400 uppercase font-bold truncate">Max Devices</div>
                     </div>
-                  )}
+                    {Object.entries(plan.limits).slice(0, 3).map(([k, v]) => (
+                      <div key={k} className="bg-slate-50 dark:bg-slate-900/50 p-2 rounded-lg border border-slate-100 dark:border-slate-700/50 text-center">
+                        <div className={`text-sm font-black ${colors.text[600]}`}>{v}</div>
+                        <div className="text-[10px] text-slate-400 uppercase font-bold truncate">{k}</div>
+                      </div>
+                    ))}
+                  </div>
 
                   {/* Features List */}
                   <div className="space-y-3">
@@ -509,8 +565,16 @@ const Plans: React.FC = () => {
                     <Edit2 size={14} className="group-hover/edit:text-indigo-500" /> Edit
                   </button>
                   <button
+                    onClick={() => handleDuplicate(plan)}
+                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 hover:border-indigo-200 transition-all"
+                    title="Duplicate Plan"
+                  >
+                    <Copy size={16} />
+                  </button>
+                  <button
                     onClick={() => handleDelete(plan.id)}
                     className="w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-200 transition-all"
+                    title="Delete Plan"
                   >
                     <Trash2 size={16} />
                   </button>
