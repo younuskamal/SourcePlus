@@ -28,10 +28,10 @@ interface FormData {
 }
 
 // --- Constants ---
-const FIXED_PLANS = [
-  { name: 'Starter', color: 'blue', description: 'Essential features for small businesses' },
-  { name: 'Professional', color: 'indigo', description: 'Advanced tools for growing companies' },
-  { name: 'Enterprise', color: 'emerald', description: 'Maximum power and unlimited potential' }
+const FIXED_SLOTS = [
+  { defaultName: 'Starter', color: 'blue', description: 'Essential features for small businesses' },
+  { defaultName: 'Professional', color: 'indigo', description: 'Advanced tools for growing companies' },
+  { defaultName: 'Enterprise', color: 'emerald', description: 'Maximum power and unlimited potential' }
 ];
 
 const COMMON_FEATURES = ['pos', 'inventory', 'reports', 'support', 'api', 'backups', 'dashboard_access'];
@@ -233,10 +233,17 @@ const Plans: React.FC = () => {
 
   useEffect(() => { fetchData(); }, []);
 
-  const getPlanByName = (name: string) => plans.find(p => p.name.toLowerCase() === name.toLowerCase());
+  const handleEdit = (planIndex: number, defaultName: string) => {
+    // Try to find the plan corresponding to this "slot" by index or name match if previously created
+    // A more robust way in a real app would be to store a "slotId" or "templateId" on the Plan model
+    // identifying whether it is Plan 1, 2, or 3. For now, we match by name or return null.
+    // However, since names are now editable, we can't reliably strict match by name if the user changed it.
+    // In this simplified model, we will map the SORTED plans from API to these 3 slots.
 
-  const handleEdit = (planName: string) => {
-    const existingPlan = getPlanByName(planName);
+    // Sort plans by creation time if not already sorted, to try and maintain order.
+    // Ideally we'd have a 'type' field.
+    const sortedPlans = [...plans].sort((a, b) => (new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()));
+    const existingPlan = sortedPlans[planIndex];
 
     if (existingPlan) {
       setFormData({
@@ -250,9 +257,9 @@ const Plans: React.FC = () => {
         deviceLimit: existingPlan.deviceLimit || 1
       });
     } else {
-      // Initialize new default for this slot
+      // New Plan for this slot
       setFormData({
-        name: planName,
+        name: defaultName,
         durationMonths: 12,
         prices: [{ currency: currencies[0]?.code || 'IQD', monthlyPrice: 0, periodPrice: 0, yearlyPrice: 0, discount: 0, isPrimary: true }],
         features: {},
@@ -266,7 +273,6 @@ const Plans: React.FC = () => {
 
   const handlePriceChange = (index: number, field: keyof PlanPrice, value: any) => {
     const newPrices = [...formData.prices];
-    // Ensure numeric values are actually numbers to avoid 400 Bad Request
     const numericFields = ['monthlyPrice', 'periodPrice', 'yearlyPrice', 'discount'];
     const safeValue = numericFields.includes(field) ? Number(value) : value;
 
@@ -334,31 +340,35 @@ const Plans: React.FC = () => {
         </p>
       </div>
 
-      {/* 3 Fixed Plans Grid */}
+      {/* 3 Fixed Slots Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {FIXED_PLANS.map((fixedPlan) => {
-          const plan = getPlanByName(fixedPlan.name);
+        {FIXED_SLOTS.map((slot, index) => {
+          // Bind Plans to Slots by creation order
+          const sortedPlans = [...plans].sort((a, b) => (new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()));
+          const plan = sortedPlans[index];
+
           const isConfigured = !!plan;
+          const displayPlanName = plan ? plan.name : slot.defaultName;
           const prices = plan?.prices || [];
           const features = plan ? Object.keys(plan.features) : [];
 
           return (
-            <div key={fixedPlan.name} className={`relative flex flex-col bg-white dark:bg-slate-800 rounded-3xl border transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 overflow-hidden group ${isConfigured ? 'border-slate-200 dark:border-slate-700' : 'border-dashed border-slate-300 dark:border-slate-700 opacity-80'}`}>
+            <div key={index} className={`relative flex flex-col bg-white dark:bg-slate-800 rounded-3xl border transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 overflow-hidden group ${isConfigured ? 'border-slate-200 dark:border-slate-700' : 'border-dashed border-slate-300 dark:border-slate-700 opacity-80'}`}>
 
               {/* Status Bar */}
-              <div className={`h-2 w-full bg-${fixedPlan.color}-500`}></div>
+              <div className={`h-2 w-full bg-${slot.color}-500`}></div>
 
               <div className="p-6 flex-1 flex flex-col">
                 <div className="mb-4">
                   <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-1">{fixedPlan.name}</h3>
+                    <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-1 truncate" title={displayPlanName}>{displayPlanName}</h3>
                     {isConfigured && (
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${plan.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
                         {plan.isActive ? 'Active' : 'Inactive'}
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-slate-500 font-medium">{fixedPlan.description}</p>
+                  <p className="text-xs text-slate-500 font-medium">{slot.description}</p>
                 </div>
 
                 {/* Pricing */}
@@ -394,7 +404,7 @@ const Plans: React.FC = () => {
                 </div>
 
                 <button
-                  onClick={() => handleEdit(fixedPlan.name)}
+                  onClick={() => handleEdit(index, slot.defaultName)}
                   className={`w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${isConfigured
                     ? 'bg-white border border-slate-200 text-slate-700 hover:border-indigo-500 hover:text-indigo-600 dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:hover:border-indigo-400'
                     : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-500/20'}`}
@@ -415,11 +425,16 @@ const Plans: React.FC = () => {
           <div className="relative bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-5xl max-h-[95vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex justify-between items-center sticky top-0 z-10">
-              <div>
-                <h2 className="text-2xl font-black text-slate-900 dark:text-white">
-                  Configure {formData.name}
-                </h2>
-                <p className="text-sm text-slate-500">Edit pricing, features, and system limits.</p>
+              <div className="flex-1 mr-4">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Plan Name</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="text-2xl font-black text-slate-900 dark:text-white bg-transparent border-none outline-none placeholder-slate-300 w-full focus:ring-0 p-0"
+                  placeholder="Enter Plan Name"
+                />
+                <p className="text-sm text-slate-500 mt-1">Edit pricing, features, and system limits.</p>
               </div>
               <button onClick={() => setModalOpen(false)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full hover:bg-slate-200 transition-colors">
                 <X size={20} className="text-slate-500" />

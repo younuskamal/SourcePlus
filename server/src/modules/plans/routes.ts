@@ -63,6 +63,16 @@ export default async function planRoutes(app: FastifyInstance) {
 
     const primaryPrice = data.prices.find(p => p.isPrimary) || data.prices[0];
 
+    // Filter duplicates
+    const uniqueCurrencies = new Set<string>();
+    const cleanPrices: typeof data.prices = [];
+    for (const p of data.prices) {
+      if (!uniqueCurrencies.has(p.currency)) {
+        uniqueCurrencies.add(p.currency);
+        cleanPrices.push(p);
+      }
+    }
+
     const plan = await app.prisma.plan.create({
       data: {
         name: data.name,
@@ -77,7 +87,7 @@ export default async function planRoutes(app: FastifyInstance) {
         price_yearly: primaryPrice?.yearlyPrice || 0,
         currency: primaryPrice?.currency || 'IQD',
         prices: {
-          create: data.prices.map(p => ({
+          create: cleanPrices.map(p => ({
             currency: p.currency,
             monthlyPrice: p.monthlyPrice,
             periodPrice: p.periodPrice,
@@ -111,14 +121,24 @@ export default async function planRoutes(app: FastifyInstance) {
 
     const primaryPrice = data.prices.find(p => p.isPrimary) || data.prices[0];
 
+    // Filter duplicates manually to fix Unique constraint failed
+    const uniqueCurrencies = new Set<string>();
+    const cleanPrices: typeof data.prices = [];
+    for (const p of data.prices) {
+      if (!uniqueCurrencies.has(p.currency)) {
+        uniqueCurrencies.add(p.currency);
+        cleanPrices.push(p);
+      }
+    }
+
     // Update plan and replace prices
     // Transaction to ensure atomicity
     const plan = await app.prisma.$transaction(async (tx) => {
-      // Delete existing prices
+      // 1. Delete existing prices
       await tx.planPrice.deleteMany({ where: { planId: id } });
 
-      // Update plan and create new prices
-      return tx.plan.update({
+      // 2. Update plan basic details
+      await tx.plan.update({
         where: { id },
         data: {
           name: data.name,
@@ -130,18 +150,28 @@ export default async function planRoutes(app: FastifyInstance) {
           // Update legacy fields
           price_monthly: primaryPrice?.monthlyPrice || 0,
           price_yearly: primaryPrice?.yearlyPrice || 0,
-          currency: primaryPrice?.currency || 'IQD',
-          prices: {
-            create: data.prices.map(p => ({
-              currency: p.currency,
-              monthlyPrice: p.monthlyPrice,
-              periodPrice: p.periodPrice,
-              yearlyPrice: p.yearlyPrice,
-              discount: p.discount,
-              isPrimary: p.isPrimary
-            }))
-          }
-        },
+          currency: primaryPrice?.currency || 'IQD'
+        }
+      });
+
+      // 3. Create new prices
+      if (cleanPrices.length > 0) {
+        await tx.planPrice.createMany({
+          data: cleanPrices.map(p => ({
+            planId: id,
+            currency: p.currency,
+            monthlyPrice: p.monthlyPrice,
+            periodPrice: p.periodPrice,
+            yearlyPrice: p.yearlyPrice,
+            discount: p.discount,
+            isPrimary: p.isPrimary
+          }))
+        });
+      }
+
+      // 4. Return full object
+      return tx.plan.findUniqueOrThrow({
+        where: { id },
         include: { prices: true }
       });
     });
