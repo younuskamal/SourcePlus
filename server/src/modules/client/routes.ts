@@ -193,16 +193,25 @@ export default async function clientRoutes(app: FastifyInstance) {
     const body = z.object({ serial: z.string(), hardwareId: z.string().optional() }).parse(request.body);
     const license = await app.prisma.license.findUnique({ where: { serial: body.serial }, include: { plan: true } });
     if (!license) return reply.code(404).send({ valid: false });
+
+    // Check expiration
+    const isExpired = license.expireDate && new Date(license.expireDate) < new Date();
+    const daysLeft = license.expireDate ? Math.ceil((new Date(license.expireDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0;
+
     return reply.send({
-      valid: true,
+      valid: license.status === LicenseStatus.active && !isExpired,
       status: license.status,
+      expireDate: license.expireDate,
+      daysLeft: daysLeft,
       plan: license.plan ? {
+        id: license.plan.id,
         name: license.plan.name,
+        durationMonths: license.plan.durationMonths,
         features: license.plan.features,
         deviceLimit: license.plan.deviceLimit, // Return device limit
         limits: license.plan.limits // Return all limits
       } : null,
-      expireDate: license.expireDate
+      licenseId: license.id
     });
   });
 

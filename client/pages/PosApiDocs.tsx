@@ -85,11 +85,25 @@ const PosApiDocs: React.FC = () => {
                         response={`{
   "valid": true,
   "status": "active",
+  "expireDate": "2024-12-31T00:00:00Z",
+  "daysLeft": 200,
+  "isExpired": false,
   "plan": {
-     "name": "Standard Plan",
-     "features": ["Offline Mode", "Reports"]
-  },
-  "expireDate": "2024-12-31T00:00:00Z"
+     "id": "uuid-...",
+     "name": "Professional",
+     "durationMonths": 12,
+     "features": { 
+        "pos": true, 
+        "inventory": true,
+        "reports": true
+     },
+     "limits": {
+        "maxUsers": 5,
+        "maxBranches": 2,
+        "maxInvoices": -1 
+     },
+     "deviceLimit": 3
+  }
 }`}
                     />
                     <Endpoint
@@ -119,10 +133,14 @@ const PosApiDocs: React.FC = () => {
   "valid": true,
   "status": "active",
   "expireDate": "2024-12-31T00:00:00Z",
-  "daysLeft": 200,
+  "daysLeft": 199,
   "plan": {
-    "name": "Premium",
-    "deviceLimit": 3
+    "name": "Professional",
+    "deviceLimit": 3,
+    "limits": {
+       "maxUsers": 5,
+       "maxBranches": 2
+    }
   }
 }`}
                     />
@@ -189,10 +207,15 @@ const PosApiDocs: React.FC = () => {
                         response={`[
   {
     "id": "uuid...",
-    "name": "Basic Plan",
+    "name": "Professional",
     "durationMonths": 12,
-    "priceUSD": 100,
-    "features": { ... }
+    "features": { "pos": true, "inventory": true },
+    "limits": { "maxUsers": 5 },
+    "deviceLimit": 3,
+    "prices": [
+       { "currency": "USD", "periodPrice": 100, "isPrimary": true },
+       { "currency": "IQD", "periodPrice": 150000, "isPrimary": false }
+    ]
   }
 ]`}
                     />
