@@ -92,30 +92,9 @@ const ClinicApiDocs: React.FC = () => {
                     />
                     <Endpoint
                         isRtl={isRtl}
-                        method="POST"
-                        url="/api/auth/login"
-                        title="2. تسجيل الدخول (Login)"
-                        description="يستخدم هذا الرابط لتسجيل الدخول بحساب مدير العيادة. إذا كانت الحالة 'active' سيتم إرجاع Token. إذا كانت 'pending' سيرفض الدخول."
-                        payload={`{
-  "email": "clinic@example.com",
-  "password": "securePassword123"
-}`}
-                        response={`{
-  "accessToken": "eyJhbGciOiJIUzI1...",
-  "refreshToken": "eyJhbGciOiJIUzI1...",
-  "user": {
-    "id": "uuid-user-id",
-    "name": "د. أحمد علي",
-    "email": "clinic@example.com",
-    "role": "clinic_admin"
-  }
-}`}
-                    />
-                    <Endpoint
-                        isRtl={isRtl}
                         method="GET"
                         url="/api/subscription/status?clinicId=..."
-                        title="3. التحقق من التفعيل (Check Activation)"
+                        title="2. التحقق من التفعيل (Check Activation)"
                         description="الخطوة الثانية: يستخدم هذا الرابط للتحقق من حالة الحساب. يمكن إرسال clinicId (الذي تم استلامه عند التسجيل) كـ Query Param، أو إرسال JWT Token في الـ Headers إذا كان المستخدم مسجل دخوله."
                         response={`{
   "status": "active",

@@ -21,7 +21,7 @@ import { trafficRoutes } from './modules/traffic/traffic.routes.js';
 import publicPlanRoutes from './modules/plans/public.routes.js';
 
 export const registerRoutes = (app: FastifyInstance) => {
-  app.register(authRoutes, { prefix: '/api/auth' });
+  app.register(authRoutes, { prefix: '/auth' });
   app.register(userRoutes, { prefix: '/users' });
   app.register(planRoutes, { prefix: '/plans' });
   app.register(publicPlanRoutes, { prefix: '/api/plans' });
