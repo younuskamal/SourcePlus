@@ -55,7 +55,7 @@ const doRequest = async <T>(path: string, options: RequestInit = {}, retry = tru
 
   if (res.status === 401 && refreshToken && retry) {
     try {
-      const refreshRes = await fetch(`${API_URL}/auth/refresh`, {
+      const refreshRes = await fetch(`${API_URL}/api/auth/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refreshToken })
@@ -103,18 +103,18 @@ export const api = {
       accessToken: string;
       refreshToken: string;
       user: User;
-    }>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }, false);
+    }>('/api/auth/admin-login', { method: 'POST', body: JSON.stringify({ email, password }) }, false);
     setTokens(data.accessToken, data.refreshToken, rememberMe);
     return data.user;
   },
   async me() {
-    return doRequest<User>('/auth/me');
+    return doRequest<User>('/api/auth/me');
   },
   async logout() {
     clearTokens();
   },
   async register(name: string, email: string, password: string, role: 'admin' | 'developer' | 'viewer' = 'viewer') {
-    return doRequest<User>('/auth/register', {
+    return doRequest<User>('/api/auth/register', {
       method: 'POST',
       body: JSON.stringify({ name, email, password, role })
     });
