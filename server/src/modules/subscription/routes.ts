@@ -5,26 +5,33 @@ import { RegistrationStatus, LicenseStatus } from '@prisma/client';
 export default async function subscriptionRoutes(app: FastifyInstance) {
     app.get('/status', async (request, reply) => {
         const querySchema = z.object({
-            hwid: z.string().optional()
+            clinicId: z.string().optional()
         });
 
-        // Fastify creates lowercase headers
-        const headerSchema = z.object({
-            'hwid': z.string().optional(),
-            'x-hwid': z.string().optional()
-        }).passthrough();
-
         const query = querySchema.parse(request.query || {});
-        const headers = headerSchema.parse(request.headers || {});
+        let clinicId = query.clinicId;
 
-        const hwid = query.hwid || headers['x-hwid'] || headers['hwid'];
+        // If no clinicId provided, try to get from authenticated user (Token)
+        if (!clinicId && request.headers.authorization) {
+            try {
+                // Verify token manually since this route might be public for some cases
+                const token = request.headers.authorization.replace('Bearer ', '');
+                const payload = app.jwt.verify(token) as any;
+                const user = await app.prisma.user.findUnique({ where: { id: payload.id } });
+                if (user && user.clinicId) {
+                    clinicId = user.clinicId;
+                }
+            } catch (e) {
+                // Ignore token error, proceed to check if clinicId was somehow found or error out
+            }
+        }
 
-        if (!hwid) {
-            return reply.code(400).send({ message: 'Hardware ID (hwid) is required' });
+        if (!clinicId) {
+            return reply.code(400).send({ message: 'Clinic ID or valid Auth Token is required' });
         }
 
         const clinic = await app.prisma.clinic.findUnique({
-            where: { hwid },
+            where: { id: clinicId },
             include: { license: { include: { plan: true } } }
         });
 
@@ -34,7 +41,7 @@ export default async function subscriptionRoutes(app: FastifyInstance) {
 
         if (clinic.status === RegistrationStatus.PENDING) {
             return reply.send({
-                status: 'pending', // Lowercase as requested by user
+                status: 'pending',
                 license: null,
                 remainingDays: 0,
                 forceLogout: false

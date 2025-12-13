@@ -12,7 +12,6 @@ const registerSchema = z.object({
     password: z.string().min(6),
     phone: z.string().optional(),
     address: z.string().optional(),
-    hwid: z.string().min(5),
     systemVersion: z.string().optional(),
 });
 
@@ -25,11 +24,6 @@ export default async function clinicRoutes(app: FastifyInstance) {
         const existing = await app.prisma.clinic.findUnique({ where: { email: data.email } });
         if (existing) {
             return reply.code(409).send({ message: 'Clinic already registered with this email' });
-        }
-
-        const existingHwid = await app.prisma.clinic.findUnique({ where: { hwid: data.hwid } });
-        if (existingHwid) {
-            return reply.code(409).send({ message: 'Clinic already registered with this Hardware ID' });
         }
 
         // Check if email is already taken by a user

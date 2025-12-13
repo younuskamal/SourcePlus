@@ -15,7 +15,6 @@ model Clinic {
   email         String             @unique
   phone         String?
   address       String?
-  hwid          String             @unique
   systemVersion String?
   status        RegistrationStatus @default(PENDING)
   

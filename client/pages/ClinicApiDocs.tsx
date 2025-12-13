@@ -65,7 +65,7 @@ const ClinicApiDocs: React.FC = () => {
                         method="POST"
                         url="/api/clinics/register"
                         title="1. إرسال طلب التسجيل (Registration Request)"
-                        description="الخطوة الأولى: يتم استدعاء هذا الرابط مرة واحدة فقط عند تثبيت النظام لأول مرة. يقوم بإرسال بيانات العيادة و HWID الخاص بالسيرفر. ستكون حالة العيادة PENDING بانتظار الموافقة من الإدارة."
+                        description="الخطوة الأولى: يتم استدعاء هذا الرابط عند تسجيل اشتراك جديد للعيادة. يقوم بإرسال بيانات العيادة وحساب المدير (الإيميل والباسورد). ستكون حالة العيادة PENDING بانتظار الموافقة."
                         payload={`{
   "name": "عيادة الأمل الطبية",
   "doctorName": "د. أحمد علي",
@@ -73,7 +73,6 @@ const ClinicApiDocs: React.FC = () => {
   "password": "securePassword123",
   "phone": "+9647701234567",
   "address": "بغداد، المنصور",
-  "hwid": "HWID-1234-5678-9000",
   "systemVersion": "1.0.0"
 }`}
                         response={`{
@@ -94,9 +93,9 @@ const ClinicApiDocs: React.FC = () => {
                     <Endpoint
                         isRtl={isRtl}
                         method="GET"
-                        url="/api/subscription/status?hwid=HWID-..."
+                        url="/api/subscription/status?clinicId=..."
                         title="2. التحقق من التفعيل (Check Activation)"
-                        description="الخطوة الثانية: يستخدم هذا الرابط للتحقق دورياً من حالة التفعيل. يجب استدعاؤه عند بدء التشغيل. إذا كانت الحالة 'pending' يفضل عرض شاشة انتظار، وعندما تتحول إلى 'active' يتم الدخول للنظام."
+                        description="الخطوة الثانية: يستخدم هذا الرابط للتحقق من حالة الحساب. يمكن إرسال clinicId (الذي تم استلامه عند التسجيل) كـ Query Param، أو إرسال JWT Token في الـ Headers إذا كان المستخدم مسجل دخوله."
                         response={`{
   "status": "active",
   "license": {
