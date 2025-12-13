@@ -9,26 +9,27 @@ const loginSchema = z.object({
 });
 
 export default async function authRoutes(app: FastifyInstance) {
-  app.post('/login', async (request, reply) => {
+  // --- SYSTEM ADMIN LOGIN ---
+  app.post('/admin-login', async (request, reply) => {
     const { email, password } = loginSchema.parse(request.body);
     const user = await app.prisma.user.findUnique({ where: { email } });
+
     if (!user) {
-      return reply
-        .code(401)
-        .send({ message: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' });
+      return reply.code(401).send({ message: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' });
+    }
+
+    // Security: Prevent Clinic Admins from logging into System Dashboard
+    if (user.role === 'clinic_admin') {
+      return reply.code(403).send({ message: 'غير مصرح لك بالدخول إلى لوحة الإدارة' });
     }
 
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
-      return reply
-        .code(401)
-        .send({ message: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' });
+      return reply.code(401).send({ message: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' });
     }
 
     if ((user as any).status && (user as any).status !== 'APPROVED') {
-      return reply
-        .code(403)
-        .send({ message: 'الحساب بانتظار تفعيل الإدارة' });
+      return reply.code(403).send({ message: 'الحساب معلق أو بانتظار الموافقة' });
     }
 
     const accessToken = app.jwt.sign(
@@ -58,7 +59,75 @@ export default async function authRoutes(app: FastifyInstance) {
     await logAudit(app, {
       userId: user.id,
       action: 'LOGIN',
-      details: `User ${email} logged in`,
+      details: `Admin/Dev ${email} logged in`,
+      ip: request.ip
+    });
+
+    return reply.send({
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
+    });
+  });
+
+  // --- CLINIC APP LOGIN ---
+  app.post('/login', async (request, reply) => {
+    const { email, password } = loginSchema.parse(request.body);
+    const user = await app.prisma.user.findUnique({ where: { email } });
+
+    if (!user) {
+      return reply.code(401).send({ message: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' });
+    }
+
+    // Security: Restrict this endpoint to Clinic Admins ONLY
+    if (user.role !== 'clinic_admin') {
+      return reply.code(403).send({ message: 'غير مصرح. هذا الرابط مخصص للعيادات فقط.' });
+    }
+
+    const valid = await bcrypt.compare(password, user.passwordHash);
+    if (!valid) {
+      return reply.code(401).send({ message: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' });
+    }
+
+    // Status Check
+    if ((user as any).status && (user as any).status !== 'APPROVED') {
+      return reply.code(403).send({ message: 'الحساب بانتظار تفعيل الإدارة' });
+    }
+
+    const accessToken = app.jwt.sign(
+      { id: user.id, role: user.role, email: user.email },
+      { expiresIn: '15m' }
+    );
+    const refreshToken = app.jwt.sign(
+      { id: user.id, role: user.role, email: user.email },
+      { expiresIn: '7d' }
+    );
+
+    // Reuse session creation/audit logic
+    await app.prisma.session.create({
+      data: {
+        userId: user.id,
+        refreshToken,
+        userAgent: request.headers['user-agent'],
+        ip: request.ip,
+        expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7)
+      }
+    });
+
+    await app.prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date(), lastLoginIp: request.ip }
+    });
+
+    await logAudit(app, {
+      userId: user.id,
+      action: 'LOGIN',
+      details: `Clinic Admin ${email} logged in`,
       ip: request.ip
     });
 
