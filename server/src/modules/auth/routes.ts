@@ -25,6 +25,12 @@ export default async function authRoutes(app: FastifyInstance) {
         .send({ message: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' });
     }
 
+    if ((user as any).status && (user as any).status !== 'APPROVED') {
+      return reply
+        .code(403)
+        .send({ message: 'الحساب بانتظار الموافقة أو معلق' });
+    }
+
     const accessToken = app.jwt.sign(
       { id: user.id, role: user.role, email: user.email },
       { expiresIn: '15m' }

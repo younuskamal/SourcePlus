@@ -8,12 +8,38 @@ datasource db {
   provider = "postgresql"
 }
 
+model Clinic {
+  id            String             @id @default(uuid())
+  name          String
+  doctorName    String?
+  email         String             @unique
+  phone         String?
+  address       String?
+  hwid          String             @unique
+  systemVersion String?
+  status        RegistrationStatus @default(PENDING)
+  
+  licenseId     String?            @unique
+  license       License?           @relation(fields: [licenseId], references: [id])
+  
+  users         User[]
+
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  @@map("clinics")
+}
+
 model User {
   id           String    @id @default(uuid())
   name         String
   email        String    @unique
   passwordHash String
   role         Role      @default(developer)
+  status       RegistrationStatus @default(APPROVED)
+  
+  clinicId     String?
+  clinic       Clinic?   @relation(fields: [clinicId], references: [id])
+
   createdAt    DateTime  @default(now())
   lastLoginAt  DateTime?
   lastLoginIp  String?
@@ -21,6 +47,13 @@ model User {
   auditLogs    AuditLog[]
   replies      SupportReply[]
   messageReplies MessageReply[]
+}
+
+enum Role {
+  admin
+  developer
+  viewer
+  clinic_admin
 }
 
 model Session {
@@ -248,11 +281,7 @@ model TrafficLog {
   @@index([endpoint])
 }
 
-enum Role {
-  admin
-  developer
-  viewer
-}
+
 
 enum LicenseStatus {
   active
@@ -303,24 +332,7 @@ model MessageReply {
   createdAt DateTime       @default(now())
 }
 
-model Clinic {
-  id            String             @id @default(uuid())
-  name          String
-  doctorName    String?
-  email         String             @unique
-  phone         String?
-  address       String?
-  hwid          String             @unique
-  systemVersion String?
-  status        RegistrationStatus @default(PENDING)
-  
-  licenseId     String?            @unique
-  license       License?           @relation(fields: [licenseId], references: [id])
 
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
-  @@map("clinics")
-}
 
 enum ProductType {
   POS

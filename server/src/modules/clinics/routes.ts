@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import bcrypt from 'bcrypt';
 import { ProductType, RegistrationStatus, Role, LicenseStatus } from '@prisma/client';
 import { generateSerial } from '../../utils/serial.js';
 import { logAudit } from '../../utils/audit.js';
@@ -8,6 +9,7 @@ const registerSchema = z.object({
     name: z.string().min(2),
     doctorName: z.string().optional(),
     email: z.string().email(),
+    password: z.string().min(6),
     phone: z.string().optional(),
     address: z.string().optional(),
     hwid: z.string().min(5),
@@ -18,7 +20,7 @@ export default async function clinicRoutes(app: FastifyInstance) {
     // Public Route: Register Clinic
     // Mounted specifically at /api/clinics usually, or /clinics depending on routes.ts
     app.post('/register', async (request, reply) => {
-        const data = registerSchema.parse(request.body);
+        const { password, ...data } = registerSchema.parse(request.body);
 
         const existing = await app.prisma.clinic.findUnique({ where: { email: data.email } });
         if (existing) {
@@ -30,14 +32,35 @@ export default async function clinicRoutes(app: FastifyInstance) {
             return reply.code(409).send({ message: 'Clinic already registered with this Hardware ID' });
         }
 
-        const clinic = await app.prisma.clinic.create({
-            data: {
-                ...data,
-                status: RegistrationStatus.PENDING
-            }
+        // Check if email is already taken by a user
+        const existingUser = await app.prisma.user.findUnique({ where: { email: data.email } });
+        if (existingUser) {
+            return reply.code(409).send({ message: 'An account with this email already exists' });
+        }
+
+        const passwordHash = await bcrypt.hash(password, 10);
+
+        const result = await app.prisma.$transaction(async (prisma) => {
+            const clinic = await prisma.clinic.create({
+                data: {
+                    ...data,
+                    status: RegistrationStatus.PENDING,
+                    users: {
+                        create: {
+                            name: data.doctorName || data.name,
+                            email: data.email,
+                            passwordHash,
+                            role: 'clinic_admin' as Role, // Cast to avoid build error if types aren't regenerated yet
+                            status: RegistrationStatus.PENDING
+                        }
+                    }
+                },
+                include: { users: true }
+            });
+            return clinic;
         });
 
-        return reply.code(201).send(clinic);
+        return reply.code(201).send(result);
     });
 
     // Admin Routes
@@ -48,7 +71,7 @@ export default async function clinicRoutes(app: FastifyInstance) {
         const clinics = await app.prisma.clinic.findMany({
             where,
             orderBy: { createdAt: 'desc' },
-            include: { license: true }
+            include: { license: true, users: true }
         });
         return reply.send(clinics);
     });
@@ -94,6 +117,12 @@ export default async function clinicRoutes(app: FastifyInstance) {
             data: { status: RegistrationStatus.APPROVED }
         });
 
+        // Approve linked users
+        await app.prisma.user.updateMany({
+            where: { clinicId: clinic.id },
+            data: { status: RegistrationStatus.APPROVED }
+        });
+
         await logAudit(app, { userId: request.user?.id, action: 'APPROVE_CLINIC', details: `Approved clinic ${clinic.name}`, ip: request.ip });
 
         return reply.send(updatedClinic);
@@ -108,6 +137,12 @@ export default async function clinicRoutes(app: FastifyInstance) {
 
         await app.prisma.clinic.update({
             where: { id },
+            data: { status: newStatus }
+        });
+
+        // Sync user status
+        await app.prisma.user.updateMany({
+            where: { clinicId: id },
             data: { status: newStatus }
         });
 
@@ -132,6 +167,13 @@ export default async function clinicRoutes(app: FastifyInstance) {
         if (clinic.licenseId) {
             await app.prisma.license.delete({ where: { id: clinic.licenseId } });
         }
+
+        // Cascade delete should handle users if configured, but let's be safe or rely on Prisma schema
+        // Schema: users User[] on Clinic. User has clinicId. No onDelete: Cascade defined in my schema edit! 
+        // I should have added onDelete: Cascade to User.clinic relation.
+        // For now, I'll manually delete users or let it error if constraints exist.
+        // Given I missed 'onDelete: Cascade', I should delete users manually here.
+        await app.prisma.user.deleteMany({ where: { clinicId: id } });
 
         await app.prisma.clinic.delete({ where: { id } });
 
