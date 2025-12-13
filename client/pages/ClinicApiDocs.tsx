@@ -70,6 +70,7 @@ const ClinicApiDocs: React.FC = () => {
   "name": "عيادة الأمل الطبية",
   "doctorName": "د. أحمد علي",
   "email": "clinic@example.com",
+  "password": "securePassword123",
   "phone": "+9647701234567",
   "address": "بغداد، المنصور",
   "hwid": "HWID-1234-5678-9000",
@@ -79,7 +80,15 @@ const ClinicApiDocs: React.FC = () => {
   "id": "uuid-clinic-id",
   "name": "عيادة الأمل الطبية",
   "status": "PENDING",
-  "createdAt": "2024-03-20T10:00:00Z"
+  "createdAt": "2024-03-20T10:00:00Z",
+  "users": [
+    {
+      "id": "uuid-user-id",
+      "email": "clinic@example.com",
+      "role": "clinic_admin",
+      "status": "PENDING"
+    }
+  ]
 }`}
                     />
                     <Endpoint
