@@ -28,7 +28,7 @@ export default async function authRoutes(app: FastifyInstance) {
     if ((user as any).status && (user as any).status !== 'APPROVED') {
       return reply
         .code(403)
-        .send({ message: 'الحساب بانتظار الموافقة أو معلق' });
+        .send({ message: 'الحساب قيد المراجعة، يرجى الانتظار' });
     }
 
     const accessToken = app.jwt.sign(
