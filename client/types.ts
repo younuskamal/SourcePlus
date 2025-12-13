@@ -222,7 +222,7 @@ export interface Clinic {
   email: string;
   phone?: string;
   address?: string;
-  hwid: string;
+
   systemVersion?: string;
   status: RegistrationStatus;
   licenseId?: string;

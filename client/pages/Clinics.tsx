@@ -129,8 +129,8 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                     <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-700 scale-100 animate-in zoom-in-95 duration-200">
                         <div className="flex flex-col items-center text-center gap-4">
                             <div className={`p-4 rounded-full ${confirmModal.type === 'delete' || confirmModal.type === 'suspend'
-                                    ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400'
-                                    : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
+                                ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400'
+                                : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
                                 }`}>
                                 {confirmModal.type === 'delete' ? <Trash2 size={32} /> :
                                     confirmModal.type === 'suspend' ? <Ban size={32} /> : <CheckCircle2 size={32} />}
@@ -156,8 +156,8 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                                 <button
                                     onClick={performAction}
                                     className={`flex-1 px-4 py-2.5 rounded-xl text-white font-bold shadow-lg transition-transform active:scale-95 ${confirmModal.type === 'delete' || confirmModal.type === 'suspend'
-                                            ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/25'
-                                            : 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/25'
+                                        ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/25'
+                                        : 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/25'
                                         }`}
                                 >
                                     Confirm
@@ -232,10 +232,7 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                                         <Cpu size={16} className="text-emerald-500" /> System Info
                                     </h4>
                                     <div className="space-y-3 pl-2 border-l-2 border-slate-100 dark:border-slate-800 ml-2">
-                                        <div>
-                                            <div className="text-xs text-slate-400">Hardware ID</div>
-                                            <div className="text-xs font-mono bg-slate-100 dark:bg-slate-900 px-2 py-1 rounded w-fit text-slate-600 dark:text-slate-400">{detailsModal.hwid}</div>
-                                        </div>
+
                                         <div>
                                             <div className="text-xs text-slate-400">System Version</div>
                                             <div className="text-sm font-medium text-slate-700 dark:text-slate-300">v{detailsModal.systemVersion || '1.0.0'}</div>
@@ -399,8 +396,8 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                                                             {clinic.license.serial}
                                                         </div>
                                                         <div className={`flex items-center gap-2 text-xs ${new Date(clinic.license.expireDate || '') < new Date()
-                                                                ? 'text-rose-500 font-bold'
-                                                                : 'text-slate-500'
+                                                            ? 'text-rose-500 font-bold'
+                                                            : 'text-slate-500'
                                                             }`}>
                                                             <Calendar size={12} />
                                                             {formatDate(clinic.license.expireDate || '')}
@@ -414,11 +411,7 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
 
                                         <td className="px-6 py-4">
                                             <div className="space-y-1 text-slate-600 dark:text-slate-400">
-                                                <div className="flex items-center gap-2" title="Hardware ID">
-                                                    <Cpu size={14} />
-                                                    <span className="font-mono text-xs">{clinic.hwid.substring(0, 8)}...</span>
-                                                </div>
-                                                {clinic.systemVersion && <div className="text-xs">v{clinic.systemVersion}</div>}
+                                                {clinic.systemVersion ? <div className="text-xs">v{clinic.systemVersion}</div> : <span className="text-xs italic">Web App</span>}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
