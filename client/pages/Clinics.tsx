@@ -384,6 +384,12 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                                                         <span>{clinic.phone}</span>
                                                     </div>
                                                 )}
+                                                {clinic.address && (
+                                                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                                                        <MapPin size={14} />
+                                                        <span className="truncate max-w-[150px]" title={clinic.address}>{clinic.address}</span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </td>
 
