@@ -316,7 +316,9 @@ const Licenses: React.FC = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto min-h-[400px]">
+
+        {/* Desktop Table View */}
+        <div className="hidden lg:block overflow-x-auto min-h-[400px]">
           <table className="w-full text-left text-sm text-gray-600 dark:text-slate-400">
             <thead className="bg-gray-50 dark:bg-slate-900/50 text-gray-700 dark:text-slate-300 font-semibold uppercase tracking-wider text-xs border-b border-gray-200 dark:border-slate-700">
               <tr>
@@ -431,14 +433,124 @@ const Licenses: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Mobile Card View */}
+        <div className="lg:hidden p-4 space-y-3 min-h-[400px]">
+          {filteredLicenses.length === 0 ? (
+            <div className="text-center py-12 text-slate-400">
+              {t('common.noData')}
+            </div>
+          ) : (
+            filteredLicenses.map((license) => (
+              <div key={license.id} className="bg-white dark:bg-slate-700/30 rounded-xl border border-slate-200 dark:border-slate-600 p-4 space-y-3 shadow-sm hover:shadow-md transition-shadow">
+                {/* Header: Serial + Status */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-mono font-bold text-sm text-slate-800 dark:text-slate-200 truncate">{license.serial}</span>
+                      <button
+                        onClick={() => handleCopy(license.serial, license.id)}
+                        className="p-1.5 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-primary-600 transition-all"
+                        title="Copy Serial"
+                      >
+                        {copiedId === license.id ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                      </button>
+                    </div>
+                    <div className="text-xs text-slate-400 flex items-center gap-1">
+                      <div className={`w-1.5 h-1.5 rounded-full ${license.hardwareId ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
+                      {license.hardwareId ? 'Device Locked' : 'Unbound'}
+                    </div>
+                  </div>
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${getStatusColor(license.status)}`}>
+                    {getStatusLabel(license.status)}
+                  </span>
+                </div>
+
+                {/* Customer & Plan */}
+                <div className="border-t border-slate-100 dark:border-slate-600 pt-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <User size={14} className="text-slate-400" />
+                    <span className="font-medium text-sm dark:text-slate-300">{license.userName}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CreditCard size={14} className="text-slate-400" />
+                    <span className="text-xs text-slate-500">{plans.find(p => p.id === license.planId)?.name}</span>
+                  </div>
+                </div>
+
+                {/* Metadata Grid */}
+                <div className="grid grid-cols-2 gap-3 border-t border-slate-100 dark:border-slate-600 pt-3">
+                  <div>
+                    <div className="text-[10px] text-slate-400 uppercase font-bold mb-1">{t('licenses.activations')}</div>
+                    <div className="inline-flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-lg text-xs font-bold dark:text-slate-300">
+                      <Monitor size={12} className="text-slate-500" />
+                      {license.activationCount} / {license.deviceLimit}
+                    </div>
+                  </div>
+                  {license.expireDate && (
+                    <div>
+                      <div className="text-[10px] text-slate-400 uppercase font-bold mb-1">Expires</div>
+                      <div className="text-xs text-slate-600 dark:text-slate-300">
+                        {new Date(license.expireDate).toLocaleDateString()}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="flex flex-wrap gap-2 border-t border-slate-100 dark:border-slate-600 pt-3">
+                  <button
+                    onClick={() => handleEditClick(license)}
+                    className="flex-1 min-w-[calc(50%-0.25rem)] flex items-center justify-center gap-2 px-3 py-2 bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 rounded-lg text-sm font-medium hover:bg-sky-100 dark:hover:bg-sky-900/30 transition-colors"
+                  >
+                    <Edit2 size={16} />
+                    <span>{t('common.edit')}</span>
+                  </button>
+                  {license.status !== LicenseStatus.REVOKED && (
+                    <>
+                      <button
+                        onClick={() => openRenewModal(license.id)}
+                        className="flex-1 min-w-[calc(50%-0.25rem)] flex items-center justify-center gap-2 px-3 py-2 bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 rounded-lg text-sm font-medium hover:bg-primary-100 dark:hover:bg-primary-900/30 transition-colors"
+                      >
+                        <CalendarClock size={16} />
+                        <span>{t('licenses.renew')}</span>
+                      </button>
+                      <button
+                        onClick={() => handlePauseToggle(license.id)}
+                        className="flex items-center justify-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                        title={license.status === LicenseStatus.PAUSED ? t('licenses.resume') : t('licenses.pause')}
+                      >
+                        {license.status === LicenseStatus.PAUSED ? <PlayCircle size={16} /> : <PauseCircle size={16} />}
+                      </button>
+                      <button
+                        onClick={() => handleRevoke(license.id)}
+                        className="flex items-center justify-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-lg text-sm font-medium hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
+                        title={t('licenses.revoke')}
+                      >
+                        <Ban size={16} />
+                      </button>
+                    </>
+                  )}
+                  <button
+                    onClick={() => handleDeleteClick(license.id)}
+                    className="flex items-center justify-center gap-2 px-3 py-2 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 rounded-lg text-sm font-medium hover:bg-rose-100 dark:hover:bg-rose-900/30 transition-colors"
+                    title={t('common.delete')}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => { setIsModalOpen(false); setCreateError(''); }} />
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-md z-10 p-6 space-y-6 border border-gray-100 dark:border-slate-700 animate-in zoom-in-95">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <Plus size={24} className="text-primary-500" />
+          <div className="bg-white dark:bg-slate-800 rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-md z-10 p-5 sm:p-6 space-y-5 sm:space-y-6 border border-gray-100 dark:border-slate-700 animate-in slide-in-from-bottom sm:zoom-in-95 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <Plus size={22} className="text-primary-500" />
               {t('licenses.add')}
             </h2>
 
@@ -451,23 +563,23 @@ const Licenses: React.FC = () => {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('licenses.customer')}</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{t('licenses.customer')}</label>
                 <input
                   type="text"
                   value={newCustomer}
                   onChange={(e) => { setNewCustomer(e.target.value); setCreateError(''); }}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                  className="w-full px-3 py-2.5 sm:py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-base sm:text-sm"
                   placeholder="Company or User Name"
                 />
               </div>
 
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('licenses.plan')}</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{t('licenses.plan')}</label>
                 <select
                   value={selectedPlan}
                   onChange={(e) => setSelectedPlan(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                  className="w-full px-3 py-2.5 sm:py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-base sm:text-sm"
                 >
                   {plans.map(plan => {
                     const primaryPrice = plan.prices?.find(p => p.isPrimary) || plan.prices?.[0];
@@ -504,7 +616,7 @@ const Licenses: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                   {t('licenses.quantity')} <span className="text-xs text-slate-400 font-normal">(Bulk Generation)</span>
                 </label>
                 <div className="flex items-center gap-3">
@@ -516,7 +628,7 @@ const Licenses: React.FC = () => {
                       max="50"
                       value={quantity}
                       onChange={(e) => setQuantity(Math.max(1, Math.min(50, Number(e.target.value))))}
-                      className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                      className="w-full pl-10 pr-3 py-2.5 sm:py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-base sm:text-sm"
                     />
                   </div>
                   <div className="text-xs text-slate-500">Max: 50</div>
@@ -524,17 +636,17 @@ const Licenses: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-slate-700">
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-4 border-t border-gray-100 dark:border-slate-700">
               <button
                 onClick={() => { setIsModalOpen(false); setCreateError(''); }}
-                className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg font-medium text-sm transition-colors"
+                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg font-medium text-sm transition-colors touch-target"
               >
                 {t('common.cancel')}
               </button>
               <button
                 onClick={handleCreate}
                 disabled={!newCustomer.trim() || isCreating}
-                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm transition-colors shadow-sm"
+                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm transition-colors shadow-sm touch-target"
               >
                 {isCreating ? 'Generating...' : (quantity > 1 ? `${t('licenses.bulkGenerate')} (${quantity})` : t('licenses.generate'))}
               </button>

@@ -93,7 +93,7 @@ const Layout: React.FC<LayoutProps> = ({
 
       {/* Sidebar */}
       <aside className={`
-        fixed inset-y-0 ${isRtl ? 'right-0' : 'left-0'} z-30 w-64 bg-slate-900 dark:bg-slate-950 text-white transform transition-transform duration-300 ease-in-out
+        fixed inset-y-0 ${isRtl ? 'right-0' : 'left-0'} z-30 w-full sm:w-72 lg:w-64 bg-slate-900 dark:bg-slate-950 text-white transform transition-transform duration-300 ease-in-out
         ${isSidebarOpen ? 'translate-x-0' : (isRtl ? 'translate-x-full' : '-translate-x-full')}
         lg:translate-x-0 lg:static lg:block border-r border-slate-800 dark:border-slate-800 shadow-xl
         flex flex-col h-full
@@ -178,38 +178,38 @@ const Layout: React.FC<LayoutProps> = ({
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0 h-full">
         {/* Header */}
-        <header className="h-16 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 lg:px-8 shadow-sm z-10 transition-colors shrink-0">
+        <header className="h-14 sm:h-16 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-3 sm:px-4 lg:px-8 shadow-sm z-10 transition-colors shrink-0">
           <button
-            className="lg:hidden p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md"
+            className="lg:hidden p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md touch-target"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           >
-            {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
+            {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
 
           <div className="flex-1" />
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <SystemSwitcher />
             <button
               onClick={() => setDarkMode(!darkMode)}
-              className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors"
+              className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors touch-target"
             >
-              {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+              {darkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
 
             <button
               onClick={() => i18n.changeLanguage(i18n.language === 'en' ? 'ar' : 'en')}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 hover:bg-white dark:hover:bg-slate-600 text-sm font-medium text-slate-700 dark:text-slate-200 transition-colors shadow-sm"
+              className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 hover:bg-white dark:hover:bg-slate-600 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-200 transition-colors shadow-sm touch-target"
             >
-              <span className="text-lg leading-none">{i18n.language === 'en' ? '🇺🇸' : '🇮🇶'}</span>
-              <span>{i18n.language === 'en' ? 'English' : 'العربية'}</span>
+              <span className="text-base sm:text-lg leading-none">{i18n.language === 'en' ? '🇺🇸' : '🇮🇶'}</span>
+              <span className="hidden sm:inline">{i18n.language === 'en' ? 'English' : 'العربية'}</span>
             </button>
           </div>
         </header>
 
         {/* Page Content */}
         <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-900 transition-colors">
-          <div className="max-w-7xl mx-auto p-4 lg:p-6 animate-in fade-in duration-300">
+          <div className="max-w-7xl mx-auto p-3 sm:p-4 lg:p-6 animate-in fade-in duration-300">
             {children}
           </div>
         </div>

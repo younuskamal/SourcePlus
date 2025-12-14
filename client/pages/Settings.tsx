@@ -194,18 +194,18 @@ const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                 </div>
             </div>
 
-            <div className="flex gap-2 overflow-x-auto pb-1 border-b border-gray-200 dark:border-slate-700 scrollbar-hide">
+            <div className="flex gap-2 overflow-x-auto pb-1 border-b border-gray-200 dark:border-slate-700 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
                 {tabs.map((tab) => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id as any)}
-                        className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.id
+                        className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap touch-target ${activeTab === tab.id
                             ? 'border-primary-500 text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-slate-800'
                             : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
                             }`}
                     >
-                        <tab.icon size={16} />
-                        {tab.label}
+                        <tab.icon size={18} className="flex-shrink-0" />
+                        <span className="hidden sm:inline">{tab.label}</span>
                     </button>
                 ))}
             </div>

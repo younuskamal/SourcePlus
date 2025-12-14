@@ -1,0 +1,217 @@
+/* ========================================
+   SourcePlus Mobile Enhancements
+   ======================================== */
+
+/* Better Scrollbar on Mobile - Hide completely on small screens */
+@media (max-width: 768px) {
+  ::-webkit-scrollbar {
+    width: 0px;
+    height: 0px;
+  }
+}
+
+/* iOS Safe Area Support */
+@supports (padding: env(safe-area-inset-left)) {
+  .safe-area-padding {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+
+  .safe-area-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* Better Focus Rings on Mobile */
+@media (max-width: 768px) {
+  *:focus-visible {
+    outline: 2px solid rgb(14, 165, 233);
+    outline-offset: 2px;
+  }
+}
+
+/* Prevent Pull-to-Refresh on Mobile */
+@media (max-width: 768px) {
+  html, body {
+    overscroll-behavior-y: contain;
+  }
+}
+
+/* Better Modal Animations for Mobile */
+@media (max-width: 640px) {
+  .slide-in-from-bottom {
+    animation: slideInFromBottom 0.3s ease-out;
+  }
+
+  @keyframes slideInFromBottom {
+    from {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+}
+
+/* Improve Button Tap Highlight */
+@media (max-width: 768px) {
+  button, a, [role="button"] {
+    -webkit-tap-highlight-color: rgba(14, 165, 233, 0.1);
+    user-select: none;
+  }
+}
+
+/* Prevent Text Selection on Interactive Elements */
+@media (max-width: 768px) {
+  .no-select {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+}
+
+/* Better Modal Backdrop on Mobile */
+@media (max-width: 640px) {
+  .modal-backdrop {
+    backdrop-filter: blur(8px);
+  }
+}
+
+/* Card Shadow Enhancement on Mobile */
+@media (max-width: 768px) {
+  .card-mobile-shadow {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  .card-mobile-shadow:active {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+}
+
+/* Improve Table Scroll Indication */
+@media (max-width: 1024px) {
+  .table-scroll-container {
+    position: relative;
+  }
+
+  .table-scroll-container::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 30px;
+    background: linear-gradient(to left, rgba(248, 250, 252, 1), transparent);
+    pointer-events: none;
+  }
+
+  .dark .table-scroll-container::after {
+    background: linear-gradient(to left, rgba(15, 23, 42, 1), transparent);
+  }
+}
+
+/* Better Sticky Headers on Mobile */
+@media (max-width: 768px) {
+  .sticky-mobile {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: inherit;
+  }
+}
+
+/* Accessibility: Larger Touch Targets */
+.touch-friendly {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.75rem;
+}
+
+/* Prevent Horizontal Scroll */
+@media (max-width: 768px) {
+  body {
+    overflow-x: hidden;
+  }
+}
+
+/* Better Form Input Spacing on Mobile */
+@media (max-width: 640px) {
+  input, select, textarea {
+    margin-bottom: 0.5rem;
+  }
+}
+
+/* Loading States for Mobile */
+@media (max-width: 768px) {
+  .skeleton-mobile {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s ease-in-out infinite;
+  }
+
+  .dark .skeleton-mobile {
+    background: linear-gradient(90deg, #334155 25%, #1e293b 50%, #334155 75%);
+    background-size: 200% 100%;
+  }
+
+  @keyframes loading {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+}
+
+/* Better Drawer/Bottom Sheet Styles */
+@media (max-width: 640px) {
+  .bottom-sheet {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    border-top-left-radius: 1.5rem;
+    border-top-right-radius: 1.5rem;
+    box-shadow: 0 -4px 6px rgba(0, 0, 0, 0.1);
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .dark .bottom-sheet {
+    background: rgb(30, 41, 59);
+  }
+
+  .bottom-sheet-handle {
+    width: 40px;
+    height: 4px;
+    background: #cbd5e1;
+    border-radius: 2px;
+    margin: 0.75rem auto;
+  }
+
+  .dark .bottom-sheet-handle {
+    background: #475569;
+  }
+}
+
+/* Improved Grid Responsiveness */
+@media (max-width: 640px) {
+  .grid-mobile-auto {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+}
+
+/* Better Notification Toast on Mobile */
+@media (max-width: 768px) {
+  .toast-mobile {
+    bottom: calc(env(safe-area-inset-bottom) + 1rem);
+    left: 1rem;
+    right: 1rem;
+    max-width: calc(100vw - 2rem);
+  }
+}

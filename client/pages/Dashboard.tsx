@@ -337,7 +337,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setPage }) => {
           </div>
 
           {/* Quick Actions */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <QuickActionCard
               title="Add User"
               icon={Users}
