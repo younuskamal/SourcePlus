@@ -152,6 +152,40 @@ export default async function clinicRoutes(app: FastifyInstance) {
         return reply.send({ status: newStatus });
     });
 
+    app.post('/:id/reject', { preHandler: [app.authorize([Role.admin])] }, async (request, reply) => {
+        const { id } = request.params as { id: string };
+        const body = z.object({
+            reason: z.string().optional()
+        }).parse(request.body);
+
+        const clinic = await app.prisma.clinic.findUnique({ where: { id } });
+        if (!clinic) return reply.code(404).send({ message: 'Clinic not found' });
+
+        if (clinic.status === RegistrationStatus.REJECTED) {
+            return reply.code(400).send({ message: 'Clinic already rejected' });
+        }
+
+        await app.prisma.clinic.update({
+            where: { id },
+            data: { status: RegistrationStatus.REJECTED }
+        });
+
+        // Update user status
+        await app.prisma.user.updateMany({
+            where: { clinicId: id },
+            data: { status: RegistrationStatus.REJECTED }
+        });
+
+        await logAudit(app, {
+            userId: request.user?.id,
+            action: 'REJECT_CLINIC',
+            details: `Rejected clinic ${clinic.name}${body.reason ? `: ${body.reason}` : ''}`,
+            ip: request.ip
+        });
+
+        return reply.send({ status: RegistrationStatus.REJECTED });
+    });
+
     app.delete('/:id', { preHandler: [app.authorize([Role.admin])] }, async (request, reply) => {
         const { id } = request.params as { id: string };
         const clinic = await app.prisma.clinic.findUnique({ where: { id }, include: { license: true } });

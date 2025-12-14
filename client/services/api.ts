@@ -302,6 +302,12 @@ export const api = {
   approveClinic(id: string) {
     return doRequest<any>(`/api/clinics/${id}/approve`, { method: 'POST' });
   },
+  rejectClinic(id: string, reason?: string) {
+    return doRequest<any>(`/api/clinics/${id}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason })
+    });
+  },
   toggleClinicStatus(id: string) {
     return doRequest<any>(`/api/clinics/${id}/toggle-status`, { method: 'POST' });
   },

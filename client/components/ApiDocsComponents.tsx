@@ -39,8 +39,11 @@ export const Endpoint: React.FC<{
     description: string;
     payload?: string;
     response?: string;
+    headers?: string;
+    queryParams?: string;
+    notes?: string[];
     isRtl: boolean;
-}> = ({ method, url, title, description, payload, response, isRtl }) => {
+}> = ({ method, url, title, description, payload, response, headers, queryParams, notes, isRtl }) => {
     const [expanded, setExpanded] = useState(false);
 
     const methodColors = {
@@ -77,6 +80,24 @@ export const Endpoint: React.FC<{
                         {description}
                     </p>
 
+                    {headers && (
+                        <div>
+                            <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                <Terminal size={12} /> Headers
+                            </h4>
+                            <CodeBlock language="http">{headers}</CodeBlock>
+                        </div>
+                    )}
+
+                    {queryParams && (
+                        <div>
+                            <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                <Terminal size={12} /> Query Parameters
+                            </h4>
+                            <CodeBlock language="text">{queryParams}</CodeBlock>
+                        </div>
+                    )}
+
                     {payload && (
                         <div>
                             <h4 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-2">
@@ -92,6 +113,22 @@ export const Endpoint: React.FC<{
                                 <Code2 size={12} /> Response
                             </h4>
                             <CodeBlock>{response}</CodeBlock>
+                        </div>
+                    )}
+
+                    {notes && notes.length > 0 && (
+                        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-900/30 rounded-xl">
+                            <h4 className="text-xs font-bold text-blue-900 dark:text-blue-100 uppercase tracking-wider mb-2">
+                                ملاحظات مهمة
+                            </h4>
+                            <ul className="space-y-1.5 text-sm text-blue-800 dark:text-blue-200">
+                                {notes.map((note, idx) => (
+                                    <li key={idx} className="flex items-start gap-2">
+                                        <span className="text-blue-500 mt-0.5">•</span>
+                                        <span>{note}</span>
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
                     )}
                 </div>

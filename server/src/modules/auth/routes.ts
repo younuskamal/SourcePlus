@@ -70,7 +70,8 @@ export default async function authRoutes(app: FastifyInstance) {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        clinicId: user.clinicId
       }
     });
   });
@@ -138,7 +139,8 @@ export default async function authRoutes(app: FastifyInstance) {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        clinicId: user.clinicId
       }
     });
   });
@@ -208,6 +210,6 @@ export default async function authRoutes(app: FastifyInstance) {
     const payload = request.user!;
     const user = await app.prisma.user.findUnique({ where: { id: payload.id } });
     if (!user) return reply.code(404).send({ message: 'User not found' });
-    return reply.send({ id: user.id, name: user.name, email: user.email, role: user.role });
+    return reply.send({ id: user.id, name: user.name, email: user.email, role: user.role, clinicId: user.clinicId });
   });
 }

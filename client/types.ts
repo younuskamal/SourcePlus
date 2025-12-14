@@ -17,6 +17,7 @@ export interface User {
   role: UserRole;
   avatar?: string;
   createdAt: string;
+  clinicId?: string; // UUID of associated clinic
 }
 
 
@@ -227,6 +228,7 @@ export interface Clinic {
   status: RegistrationStatus;
   licenseId?: string;
   license?: LicenseKey;
+  users?: User[]; // Associated users
   createdAt: string;
   updatedAt: string;
 }
