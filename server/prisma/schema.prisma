@@ -22,6 +22,7 @@ model Clinic {
   license       License?           @relation(fields: [licenseId], references: [id])
   
   users         User[]
+  conversations Conversation[]
 
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
@@ -46,6 +47,7 @@ model User {
   auditLogs    AuditLog[]
   replies      SupportReply[]
   messageReplies MessageReply[]
+  clinicMessages ClinicMessage[]
 }
 
 enum Role {
@@ -329,6 +331,37 @@ model MessageReply {
   user      User           @relation(fields: [userId], references: [id])
   reply     String
   createdAt DateTime       @default(now())
+}
+
+// Clinic Direct Messaging System
+model Conversation {
+  id            String           @id @default(uuid())
+  clinicId      String
+  clinic        Clinic           @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  subject       String?
+  lastMessageAt DateTime         @default(now())
+  unreadCount   Int              @default(0)
+  status        String           @default("active") // active, archived
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  messages      ClinicMessage[]
+  
+  @@index([clinicId])
+  @@index([lastMessageAt])
+}
+
+model ClinicMessage {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation(fields: [senderId], references: [id])
+  message        String       @db.Text
+  isRead         Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  
+  @@index([conversationId])
+  @@index([createdAt])
 }
 
 

@@ -313,5 +313,37 @@ export const api = {
   },
   deleteClinic(id: string) {
     return doRequest<void>(`/api/clinics/${id}`, { method: 'DELETE' });
+  },
+
+  // -- Messages --
+  getConversations() {
+    return doRequest<any[]>('/api/messages/conversations');
+  },
+  getConversation(id: string) {
+    return doRequest<any>(`/api/messages/conversations/${id}`);
+  },
+  sendMessage(conversationId: string, message: string) {
+    return doRequest<any>(`/api/messages/conversations/${conversationId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ message })
+    });
+  },
+  createConversation(clinicId: string, subject?: string, initialMessage?: string) {
+    return doRequest<any>('/api/messages/conversations', {
+      method: 'POST',
+      body: JSON.stringify({ clinicId, subject, initialMessage })
+    });
+  },
+  archiveConversation(id: string) {
+    return doRequest<any>(`/api/messages/conversations/${id}/archive`, { method: 'PATCH' });
+  },
+  unarchiveConversation(id: string) {
+    return doRequest<any>(`/api/messages/conversations/${id}/unarchive`, { method: 'PATCH' });
+  },
+  deleteConversation(id: string) {
+    return doRequest<void>(`/api/messages/conversations/${id}`, { method: 'DELETE' });
+  },
+  getUnreadCount() {
+    return doRequest<{ unreadCount: number }>('/api/messages/conversations/unread/count');
   }
 };

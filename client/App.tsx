@@ -14,6 +14,7 @@ import AuditLogs from './pages/AuditLogs';
 import Financials from './pages/Financials';
 import Login from './pages/Login';
 import Clinics from './pages/Clinics';
+import ClinicMessages from './pages/ClinicMessages';
 import { useTranslation } from './hooks/useTranslation';
 import { User } from './types';
 import { api } from './services/api';
@@ -171,6 +172,7 @@ function AppContent() {
       case 'audit-logs': return <AuditLogs currentLang={i18n.language} />;
       case 'clinics': return <Clinics viewMode="requests" />;
       case 'manage-clinics': return <Clinics viewMode="manage" />;
+      case 'clinic-messages': return <ClinicMessages />;
       default: return <Dashboard currentLang={i18n.language} setPage={setPage} />;
     }
   };

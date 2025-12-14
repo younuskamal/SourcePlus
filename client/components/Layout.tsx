@@ -66,8 +66,7 @@ const Layout: React.FC<LayoutProps> = ({
     { id: 'dashboard', label: t('nav.dashboard'), icon: LayoutDashboard, allowedRoles: ['admin', 'developer'] },
     { id: 'clinics', label: t('nav.clinics'), icon: Stethoscope, allowedRoles: ['admin', 'developer'] },
     { id: 'manage-clinics', label: t('nav.manageClinics'), icon: LayoutDashboard, allowedRoles: ['admin'] },
-    { id: 'notifications', label: t('nav.notifications'), icon: Bell, allowedRoles: ['admin', 'developer'] },
-    { id: 'support', label: t('nav.support'), icon: LifeBuoy, allowedRoles: ['admin', 'developer'] },
+    { id: 'clinic-messages', label: 'Messages', icon: Bell, allowedRoles: ['admin', 'developer'] },
     { id: 'api', label: t('nav.apiDocs'), icon: Code2, allowedRoles: ['admin', 'developer'] },
   ];
 
