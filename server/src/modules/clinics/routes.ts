@@ -188,24 +188,34 @@ export default async function clinicRoutes(app: FastifyInstance) {
 
     app.delete('/:id', { preHandler: [app.authorize([Role.admin])] }, async (request, reply) => {
         const { id } = request.params as { id: string };
-        const clinic = await app.prisma.clinic.findUnique({ where: { id }, include: { license: true } });
+        const clinic = await app.prisma.clinic.findUnique({ where: { id } });
+
         if (!clinic) return reply.code(404).send({ message: 'Clinic not found' });
 
-        // If license exists, delete it first (cascade should handle it depending on schema, but explicit is safer)
+        // 1. Delete all conversations related to this clinic
+        // Note: Schema has Cascade on Conversation but explicit delete is safer and ensures order
+        await app.prisma.conversation.deleteMany({ where: { clinicId: id } });
+
+        // 2. Delete all users associated with this clinic
+        // This implicitly deletes sessions (Cascade) and updates auditLogs (SetNull)
+        await app.prisma.user.deleteMany({ where: { clinicId: id } });
+
+        // 3. Handle License Cleanup
         if (clinic.licenseId) {
+            // First unlink the license from the clinic to avoid constraint errors
+            await app.prisma.clinic.update({
+                where: { id },
+                data: { licenseId: null }
+            });
+            // Then delete the license itself
             await app.prisma.license.delete({ where: { id: clinic.licenseId } });
         }
 
-        // Cascade delete should handle users if configured, but let's be safe or rely on Prisma schema
-        // Schema: users User[] on Clinic. User has clinicId. No onDelete: Cascade defined in my schema edit! 
-        // I should have added onDelete: Cascade to User.clinic relation.
-        // For now, I'll manually delete users or let it error if constraints exist.
-        // Given I missed 'onDelete: Cascade', I should delete users manually here.
-        await app.prisma.user.deleteMany({ where: { clinicId: id } });
-
+        // 4. Finally delete the clinic
         await app.prisma.clinic.delete({ where: { id } });
 
-        await logAudit(app, { userId: request.user?.id, action: 'DELETE_CLINIC', details: `Deleted clinic ${clinic.name}`, ip: request.ip });
-        return reply.send({ message: 'Clinic deleted successfully' });
+        await logAudit(app, { userId: request.user?.id, action: 'DELETE_CLINIC', details: `Deleted clinic ${clinic.name} and all associated data`, ip: request.ip });
+
+        return reply.send({ message: 'Clinic and all associated data deleted successfully' });
     });
 }
