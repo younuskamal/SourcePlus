@@ -20,16 +20,17 @@ export default fp(async (app) => {
     try {
       await request.jwtVerify();
     } catch (err) {
-      reply.code(401).send({ message: 'Unauthorized' });
+      return reply.code(401).send({ message: 'Unauthorized' });
     }
   });
 
   app.decorate('authorize', (roles: Role[] = []) => {
     return async (request: any, reply: any) => {
       await app.authenticate(request, reply);
+      if (reply.sent) return; // If authenticate sent a reply, stop
       if (roles.length === 0) return;
       if (!request.user || !roles.includes(request.user.role)) {
-        reply.code(403).send({ message: 'Forbidden' });
+        return reply.code(403).send({ message: 'Forbidden' });
       }
     };
   });

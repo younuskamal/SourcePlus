@@ -32,23 +32,56 @@ export default async function subscriptionRoutes(app: FastifyInstance) {
 
         const clinic = await app.prisma.clinic.findUnique({
             where: { id: clinicId },
-            include: { license: { include: { plan: true } } }
+            include: {
+                license: {
+                    include: { plan: true }
+                }
+            }
         });
 
         if (!clinic) {
             return reply.code(404).send({ message: 'Clinic not found' });
         }
 
-        if (clinic.status === RegistrationStatus.PENDING) {
+        // PENDING STATUS
+        if (clinic.status === RegistrationStatus.PENDING || clinic.status === RegistrationStatus.REJECTED) {
             return reply.send({
-                status: 'pending',
+                id: clinic.id,
+                name: clinic.name,
+                status: clinic.status,
                 license: null,
                 remainingDays: 0,
                 forceLogout: false
             });
         }
 
-        if (clinic.status === RegistrationStatus.APPROVED && clinic.license) {
+        // SUSPENDED STATUS
+        if (clinic.status === RegistrationStatus.SUSPENDED) {
+            return reply.send({
+                id: clinic.id,
+                name: clinic.name,
+                status: 'SUSPENDED',
+                license: clinic.license ? {
+                    serial: clinic.license.serial,
+                    status: clinic.license.status,
+                    expireDate: clinic.license.expireDate,
+                    plan: clinic.license.plan
+                } : null,
+                remainingDays: 0,
+                forceLogout: true
+            });
+        }
+
+        // APPROVED STATUS - MUST HAVE LICENSE
+        if (clinic.status === RegistrationStatus.APPROVED) {
+            if (!clinic.license) {
+                // CRITICAL ERROR: Approved clinic without license!
+                // This should NEVER happen, but if it does, return error
+                return reply.code(500).send({
+                    message: 'Clinic is approved but license not found. Please contact support.'
+                });
+            }
+
             const now = new Date();
             const expireDate = new Date(clinic.license.expireDate || 0);
             const diffTime = Math.max(0, expireDate.getTime() - now.getTime());
@@ -59,31 +92,30 @@ export default async function subscriptionRoutes(app: FastifyInstance) {
             const isActive = clinic.license.status === LicenseStatus.active && !isExpired && !clinic.license.isPaused;
 
             return reply.send({
-                status: isActive ? 'active' : 'expired',
+                id: clinic.id,
+                name: clinic.name,
+                status: 'APPROVED',
                 license: {
+                    id: clinic.license.id,
                     serial: clinic.license.serial,
-                    expireDate: clinic.license.expireDate
+                    status: clinic.license.status,
+                    expireDate: clinic.license.expireDate,
+                    deviceLimit: clinic.license.deviceLimit,
+                    activationCount: clinic.license.activationCount,
+                    plan: clinic.license.plan ? {
+                        name: clinic.license.plan.name,
+                        durationMonths: clinic.license.plan.durationMonths,
+                        features: clinic.license.plan.features
+                    } : null
                 },
                 remainingDays,
                 forceLogout: !isActive
             });
         }
 
-        if (clinic.status === RegistrationStatus.SUSPENDED) {
-            return reply.send({
-                status: 'suspended',
-                license: null,
-                remainingDays: 0,
-                forceLogout: true
-            });
-        }
-
-        // Default fallback
-        return reply.send({
-            status: 'unknown',
-            license: null,
-            remainingDays: 0,
-            forceLogout: true
+        // DEFAULT FALLBACK (should never reach here)
+        return reply.code(500).send({
+            message: 'Unknown clinic status'
         });
     });
 }
