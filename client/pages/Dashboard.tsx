@@ -303,7 +303,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setPage }) => {
             </div>
             <div className="h-[250px] w-full min-w-0">
               {mounted ? (
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={200} debounce={100}>
                   <AreaChart data={chartData}>
                     <defs>
                       <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
@@ -370,7 +370,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setPage }) => {
               <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">Sales by Plan</h3>
               <div className="h-[180px] w-full min-w-0">
                 {mounted && (
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={160} debounce={100}>
                     <BarChart data={plansData} layout="vertical">
                       <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#334155" strokeOpacity={0.1} />
                       <XAxis type="number" hide />
