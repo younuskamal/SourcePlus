@@ -80,10 +80,10 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
     }, [viewMode]);
 
     useEffect(() => {
-        if (assignModal && !assignModal.planId && plans.length > 0) {
-            setAssignModal({ ...assignModal, planId: plans[0].id });
+        if (assignModal && !assignModal.planId && clinicPlans.length > 0) {
+            setAssignModal({ ...assignModal, planId: clinicPlans[0].id });
         }
-    }, [plans, assignModal]);
+    }, [clinicPlans, assignModal]);
 
     const fetchPlans = async () => {
         if (plans.length > 0 || loadingPlans) return;
@@ -95,6 +95,16 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
             setLoadingPlans(false);
         }
     };
+
+    const clinicPlans = useMemo(() => {
+        const matchProductType = (plan: SubscriptionPlan) => {
+            const productType = ((plan.limits as any)?.productType || (plan.features as any)?.productType || '').toString().toUpperCase();
+            if (productType === 'CLINIC') return true;
+            return plan.name.toLowerCase().includes('clinic');
+        };
+        const filtered = plans.filter(matchProductType);
+        return filtered.length > 0 ? filtered : plans;
+    }, [plans]);
 
     const fetchClinics = async () => {
         try {
@@ -190,7 +200,7 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
         fetchPlans();
         setAssignModal({
             clinic,
-            planId: clinic.license?.plan?.id || plans[0]?.id,
+            planId: clinic.license?.plan?.id || clinicPlans[0]?.id,
             durationMonths: clinic.license?.plan?.durationMonths || undefined,
             activateClinic: clinic.status !== RegistrationStatus.APPROVED
         });
@@ -293,7 +303,7 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                                     className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
                                 >
                                     {loadingPlans && <option>Loading...</option>}
-                                    {plans.map(plan => (
+                                    {clinicPlans.map(plan => (
                                         <option key={plan.id} value={plan.id}>{plan.name} ({plan.durationMonths}m)</option>
                                     ))}
                                 </select>
