@@ -330,6 +330,9 @@ export const api = {
   forceLogoutClinic(id: string) {
     return doRequest<{ success: boolean }>(`/api/clinics/${id}/force-logout`, { method: 'POST' });
   },
+  deleteClinic(id: string) {
+    return doRequest<{ success: boolean }>(`/api/clinics/${id}`, { method: 'DELETE' });
+  },
   getSubscriptionStatus(clinicId?: string) {
     const q = clinicId ? `?clinicId=${clinicId}` : '';
     return doRequest<ClinicSubscriptionStatus>(`/api/subscription/status${q}`);

@@ -482,8 +482,37 @@ export default async function clinicRoutes(app: FastifyInstance) {
         return reply.send({ success: true });
     });
 
-    // Deleting clinics is not allowed
-    app.delete('/:id', { preHandler: [app.authorize([Role.admin])] }, async (_request, reply) => {
-        return reply.code(405).send({ message: 'Deleting clinics is not allowed. Use status transitions instead.' });
+    app.delete('/:id', { preHandler: [app.authorize([Role.admin])] }, async (request, reply) => {
+        const { id } = request.params as { id: string };
+
+        const clinic = await app.prisma.clinic.findUnique({
+            where: { id },
+            include: { users: true }
+        });
+        if (!clinic) return reply.code(404).send({ message: 'Clinic not found' });
+
+        const userIds = clinic.users.map(u => u.id);
+
+        await app.prisma.$transaction(async (tx) => {
+            if (userIds.length) {
+                await tx.messageReply.deleteMany({ where: { userId: { in: userIds } } });
+                await tx.session.deleteMany({ where: { userId: { in: userIds } } });
+                await tx.clinicMessage.deleteMany({ where: { senderId: { in: userIds } } });
+            }
+
+            await tx.conversation.deleteMany({ where: { clinicId: id } });
+            await tx.user.deleteMany({ where: { clinicId: id } });
+
+            // detach license reference if present
+            if (clinic.licenseId) {
+                await tx.clinic.update({ where: { id }, data: { licenseId: null } });
+            }
+
+            await tx.clinic.delete({ where: { id } });
+        });
+
+        await logAudit(app, { userId: request.user?.userId, action: 'DELETE_CLINIC', details: `Deleted clinic ${clinic.name}`, ip: request.ip });
+
+        return reply.send({ success: true });
     });
 }
