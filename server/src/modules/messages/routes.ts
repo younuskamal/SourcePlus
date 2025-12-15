@@ -113,7 +113,7 @@ export default async function messagesRoutes(app: FastifyInstance) {
         const message = await app.prisma.clinicMessage.create({
             data: {
                 conversationId: id,
-                senderId: request.user!.id,
+                senderId: request.user!.userId,
                 message: body.message,
                 isRead: false
             },
@@ -179,7 +179,7 @@ export default async function messagesRoutes(app: FastifyInstance) {
                 subject: body.subject,
                 messages: body.initialMessage ? {
                     create: {
-                        senderId: request.user!.id,
+                        senderId: request.user!.userId,
                         message: body.initialMessage,
                         isRead: false
                     }

@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { RegistrationStatus, LicenseStatus } from '@prisma/client';
+import { invalidateClinicSessions } from '../../utils/session.js';
 
 export default async function subscriptionRoutes(app: FastifyInstance) {
     app.get('/status', async (request, reply) => {
@@ -11,19 +12,18 @@ export default async function subscriptionRoutes(app: FastifyInstance) {
         const query = querySchema.parse(request.query || {});
         let clinicId = query.clinicId;
 
-        // If no clinicId provided, try to get from authenticated user (Token)
-        if (!clinicId && request.headers.authorization) {
+        if (request.headers.authorization) {
             try {
-                // Verify token manually since this route might be public for some cases
-                const token = request.headers.authorization.replace('Bearer ', '');
-                const payload = app.jwt.verify(token) as any;
-                const user = await app.prisma.user.findUnique({ where: { id: payload.id } });
-                if (user && user.clinicId) {
-                    clinicId = user.clinicId;
-                }
-            } catch (e) {
-                // Ignore token error, proceed to check if clinicId was somehow found or error out
+                await app.authenticate(request, reply);
+            } catch {
+                if (reply.sent) return;
             }
+
+            if (reply.sent) return;
+        }
+
+        if (!clinicId && request.user?.clinicId) {
+            clinicId = request.user.clinicId;
         }
 
         if (!clinicId) {
@@ -43,79 +43,68 @@ export default async function subscriptionRoutes(app: FastifyInstance) {
             return reply.code(404).send({ message: 'Clinic not found' });
         }
 
-        // PENDING STATUS
-        if (clinic.status === RegistrationStatus.PENDING || clinic.status === RegistrationStatus.REJECTED) {
-            return reply.send({
-                id: clinic.id,
-                name: clinic.name,
-                status: clinic.status,
-                license: null,
-                remainingDays: 0,
-                forceLogout: false
-            });
-        }
+        const baseResponse = {
+            id: clinic.id,
+            name: clinic.name,
+            clinicId: clinic.id,
+            clinicName: clinic.name,
+            status: clinic.status,
+            remainingDays: 0
+        };
 
-        // SUSPENDED STATUS
-        if (clinic.status === RegistrationStatus.SUSPENDED) {
+        if (clinic.status !== RegistrationStatus.APPROVED) {
+            await invalidateClinicSessions(app.prisma, clinic.id);
             return reply.send({
-                id: clinic.id,
-                name: clinic.name,
-                status: 'SUSPENDED',
-                license: clinic.license ? {
-                    serial: clinic.license.serial,
-                    status: clinic.license.status,
-                    expireDate: clinic.license.expireDate,
-                    plan: clinic.license.plan
-                } : null,
-                remainingDays: 0,
+                ...baseResponse,
+                license: null,
                 forceLogout: true
             });
         }
 
-        // APPROVED STATUS - MUST HAVE LICENSE
-        if (clinic.status === RegistrationStatus.APPROVED) {
-            if (!clinic.license) {
-                // CRITICAL ERROR: Approved clinic without license!
-                // This should NEVER happen, but if it does, return error
-                return reply.code(500).send({
-                    message: 'Clinic is approved but license not found. Please contact support.'
-                });
-            }
-
-            const now = new Date();
-            const expireDate = new Date(clinic.license.expireDate || 0);
-            const diffTime = Math.max(0, expireDate.getTime() - now.getTime());
-            const remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            const isExpired = remainingDays <= 0;
-
-            // Check license status enum as well
-            const isActive = clinic.license.status === LicenseStatus.active && !isExpired && !clinic.license.isPaused;
+        if (!clinic.license) {
+            await invalidateClinicSessions(app.prisma, clinic.id);
 
             return reply.send({
-                id: clinic.id,
-                name: clinic.name,
-                status: 'APPROVED',
-                license: {
-                    id: clinic.license.id,
-                    serial: clinic.license.serial,
-                    status: clinic.license.status,
-                    expireDate: clinic.license.expireDate,
-                    deviceLimit: clinic.license.deviceLimit,
-                    activationCount: clinic.license.activationCount,
-                    plan: clinic.license.plan ? {
-                        name: clinic.license.plan.name,
-                        durationMonths: clinic.license.plan.durationMonths,
-                        features: clinic.license.plan.features
-                    } : null
-                },
-                remainingDays,
-                forceLogout: !isActive
+                ...baseResponse,
+                license: null,
+                forceLogout: true
             });
         }
 
-        // DEFAULT FALLBACK (should never reach here)
-        return reply.code(500).send({
-            message: 'Unknown clinic status'
+        const now = new Date();
+        const expireDate = new Date(clinic.license.expireDate || 0);
+        const diffTime = Math.max(0, expireDate.getTime() - now.getTime());
+        const remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        const isExpired = remainingDays <= 0;
+
+        const isLicenseActive =
+            clinic.license.status === LicenseStatus.active &&
+            !clinic.license.isPaused &&
+            !isExpired;
+
+        const forceLogout = !isLicenseActive;
+        if (forceLogout) {
+            await invalidateClinicSessions(app.prisma, clinic.id);
+        }
+
+        return reply.send({
+            ...baseResponse,
+            status: clinic.status,
+            license: {
+                id: clinic.license.id,
+                serial: clinic.license.serial,
+                status: clinic.license.status,
+                expireDate: clinic.license.expireDate,
+                deviceLimit: clinic.license.deviceLimit,
+                activationCount: clinic.license.activationCount,
+                plan: clinic.license.plan ? {
+                    id: clinic.license.plan.id,
+                    name: clinic.license.plan.name,
+                    durationMonths: clinic.license.plan.durationMonths
+                } : null
+            },
+            remainingDays,
+            forceLogout
         });
     });
 }

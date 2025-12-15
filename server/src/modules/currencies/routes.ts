@@ -17,7 +17,7 @@ export default async function currencyRoutes(app: FastifyInstance) {
   app.post('/', { preHandler: [app.authorize([Role.admin])] }, async (request, reply) => {
     const data = currencySchema.parse(request.body);
     const currency = await app.prisma.currency.create({ data });
-    await logAudit(app, { userId: request.user?.id, action: 'ADD_CURRENCY', details: `Added ${currency.code}`, ip: request.ip });
+    await logAudit(app, { userId: request.user?.userId, action: 'ADD_CURRENCY', details: `Added ${currency.code}`, ip: request.ip });
     return reply.code(201).send(currency);
   });
 
@@ -88,7 +88,7 @@ export default async function currencyRoutes(app: FastifyInstance) {
       );
 
       await logAudit(app, { 
-        userId: request.user?.id, 
+        userId: request.user?.userId, 
         action: 'SYNC_RATES', 
         details: `Synced ${updated.filter(Boolean).length} currency rates (${synced ? 'from API' : 'simulated'})`, 
         ip: request.ip 
@@ -107,14 +107,14 @@ export default async function currencyRoutes(app: FastifyInstance) {
   app.patch('/:code', { preHandler: [app.authorize([Role.admin])] }, async (request, reply) => {
     const code = (request.params as { code: string }).code;
     const currency = await app.prisma.currency.update({ where: { code }, data: currencySchema.partial().parse(request.body) });
-    await logAudit(app, { userId: request.user?.id, action: 'UPDATE_CURRENCY', details: `Updated ${currency.code}`, ip: request.ip });
+    await logAudit(app, { userId: request.user?.userId, action: 'UPDATE_CURRENCY', details: `Updated ${currency.code}`, ip: request.ip });
     return reply.send(currency);
   });
 
   app.delete('/:code', { preHandler: [app.authorize([Role.admin])] }, async (request, reply) => {
     const code = (request.params as { code: string }).code;
     const currency = await app.prisma.currency.delete({ where: { code } });
-    await logAudit(app, { userId: request.user?.id, action: 'DELETE_CURRENCY', details: `Deleted ${currency.code}`, ip: request.ip });
+    await logAudit(app, { userId: request.user?.userId, action: 'DELETE_CURRENCY', details: `Deleted ${currency.code}`, ip: request.ip });
     return reply.code(204).send();
   });
 }

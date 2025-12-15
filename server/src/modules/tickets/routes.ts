@@ -31,7 +31,7 @@ export default async function ticketRoutes(app: FastifyInstance) {
   app.post('/', { preHandler: [app.authenticate] }, async (request, reply) => {
     const data = createTicketSchema.parse(request.body);
     const ticket = await app.prisma.supportTicket.create({ data });
-    await logAudit(app, { userId: request.user?.id, action: 'CREATE_TICKET', details: ticket.serial, ip: request.ip });
+    await logAudit(app, { userId: request.user?.userId, action: 'CREATE_TICKET', details: ticket.serial, ip: request.ip });
     return reply.code(201).send(ticket);
   });
 
@@ -39,24 +39,24 @@ export default async function ticketRoutes(app: FastifyInstance) {
     const { message } = z.object({ message: z.string().min(1) }).parse(request.body);
     const id = (request.params as { id: string }).id;
     const replyRow = await app.prisma.supportReply.create({
-      data: { ticketId: id, userId: request.user?.id, message }
+      data: { ticketId: id, userId: request.user?.userId, message }
     });
     await app.prisma.supportTicket.update({ where: { id }, data: { status: TicketStatus.in_progress, adminReply: message, replyAt: new Date() } });
-    await logAudit(app, { userId: request.user?.id, action: 'REPLY_TICKET', details: id, ip: request.ip });
+    await logAudit(app, { userId: request.user?.userId, action: 'REPLY_TICKET', details: id, ip: request.ip });
     return reply.send(replyRow);
   });
 
   app.post('/:id/resolve', { preHandler: [app.authorize([Role.admin, Role.developer])] }, async (request, reply) => {
     const id = (request.params as { id: string }).id;
     const ticket = await app.prisma.supportTicket.update({ where: { id }, data: { status: TicketStatus.resolved } });
-    await logAudit(app, { userId: request.user?.id, action: 'RESOLVE_TICKET', details: id, ip: request.ip });
+    await logAudit(app, { userId: request.user?.userId, action: 'RESOLVE_TICKET', details: id, ip: request.ip });
     return reply.send(ticket);
   });
 
   app.delete('/:id', { preHandler: [app.authorize([Role.admin, Role.developer])] }, async (request, reply) => {
     const id = (request.params as { id: string }).id;
     await app.prisma.supportTicket.delete({ where: { id } });
-    await logAudit(app, { userId: request.user?.id, action: 'DELETE_TICKET', details: id, ip: request.ip });
+    await logAudit(app, { userId: request.user?.userId, action: 'DELETE_TICKET', details: id, ip: request.ip });
     return reply.code(204).send();
   });
 
@@ -82,7 +82,7 @@ export default async function ticketRoutes(app: FastifyInstance) {
         attachments.push(att);
       }
     }
-    await logAudit(app, { userId: request.user?.id, action: 'UPLOAD_ATTACHMENT', details: `ticket ${id}`, ip: request.ip });
+    await logAudit(app, { userId: request.user?.userId, action: 'UPLOAD_ATTACHMENT', details: `ticket ${id}`, ip: request.ip });
     return reply.send({ attachments });
   });
 }

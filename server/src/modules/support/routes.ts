@@ -32,7 +32,7 @@ export default async function supportRoutes(app: FastifyInstance) {
         });
 
         await logAudit(app, {
-            userId: request.user?.id,
+            userId: request.user?.userId,
             action: 'SUPPORT_MESSAGE_SUBMITTED',
             details: `Support message from ${data.name}`,
             ip: request.ip
@@ -52,7 +52,7 @@ export default async function supportRoutes(app: FastifyInstance) {
         });
 
         await logAudit(app, {
-            userId: request.user?.id,
+            userId: request.user?.userId,
             action: 'SUPPORT_MESSAGE_UPDATED',
             details: `Updated support message ${id} to ${status}`,
             ip: request.ip
@@ -70,7 +70,7 @@ export default async function supportRoutes(app: FastifyInstance) {
         });
 
         await logAudit(app, {
-            userId: request.user?.id,
+            userId: request.user?.userId,
             action: 'SUPPORT_MESSAGE_DELETED',
             details: `Deleted support message ${id}`,
             ip: request.ip

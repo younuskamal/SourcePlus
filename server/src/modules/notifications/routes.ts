@@ -24,20 +24,20 @@ export default async function notificationRoutes(app: FastifyInstance) {
     const notif = await app.prisma.notification.create({
       data: { ...data, channel: data.targetSerial ? 'direct' : 'broadcast' }
     });
-    await logAudit(app, { userId: request.user?.id, action: 'SEND_NOTIFICATION', details: data.title, ip: request.ip, productType: data.productType });
+    await logAudit(app, { userId: request.user?.userId, action: 'SEND_NOTIFICATION', details: data.title, ip: request.ip, productType: data.productType });
     return reply.code(201).send(notif);
   });
 
   app.delete('/:id', { preHandler: [app.authorize([Role.admin])] }, async (request, reply) => {
     const id = (request.params as { id: string }).id;
     await app.prisma.notification.delete({ where: { id } });
-    await logAudit(app, { userId: request.user?.id, action: 'DELETE_NOTIFICATION', details: id, ip: request.ip });
+    await logAudit(app, { userId: request.user?.userId, action: 'DELETE_NOTIFICATION', details: id, ip: request.ip });
     return reply.code(204).send();
   });
 
   app.delete('/', { preHandler: [app.authorize([Role.admin])] }, async (request, reply) => {
     await app.prisma.notification.deleteMany();
-    await logAudit(app, { userId: request.user?.id, action: 'CLEAR_NOTIFICATIONS', details: 'Cleared all notifications', ip: request.ip });
+    await logAudit(app, { userId: request.user?.userId, action: 'CLEAR_NOTIFICATIONS', details: 'Cleared all notifications', ip: request.ip });
     return reply.code(204).send();
   });
 }

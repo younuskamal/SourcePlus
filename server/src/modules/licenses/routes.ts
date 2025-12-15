@@ -77,7 +77,7 @@ export default async function licenseRoutes(app: FastifyInstance) {
       created.push(license);
     }
 
-    await logAudit(app, { userId: request.user?.id, action: 'GENERATE_LICENSE', details: `Generated ${created.length} licenses for ${plan.name}`, ip: request.ip });
+    await logAudit(app, { userId: request.user?.userId, action: 'GENERATE_LICENSE', details: `Generated ${created.length} licenses for ${plan.name}`, ip: request.ip });
     return reply.code(201).send(created);
   });
 
@@ -85,7 +85,7 @@ export default async function licenseRoutes(app: FastifyInstance) {
     const id = (request.params as { id: string }).id;
     const data = updateSchema.parse(request.body);
     const license = await app.prisma.license.update({ where: { id }, data });
-    await logAudit(app, { userId: request.user?.id, action: 'UPDATE_LICENSE', details: `Updated ${license.serial}`, ip: request.ip });
+    await logAudit(app, { userId: request.user?.userId, action: 'UPDATE_LICENSE', details: `Updated ${license.serial}`, ip: request.ip });
     return reply.send(license);
   });
 
@@ -145,7 +145,7 @@ export default async function licenseRoutes(app: FastifyInstance) {
       });
     }
 
-    await logAudit(app, { userId: request.user?.id, action: 'RENEW_LICENSE', details: `Renewed ${license.serial} for ${months} months`, ip: request.ip });
+    await logAudit(app, { userId: request.user?.userId, action: 'RENEW_LICENSE', details: `Renewed ${license.serial} for ${months} months`, ip: request.ip });
     return reply.send(updated);
   });
 
@@ -154,21 +154,21 @@ export default async function licenseRoutes(app: FastifyInstance) {
     const license = await app.prisma.license.findUnique({ where: { id } });
     if (!license) return reply.code(404).send({ message: 'License not found' });
     const updated = await app.prisma.license.update({ where: { id }, data: { isPaused: !license.isPaused, status: license.isPaused ? LicenseStatus.active : LicenseStatus.paused } });
-    await logAudit(app, { userId: request.user?.id, action: 'TOGGLE_PAUSE', details: `Pause toggle ${license.serial}`, ip: request.ip });
+    await logAudit(app, { userId: request.user?.userId, action: 'TOGGLE_PAUSE', details: `Pause toggle ${license.serial}`, ip: request.ip });
     return reply.send(updated);
   });
 
   app.post('/:id/revoke', { preHandler: [app.authorize([Role.admin])] }, async (request, reply) => {
     const id = (request.params as { id: string }).id;
     const updated = await app.prisma.license.update({ where: { id }, data: { status: LicenseStatus.revoked } });
-    await logAudit(app, { userId: request.user?.id, action: 'REVOKE_LICENSE', details: `Revoked ${updated.serial}`, ip: request.ip });
+    await logAudit(app, { userId: request.user?.userId, action: 'REVOKE_LICENSE', details: `Revoked ${updated.serial}`, ip: request.ip });
     return reply.send(updated);
   });
 
   app.delete('/:id', { preHandler: [app.authorize([Role.admin])] }, async (request, reply) => {
     const id = (request.params as { id: string }).id;
     const license = await app.prisma.license.delete({ where: { id } });
-    await logAudit(app, { userId: request.user?.id, action: 'DELETE_LICENSE', details: `Deleted ${license.serial}`, ip: request.ip });
+    await logAudit(app, { userId: request.user?.userId, action: 'DELETE_LICENSE', details: `Deleted ${license.serial}`, ip: request.ip });
     return reply.code(204).send();
   });
 }

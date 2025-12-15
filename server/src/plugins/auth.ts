@@ -1,10 +1,17 @@
 import fp from 'fastify-plugin';
-import { Role } from '@prisma/client';
+import { RegistrationStatus, Role } from '@prisma/client';
+import { invalidateClinicSessions, invalidateUserSessions } from '../utils/session.js';
 
 declare module '@fastify/jwt' {
   interface FastifyJWT {
-    payload: { id: string; email: string; role: Role };
-    user: { id: string; email: string; role: Role };
+    payload: { userId: string; clinicId?: string | null; role: Role };
+    user: {
+      userId: string;
+      clinicId?: string | null;
+      role: Role;
+      status?: RegistrationStatus;
+      clinicStatus?: RegistrationStatus | null;
+    };
   }
 }
 
@@ -18,7 +25,41 @@ declare module 'fastify' {
 export default fp(async (app) => {
   app.decorate('authenticate', async (request: any, reply: any) => {
     try {
-      await request.jwtVerify();
+      const payload = await request.jwtVerify();
+      const user = await app.prisma.user.findUnique({
+        where: { id: payload.userId },
+        select: { id: true, role: true, clinicId: true, status: true }
+      });
+
+      if (!user) {
+        return reply.code(401).send({ message: 'Unauthorized' });
+      }
+
+      if (user.status !== RegistrationStatus.APPROVED) {
+        await invalidateUserSessions(app.prisma, user.id);
+        return reply.code(403).send({ message: 'الحساب غير مفعّل' });
+      }
+
+      let clinicStatus: RegistrationStatus | null = null;
+      if (user.clinicId) {
+        const clinic = await app.prisma.clinic.findUnique({
+          where: { id: user.clinicId },
+          select: { status: true }
+        });
+
+        clinicStatus = clinic?.status ?? null;
+
+        if (clinicStatus !== RegistrationStatus.APPROVED) {
+          await invalidateClinicSessions(app.prisma, user.clinicId);
+          return reply.code(403).send({ message: 'العيادة غير مفعّلة' });
+        }
+      }
+
+      request.user = {
+        ...payload,
+        status: user.status,
+        clinicStatus
+      };
     } catch (err) {
       return reply.code(401).send({ message: 'Unauthorized' });
     }

@@ -24,21 +24,21 @@ export default async function versionRoutes(app: FastifyInstance) {
   app.post('/', { preHandler: [app.authorize([Role.admin, Role.developer])] }, async (request, reply) => {
     const data = versionSchema.parse(request.body);
     const ver = await app.prisma.appVersion.create({ data });
-    await logAudit(app, { userId: request.user?.id, action: 'PUBLISH_VERSION', details: ver.version, ip: request.ip });
+    await logAudit(app, { userId: request.user?.userId, action: 'PUBLISH_VERSION', details: ver.version, ip: request.ip });
     return reply.code(201).send(ver);
   });
 
   app.patch('/:id', { preHandler: [app.authorize([Role.admin, Role.developer])] }, async (request, reply) => {
     const id = (request.params as { id: string }).id;
     const ver = await app.prisma.appVersion.update({ where: { id }, data: versionSchema.partial().parse(request.body) });
-    await logAudit(app, { userId: request.user?.id, action: 'UPDATE_VERSION', details: ver.id, ip: request.ip });
+    await logAudit(app, { userId: request.user?.userId, action: 'UPDATE_VERSION', details: ver.id, ip: request.ip });
     return reply.send(ver);
   });
 
   app.delete('/:id', { preHandler: [app.authorize([Role.admin])]}, async (request, reply) => {
     const id = (request.params as { id: string }).id;
     await app.prisma.appVersion.delete({ where: { id } });
-    await logAudit(app, { userId: request.user?.id, action: 'DELETE_VERSION', details: id, ip: request.ip });
+    await logAudit(app, { userId: request.user?.userId, action: 'DELETE_VERSION', details: id, ip: request.ip });
     return reply.code(204).send();
   });
 }

@@ -101,7 +101,7 @@ export default async function planRoutes(app: FastifyInstance) {
     });
 
     await logAudit(app, {
-      userId: request.user?.id,
+      userId: request.user?.userId,
       action: 'PLAN_CREATE',
       details: `Created plan ${plan.name}`,
       ip: request.ip
@@ -177,7 +177,7 @@ export default async function planRoutes(app: FastifyInstance) {
     });
 
     await logAudit(app, {
-      userId: request.user?.id,
+      userId: request.user?.userId,
       action: 'PLAN_UPDATE',
       details: `Updated plan ${plan.name}`,
       ip: request.ip
@@ -196,7 +196,7 @@ export default async function planRoutes(app: FastifyInstance) {
     await app.prisma.plan.delete({ where: { id } });
 
     await logAudit(app, {
-      userId: request.user?.id,
+      userId: request.user?.userId,
       action: 'PLAN_DELETE',
       details: `Deleted plan ${oldPlan.name}`,
       ip: request.ip
@@ -215,7 +215,7 @@ export default async function planRoutes(app: FastifyInstance) {
     });
 
     await logAudit(app, {
-      userId: request.user?.id,
+      userId: request.user?.userId,
       action: 'PLAN_ACTIVATE',
       details: `Activated plan ${plan.name}`,
       ip: request.ip
@@ -234,7 +234,7 @@ export default async function planRoutes(app: FastifyInstance) {
     });
 
     await logAudit(app, {
-      userId: request.user?.id,
+      userId: request.user?.userId,
       action: 'PLAN_DEACTIVATE',
       details: `Deactivated plan ${plan.name}`,
       ip: request.ip

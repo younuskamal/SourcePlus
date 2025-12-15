@@ -4,6 +4,7 @@ import bcrypt from 'bcrypt';
 import { ProductType, RegistrationStatus, Role, LicenseStatus } from '@prisma/client';
 import { generateSerial } from '../../utils/serial.js';
 import { logAudit } from '../../utils/audit.js';
+import { invalidateClinicSessions } from '../../utils/session.js';
 
 const registerSchema = z.object({
     name: z.string().min(2),
@@ -15,9 +16,60 @@ const registerSchema = z.object({
     systemVersion: z.string().optional(),
 });
 
+const approvalSchema = z.object({
+    planId: z.string().uuid().optional(),
+    durationMonths: z.number().int().positive().optional()
+});
+
+const assignLicenseSchema = z.object({
+    planId: z.string(),
+    durationMonths: z.number().int().positive().optional(),
+    activateClinic: z.boolean().optional()
+});
+
+const rejectSchema = z.object({
+    reason: z.string().optional()
+});
+
+const safeUserSelect = { id: true, name: true, email: true, role: true, status: true, clinicId: true, createdAt: true };
+
+const addMonths = (months: number) => {
+    const expireDate = new Date();
+    expireDate.setMonth(expireDate.getMonth() + months);
+    return expireDate;
+};
+
+const sanitizeClinic = (clinic: any) => ({
+    id: clinic.id,
+    name: clinic.name,
+    email: clinic.email,
+    doctorName: clinic.doctorName,
+    status: clinic.status,
+    licenseId: clinic.licenseId,
+    license: clinic.license ? {
+        id: clinic.license.id,
+        serial: clinic.license.serial,
+        status: clinic.license.status,
+        expireDate: clinic.license.expireDate,
+        deviceLimit: clinic.license.deviceLimit,
+        plan: clinic.license.plan ? {
+            id: clinic.license.plan.id,
+            name: clinic.license.plan.name,
+            durationMonths: clinic.license.plan.durationMonths
+        } : null
+    } : null,
+    users: clinic.users?.map((u: any) => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        status: u.status,
+        clinicId: u.clinicId
+    }))
+});
+
 export default async function clinicRoutes(app: FastifyInstance) {
     // Public Route: Register Clinic
-    // Mounted specifically at /api/clinics usually, or /clinics depending on routes.ts
     app.post('/register', async (request, reply) => {
         const { password, ...data } = registerSchema.parse(request.body);
 
@@ -26,7 +78,6 @@ export default async function clinicRoutes(app: FastifyInstance) {
             return reply.code(409).send({ message: 'Clinic already registered with this email' });
         }
 
-        // Check if email is already taken by a user
         const existingUser = await app.prisma.user.findUnique({ where: { email: data.email } });
         if (existingUser) {
             return reply.code(409).send({ message: 'An account with this email already exists' });
@@ -34,8 +85,8 @@ export default async function clinicRoutes(app: FastifyInstance) {
 
         const passwordHash = await bcrypt.hash(password, 10);
 
-        const result = await app.prisma.$transaction(async (prisma) => {
-            const clinic = await prisma.clinic.create({
+        const clinic = await app.prisma.$transaction(async (prisma) => {
+            return prisma.clinic.create({
                 data: {
                     ...data,
                     status: RegistrationStatus.PENDING,
@@ -44,17 +95,18 @@ export default async function clinicRoutes(app: FastifyInstance) {
                             name: data.doctorName || data.name,
                             email: data.email,
                             passwordHash,
-                            role: 'clinic_admin' as Role, // Cast to avoid build error if types aren't regenerated yet
+                            role: Role.clinic_admin,
                             status: RegistrationStatus.PENDING
                         }
                     }
                 },
-                include: { users: true }
+                include: {
+                    users: { select: safeUserSelect }
+                }
             });
-            return clinic;
         });
 
-        return reply.code(201).send(result);
+        return reply.code(201).send(sanitizeClinic(clinic));
     });
 
     // Admin Routes
@@ -65,157 +117,369 @@ export default async function clinicRoutes(app: FastifyInstance) {
         const clinics = await app.prisma.clinic.findMany({
             where,
             orderBy: { createdAt: 'desc' },
-            include: { license: true, users: true }
+            include: {
+                license: { include: { plan: true } },
+                users: { select: safeUserSelect }
+            }
         });
-        return reply.send(clinics);
+        return reply.send(clinics.map(sanitizeClinic));
     });
 
     app.post('/:id/approve', { preHandler: [app.authorize([Role.admin])] }, async (request, reply) => {
         const { id } = request.params as { id: string };
+        const body = approvalSchema.parse(request.body || {});
 
-        const clinic = await app.prisma.clinic.findUnique({ where: { id } });
+        const clinic = await app.prisma.clinic.findUnique({
+            where: { id },
+            include: { license: { include: { plan: true } } }
+        });
         if (!clinic) return reply.code(404).send({ message: 'Clinic not found' });
+        if (clinic.status === RegistrationStatus.REJECTED) return reply.code(400).send({ message: 'Rejected clinic cannot receive a license' });
+        if (clinic.status === RegistrationStatus.REJECTED) return reply.code(400).send({ message: 'Rejected clinic cannot be approved' });
+        if (clinic.status === RegistrationStatus.APPROVED) return reply.code(400).send({ message: 'Clinic already approved' });
 
-        if (clinic.status === RegistrationStatus.APPROVED) {
-            return reply.code(400).send({ message: 'Clinic already approved' });
-        }
+        const plan = body.planId
+            ? await app.prisma.plan.findFirst({ where: { id: body.planId, isActive: true } })
+            : await app.prisma.plan.findFirst({ where: { isActive: true }, orderBy: { createdAt: 'asc' } });
 
-        // Find a default active plan to assign
-        const plan = await app.prisma.plan.findFirst({ where: { isActive: true } });
         if (!plan) return reply.code(500).send({ message: 'No active plans found to assign license.' });
+        if (clinic.status === RegistrationStatus.SUSPENDED) return reply.code(400).send({ message: 'Suspended clinic must be reactivated instead of approved' });
 
-        const serial = generateSerial(plan);
-        const expireDate = new Date();
-        expireDate.setMonth(expireDate.getMonth() + plan.durationMonths);
+        const expireDate = addMonths(body.durationMonths || plan.durationMonths);
+        const serial = clinic.license?.serial || generateSerial(plan);
 
-        // Create License and Update Clinic in transaction
-        // We update the clinic to connect to the new license
-        const newLicense = await app.prisma.license.create({
-            data: {
-                serial,
-                planId: plan.id,
-                customerName: clinic.name,
-                deviceLimit: plan.deviceLimit,
-                productType: ProductType.CLINIC,
-                status: LicenseStatus.active,
-                expireDate: expireDate,
-                clinic: {
-                    connect: { id: clinic.id }
+        const updatedClinic = await app.prisma.$transaction(async (prisma) => {
+            const license = clinic.licenseId
+                ? await prisma.license.update({
+                    where: { id: clinic.licenseId },
+                    data: {
+                        planId: plan.id,
+                        deviceLimit: plan.deviceLimit,
+                        expireDate,
+                        status: LicenseStatus.active,
+                        isPaused: false,
+                        productType: ProductType.CLINIC
+                    }
+                })
+                : await prisma.license.create({
+                    data: {
+                        serial,
+                        planId: plan.id,
+                        customerName: clinic.name,
+                        deviceLimit: plan.deviceLimit,
+                        productType: ProductType.CLINIC,
+                        status: LicenseStatus.active,
+                        expireDate,
+                        clinic: { connect: { id: clinic.id } }
+                    }
+                });
+
+            await prisma.user.updateMany({
+                where: { clinicId: clinic.id },
+                data: { status: RegistrationStatus.APPROVED }
+            });
+
+            return prisma.clinic.update({
+                where: { id: clinic.id },
+                data: { status: RegistrationStatus.APPROVED, licenseId: license.id },
+                include: {
+                    license: { include: { plan: true } },
+                    users: { select: safeUserSelect }
                 }
-            }
+            });
         });
 
-        // Manually ensure status is APPROVED on clinic side if the connect doesn't set other fields
-        const updatedClinic = await app.prisma.clinic.update({
-            where: { id: clinic.id },
-            data: { status: RegistrationStatus.APPROVED }
-        });
+        await invalidateClinicSessions(app.prisma, id);
+        await logAudit(app, { userId: request.user?.userId, action: 'APPROVE_CLINIC', details: `Approved clinic ${clinic.name}`, ip: request.ip });
 
-        // Approve linked users
-        await app.prisma.user.updateMany({
-            where: { clinicId: clinic.id },
-            data: { status: RegistrationStatus.APPROVED }
-        });
-
-        await logAudit(app, { userId: request.user?.id, action: 'APPROVE_CLINIC', details: `Approved clinic ${clinic.name}`, ip: request.ip });
-
-        return reply.send(updatedClinic);
+        return reply.send(sanitizeClinic(updatedClinic));
     });
 
+    app.post('/:id/suspend', { preHandler: [app.authorize([Role.admin])] }, async (request, reply) => {
+        const { id } = request.params as { id: string };
+        const clinic = await app.prisma.clinic.findUnique({
+            where: { id },
+            include: { license: true }
+        });
+        if (!clinic) return reply.code(404).send({ message: 'Clinic not found' });
+        if (clinic.status === RegistrationStatus.REJECTED) return reply.code(400).send({ message: 'Rejected clinic cannot be suspended' });
+        if (clinic.status === RegistrationStatus.PENDING) return reply.code(400).send({ message: 'Pending clinic cannot be suspended' });
+
+        const updated = await app.prisma.$transaction(async (prisma) => {
+            if (clinic.licenseId) {
+                await prisma.license.update({
+                    where: { id: clinic.licenseId },
+                    data: { status: LicenseStatus.paused, isPaused: true }
+                });
+            }
+
+            await prisma.user.updateMany({ where: { clinicId: id }, data: { status: RegistrationStatus.SUSPENDED } });
+
+            return prisma.clinic.update({
+                where: { id },
+                data: { status: RegistrationStatus.SUSPENDED },
+                include: {
+                    license: { include: { plan: true } },
+                    users: { select: safeUserSelect }
+                }
+            });
+        });
+
+        await invalidateClinicSessions(app.prisma, id);
+        await logAudit(app, { userId: request.user?.userId, action: 'SUSPEND_CLINIC', details: `Suspended clinic ${clinic.name}`, ip: request.ip });
+
+        return reply.send(sanitizeClinic(updated));
+    });
+
+    app.post('/:id/reactivate', { preHandler: [app.authorize([Role.admin])] }, async (request, reply) => {
+        const { id } = request.params as { id: string };
+        const body = approvalSchema.parse(request.body || {});
+
+        const clinic = await app.prisma.clinic.findUnique({
+            where: { id },
+            include: { license: { include: { plan: true } } }
+        });
+        if (!clinic) return reply.code(404).send({ message: 'Clinic not found' });
+        if (clinic.status === RegistrationStatus.REJECTED) return reply.code(400).send({ message: 'Rejected clinic cannot be reactivated' });
+        if (clinic.status !== RegistrationStatus.SUSPENDED) return reply.code(400).send({ message: 'Clinic is not suspended' });
+
+        const plan = body.planId
+            ? await app.prisma.plan.findFirst({ where: { id: body.planId, isActive: true } })
+            : clinic.license?.plan || await app.prisma.plan.findFirst({ where: { isActive: true }, orderBy: { createdAt: 'asc' } });
+
+        if (!plan) return reply.code(500).send({ message: 'No active plans found to re-activate license.' });
+
+        const months = body.durationMonths || plan.durationMonths;
+        const expireDate = clinic.license?.expireDate && clinic.license.expireDate > new Date()
+            ? clinic.license.expireDate
+            : addMonths(months);
+
+        const updated = await app.prisma.$transaction(async (prisma) => {
+            const license = clinic.licenseId
+                ? await prisma.license.update({
+                    where: { id: clinic.licenseId },
+                    data: {
+                        planId: plan.id,
+                        deviceLimit: plan.deviceLimit,
+                        status: LicenseStatus.active,
+                        isPaused: false,
+                        expireDate
+                    }
+                })
+                : await prisma.license.create({
+                    data: {
+                        serial: generateSerial(plan),
+                        planId: plan.id,
+                        customerName: clinic.name,
+                        deviceLimit: plan.deviceLimit,
+                        productType: ProductType.CLINIC,
+                        status: LicenseStatus.active,
+                        expireDate,
+                        clinic: { connect: { id: clinic.id } }
+                    }
+                });
+
+            await prisma.user.updateMany({ where: { clinicId: id }, data: { status: RegistrationStatus.APPROVED } });
+
+            return prisma.clinic.update({
+                where: { id },
+                data: { status: RegistrationStatus.APPROVED, licenseId: license.id },
+                include: {
+                    license: { include: { plan: true } },
+                    users: { select: safeUserSelect }
+                }
+            });
+        });
+
+        await invalidateClinicSessions(app.prisma, id);
+        await logAudit(app, { userId: request.user?.userId, action: 'REACTIVATE_CLINIC', details: `Reactivated clinic ${clinic.name}`, ip: request.ip });
+
+        return reply.send(sanitizeClinic(updated));
+    });
+
+    // Backwards compatibility: toggle between suspended/approved
     app.post('/:id/toggle-status', { preHandler: [app.authorize([Role.admin])] }, async (request, reply) => {
         const { id } = request.params as { id: string };
-        const clinic = await app.prisma.clinic.findUnique({ where: { id } });
-        if (!clinic) return reply.code(404).send({ message: 'Clinic not found' });
-
-        const newStatus = clinic.status === RegistrationStatus.SUSPENDED ? RegistrationStatus.APPROVED : RegistrationStatus.SUSPENDED;
-
-        await app.prisma.clinic.update({
+        const clinic = await app.prisma.clinic.findUnique({
             where: { id },
-            data: { status: newStatus }
+            include: { license: { include: { plan: true } }, users: { select: safeUserSelect } }
         });
+        if (!clinic) return reply.code(404).send({ message: 'Clinic not found' });
+        if (clinic.status === RegistrationStatus.REJECTED) return reply.code(400).send({ message: 'Rejected clinic cannot change status' });
+        if (clinic.status === RegistrationStatus.PENDING) return reply.code(400).send({ message: 'Pending clinic must be approved before toggling' });
 
-        // Sync user status
-        await app.prisma.user.updateMany({
-            where: { clinicId: id },
-            data: { status: newStatus }
-        });
-
-        if (clinic.licenseId) {
-            const licenseStatus = newStatus === RegistrationStatus.SUSPENDED ? LicenseStatus.paused : LicenseStatus.active;
-            await app.prisma.license.update({
-                where: { id: clinic.licenseId },
-                data: { status: licenseStatus, isPaused: newStatus === RegistrationStatus.SUSPENDED }
+        if (clinic.status === RegistrationStatus.SUSPENDED) {
+            const updated = await app.prisma.$transaction(async (prisma) => {
+                if (clinic.licenseId) {
+                    await prisma.license.update({
+                        where: { id: clinic.licenseId },
+                        data: { status: LicenseStatus.active, isPaused: false }
+                    });
+                }
+                await prisma.user.updateMany({ where: { clinicId: id }, data: { status: RegistrationStatus.APPROVED } });
+                return prisma.clinic.update({
+                    where: { id },
+                    data: { status: RegistrationStatus.APPROVED },
+                    include: { license: { include: { plan: true } }, users: { select: safeUserSelect } }
+                });
             });
+            await invalidateClinicSessions(app.prisma, id);
+            await logAudit(app, { userId: request.user?.userId, action: 'REACTIVATE_CLINIC', details: `Reactivated clinic ${clinic.name}`, ip: request.ip });
+            return reply.send(sanitizeClinic(updated));
         }
 
-        await logAudit(app, { userId: request.user?.id, action: 'TOGGLE_CLINIC_STATUS', details: `Toggled clinic ${clinic.name} to ${newStatus}`, ip: request.ip });
-        return reply.send({ status: newStatus });
+        const updated = await app.prisma.$transaction(async (prisma) => {
+            if (clinic.licenseId) {
+                await prisma.license.update({
+                    where: { id: clinic.licenseId },
+                    data: { status: LicenseStatus.paused, isPaused: true }
+                });
+            }
+            await prisma.user.updateMany({ where: { clinicId: id }, data: { status: RegistrationStatus.SUSPENDED } });
+            return prisma.clinic.update({
+                where: { id },
+                data: { status: RegistrationStatus.SUSPENDED },
+                include: { license: { include: { plan: true } }, users: { select: safeUserSelect } }
+            });
+        });
+        await invalidateClinicSessions(app.prisma, id);
+        await logAudit(app, { userId: request.user?.userId, action: 'SUSPEND_CLINIC', details: `Suspended clinic ${clinic.name}`, ip: request.ip });
+        return reply.send(sanitizeClinic(updated));
     });
 
     app.post('/:id/reject', { preHandler: [app.authorize([Role.admin])] }, async (request, reply) => {
         const { id } = request.params as { id: string };
-        const body = z.object({
-            reason: z.string().optional()
-        }).parse(request.body);
+        const body = rejectSchema.parse(request.body);
 
-        const clinic = await app.prisma.clinic.findUnique({ where: { id } });
+        const clinic = await app.prisma.clinic.findUnique({
+            where: { id },
+            include: { license: true }
+        });
         if (!clinic) return reply.code(404).send({ message: 'Clinic not found' });
-
         if (clinic.status === RegistrationStatus.REJECTED) {
             return reply.code(400).send({ message: 'Clinic already rejected' });
         }
 
-        await app.prisma.clinic.update({
-            where: { id },
-            data: { status: RegistrationStatus.REJECTED }
+        const updated = await app.prisma.$transaction(async (prisma) => {
+            if (clinic.licenseId) {
+                await prisma.license.update({
+                    where: { id: clinic.licenseId },
+                    data: { status: LicenseStatus.revoked, isPaused: true }
+                });
+            }
+
+            await prisma.user.updateMany({
+                where: { clinicId: id },
+                data: { status: RegistrationStatus.REJECTED }
+            });
+
+            return prisma.clinic.update({
+                where: { id },
+                data: { status: RegistrationStatus.REJECTED },
+                include: {
+                    license: { include: { plan: true } },
+                    users: { select: safeUserSelect }
+                }
+            });
         });
 
-        // Update user status
-        await app.prisma.user.updateMany({
-            where: { clinicId: id },
-            data: { status: RegistrationStatus.REJECTED }
-        });
-
+        await invalidateClinicSessions(app.prisma, id);
         await logAudit(app, {
-            userId: request.user?.id,
+            userId: request.user?.userId,
             action: 'REJECT_CLINIC',
             details: `Rejected clinic ${clinic.name}${body.reason ? `: ${body.reason}` : ''}`,
             ip: request.ip
         });
 
-        return reply.send({ status: RegistrationStatus.REJECTED });
+        return reply.send(sanitizeClinic(updated));
     });
 
-    app.delete('/:id', { preHandler: [app.authorize([Role.admin])] }, async (request, reply) => {
+    app.post('/:id/license', { preHandler: [app.authorize([Role.admin])] }, async (request, reply) => {
         const { id } = request.params as { id: string };
-        const clinic = await app.prisma.clinic.findUnique({ where: { id } });
+        const body = assignLicenseSchema.parse(request.body);
 
+        const clinic = await app.prisma.clinic.findUnique({
+            where: { id },
+            include: { license: { include: { plan: true } } }
+        });
         if (!clinic) return reply.code(404).send({ message: 'Clinic not found' });
 
-        // 1. Delete all conversations related to this clinic
-        // Note: Schema has Cascade on Conversation but explicit delete is safer and ensures order
-        await app.prisma.conversation.deleteMany({ where: { clinicId: id } });
+        const plan = await app.prisma.plan.findFirst({ where: { id: body.planId, isActive: true } });
+        if (!plan) return reply.code(404).send({ message: 'Plan not found or inactive' });
 
-        // 2. Delete all users associated with this clinic
-        // This implicitly deletes sessions (Cascade) and updates auditLogs (SetNull)
-        await app.prisma.user.deleteMany({ where: { clinicId: id } });
+        const months = body.durationMonths || plan.durationMonths;
+        const expireDate = addMonths(months);
+        const serial = clinic.license?.serial || generateSerial(plan);
 
-        // 3. Handle License Cleanup
-        if (clinic.licenseId) {
-            // First unlink the license from the clinic to avoid constraint errors
-            await app.prisma.clinic.update({
+        const updatedClinic = await app.prisma.$transaction(async (prisma) => {
+            const license = clinic.licenseId
+                ? await prisma.license.update({
+                    where: { id: clinic.licenseId },
+                    data: {
+                        planId: plan.id,
+                        deviceLimit: plan.deviceLimit,
+                        expireDate,
+                        status: LicenseStatus.active,
+                        isPaused: false,
+                        productType: ProductType.CLINIC
+                    }
+                })
+                : await prisma.license.create({
+                    data: {
+                        serial,
+                        planId: plan.id,
+                        customerName: clinic.name,
+                        deviceLimit: plan.deviceLimit,
+                        productType: ProductType.CLINIC,
+                        status: LicenseStatus.active,
+                        expireDate,
+                        clinic: { connect: { id } }
+                    }
+                });
+
+            if (body.activateClinic) {
+                await prisma.user.updateMany({ where: { clinicId: id }, data: { status: RegistrationStatus.APPROVED } });
+            }
+
+            return prisma.clinic.update({
                 where: { id },
-                data: { licenseId: null }
+                data: {
+                    licenseId: license.id,
+                    status: body.activateClinic ? RegistrationStatus.APPROVED : clinic.status
+                },
+                include: {
+                    license: { include: { plan: true } },
+                    users: { select: safeUserSelect }
+                }
             });
-            // Then delete the license itself
-            await app.prisma.license.delete({ where: { id: clinic.licenseId } });
+        });
+
+        if (body.activateClinic) {
+            await invalidateClinicSessions(app.prisma, id);
         }
 
-        // 4. Finally delete the clinic
-        await app.prisma.clinic.delete({ where: { id } });
+        await logAudit(app, {
+            userId: request.user?.userId,
+            action: 'ASSIGN_CLINIC_LICENSE',
+            details: `Assigned plan ${plan.name} to clinic ${clinic.name}`,
+            ip: request.ip
+        });
 
-        await logAudit(app, { userId: request.user?.id, action: 'DELETE_CLINIC', details: `Deleted clinic ${clinic.name} and all associated data`, ip: request.ip });
+        return reply.send(sanitizeClinic(updatedClinic));
+    });
 
-        return reply.send({ message: 'Clinic and all associated data deleted successfully' });
+    app.post('/:id/force-logout', { preHandler: [app.authorize([Role.admin])] }, async (request, reply) => {
+        const { id } = request.params as { id: string };
+        const clinic = await app.prisma.clinic.findUnique({ where: { id } });
+        if (!clinic) return reply.code(404).send({ message: 'Clinic not found' });
+
+        await invalidateClinicSessions(app.prisma, id);
+        await logAudit(app, { userId: request.user?.userId, action: 'FORCE_LOGOUT_CLINIC', details: `Forced logout for clinic ${clinic.name}`, ip: request.ip });
+        return reply.send({ success: true });
+    });
+
+    // Deleting clinics is not allowed
+    app.delete('/:id', { preHandler: [app.authorize([Role.admin])] }, async (_request, reply) => {
+        return reply.code(405).send({ message: 'Deleting clinics is not allowed. Use status transitions instead.' });
     });
 }

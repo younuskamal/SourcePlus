@@ -23,7 +23,7 @@ export default async function settingsRoutes(app: FastifyInstance) {
         })
       )
     );
-    await logAudit(app, { userId: request.user?.id, action: 'UPDATE_SETTINGS', details: 'System settings updated', ip: request.ip });
+    await logAudit(app, { userId: request.user?.userId, action: 'UPDATE_SETTINGS', details: 'System settings updated', ip: request.ip });
     return reply.send({ ok: true });
   });
 
@@ -43,7 +43,7 @@ export default async function settingsRoutes(app: FastifyInstance) {
         })
       )
     );
-    await logAudit(app, { userId: request.user?.id, action: 'UPDATE_REMOTE_CONFIG', details: 'Remote config updated', ip: request.ip });
+    await logAudit(app, { userId: request.user?.userId, action: 'UPDATE_REMOTE_CONFIG', details: 'Remote config updated', ip: request.ip });
     return reply.send({ ok: true });
   });
 
@@ -57,7 +57,7 @@ export default async function settingsRoutes(app: FastifyInstance) {
       app.prisma.auditLog.deleteMany(),
     ]);
 
-    await logAudit(app, { userId: request.user?.id, action: 'SYSTEM_RESET', details: 'System data reset to factory defaults', ip: request.ip });
+    await logAudit(app, { userId: request.user?.userId, action: 'SYSTEM_RESET', details: 'System data reset to factory defaults', ip: request.ip });
     return reply.send({ message: 'System reset successful' });
   });
 }

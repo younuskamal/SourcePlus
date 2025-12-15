@@ -15,7 +15,7 @@ export default async function auditRoutes(app: FastifyInstance) {
   app.delete('/', { preHandler: [app.authorize([Role.admin])] }, async (request, reply) => {
     await app.prisma.auditLog.deleteMany();
     await app.prisma.auditLog.create({
-      data: { userId: request.user?.id ?? null, action: 'CLEAR_LOGS', details: 'Audit logs cleared', ipAddress: request.ip }
+      data: { userId: request.user?.userId ?? null, action: 'CLEAR_LOGS', details: 'Audit logs cleared', ipAddress: request.ip }
     });
     return reply.code(204).send();
   });

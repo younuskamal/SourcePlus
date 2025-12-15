@@ -96,7 +96,7 @@ export async function clearTrafficLogs(
         data: {
             action: 'TRAFFIC_LOGS_CLEARED',
             details: 'Traffic logs cleared by admin',
-            userId: request.user?.id,
+            userId: request.user?.userId,
             ipAddress: request.ip,
         },
     });

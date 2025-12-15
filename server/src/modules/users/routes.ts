@@ -29,14 +29,14 @@ export default async function userRoutes(app: FastifyInstance) {
       data: { name: data.name, email: data.email, passwordHash, role: data.role }
     });
 
-    await logAudit(app, { userId: request.user?.id, action: 'CREATE_USER', details: `Created ${user.email}`, ip: request.ip });
+    await logAudit(app, { userId: request.user?.userId, action: 'CREATE_USER', details: `Created ${user.email}`, ip: request.ip });
     return reply.code(201).send({ id: user.id, name: user.name, email: user.email, role: user.role });
   });
 
   app.delete('/:id', { preHandler: [app.authorize([Role.admin])] }, async (request, reply) => {
     const id = (request.params as { id: string }).id;
     await app.prisma.user.delete({ where: { id } });
-    await logAudit(app, { userId: request.user?.id, action: 'DELETE_USER', details: `Deleted ${id}`, ip: request.ip });
+    await logAudit(app, { userId: request.user?.userId, action: 'DELETE_USER', details: `Deleted ${id}`, ip: request.ip });
     return reply.code(204).send();
   });
 }

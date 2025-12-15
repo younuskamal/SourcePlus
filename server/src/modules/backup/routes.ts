@@ -94,7 +94,7 @@ export default async function backupRoutes(app: FastifyInstance) {
 
             await fs.writeFile(filepath, JSON.stringify(backupData, null, 2));
 
-            await logAudit(app, { userId: request.user?.id, action: 'CREATE_BACKUP', details: `Created backup: ${filename}`, ip: request.ip });
+            await logAudit(app, { userId: request.user?.userId, action: 'CREATE_BACKUP', details: `Created backup: ${filename}`, ip: request.ip });
 
             return { message: 'Backup created successfully', filename };
         } catch (error) {
@@ -191,7 +191,7 @@ export default async function backupRoutes(app: FastifyInstance) {
                 }
             });
 
-            await logAudit(app, { userId: request.user?.id, action: 'RESTORE_BACKUP', details: `Restored backup: ${filename}`, ip: request.ip });
+            await logAudit(app, { userId: request.user?.userId, action: 'RESTORE_BACKUP', details: `Restored backup: ${filename}`, ip: request.ip });
             return { message: 'System restored successfully' };
 
         } catch (error) {
@@ -207,7 +207,7 @@ export default async function backupRoutes(app: FastifyInstance) {
 
         try {
             await fs.unlink(filepath);
-            await logAudit(app, { userId: request.user?.id, action: 'DELETE_BACKUP', details: `Deleted backup: ${filename}`, ip: request.ip });
+            await logAudit(app, { userId: request.user?.userId, action: 'DELETE_BACKUP', details: `Deleted backup: ${filename}`, ip: request.ip });
             return { message: 'Backup deleted successfully' };
         } catch (error) {
             request.log.error(error);
@@ -246,7 +246,7 @@ export default async function backupRoutes(app: FastifyInstance) {
             const filepath = path.join(BACKUP_DIR, filename);
             await fs.writeFile(filepath, await data.toBuffer());
 
-            await logAudit(app, { userId: request.user?.id, action: 'UPLOAD_BACKUP', details: `Uploaded backup: ${filename}`, ip: request.ip });
+            await logAudit(app, { userId: request.user?.userId, action: 'UPLOAD_BACKUP', details: `Uploaded backup: ${filename}`, ip: request.ip });
             return { message: 'Backup uploaded successfully', filename };
         } catch (error) {
             request.log.error(error);

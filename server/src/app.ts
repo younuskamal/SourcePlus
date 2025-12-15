@@ -3,6 +3,7 @@ import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import multipart from '@fastify/multipart';
 import sensible from '@fastify/sensible';
+import rateLimit from '@fastify/rate-limit';
 import dotenv from 'dotenv';
 import { ZodError } from 'zod';
 import authPlugin from './plugins/auth.js';
@@ -29,6 +30,11 @@ export const buildApp = () => {
   app.register(multipart);
   app.register(jwt, {
     secret: process.env.JWT_SECRET || 'dev-secret'
+  });
+  app.register(rateLimit, {
+    global: false,
+    max: 200,
+    timeWindow: '1 minute'
   });
   app.register(prismaPlugin);
   app.register(authPlugin);
