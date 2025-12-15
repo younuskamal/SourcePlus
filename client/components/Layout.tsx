@@ -63,7 +63,7 @@ const Layout: React.FC<LayoutProps> = ({
   ];
 
   const clinicMenuItems = [
-    { id: 'dashboard', label: t('nav.dashboard'), icon: LayoutDashboard, allowedRoles: ['admin', 'developer'] },
+    { id: 'clinic-dashboard', label: 'Clinic Dashboard', icon: LayoutDashboard, allowedRoles: ['admin'] },
     { id: 'clinics', label: t('nav.clinics'), icon: Stethoscope, allowedRoles: ['admin', 'developer'] },
     { id: 'manage-clinics', label: t('nav.manageClinics'), icon: LayoutDashboard, allowedRoles: ['admin'] },
     { id: 'clinic-messages', label: 'Messages', icon: Bell, allowedRoles: ['admin', 'developer'] },

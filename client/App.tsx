@@ -15,6 +15,7 @@ import Financials from './pages/Financials';
 import Login from './pages/Login';
 import Clinics from './pages/Clinics';
 import ClinicMessages from './pages/ClinicMessages';
+import ClinicDashboard from './pages/ClinicDashboard';
 import { useTranslation } from './hooks/useTranslation';
 import { User } from './types';
 import { api } from './services/api';
@@ -118,6 +119,16 @@ function AppContent() {
     return () => clearInterval(interval);
   }, []);
 
+  // Sync default page with current system (POS vs CLINIC)
+  useEffect(() => {
+    if (product === 'CLINIC' && currentPage === 'dashboard') {
+      setPage('clinic-dashboard');
+    }
+    if (product === 'POS' && currentPage === 'clinic-dashboard') {
+      setPage('dashboard');
+    }
+  }, [product, currentPage]);
+
   useEffect(() => {
     const handleFocus = () => setRefreshTick((tick) => tick + 1);
     const handleVisibility = () => {
@@ -157,12 +168,13 @@ function AppContent() {
       }
     }
 
-    if (['clinics', 'manage-clinics', 'clinic-messages'].includes(currentPage) && user.role !== 'admin') {
+    if (['clinic-dashboard', 'clinics', 'manage-clinics', 'clinic-messages'].includes(currentPage) && user.role !== 'admin') {
       return <div className="p-8 text-center text-slate-500 dark:text-slate-400">Access Restricted</div>;
     }
 
     switch (currentPage) {
       case 'dashboard': return <Dashboard currentLang={i18n.language} setPage={setPage} />;
+      case 'clinic-dashboard': return <ClinicDashboard setPage={setPage} />;
       case 'licenses': return <Licenses currentLang={i18n.language} />;
       case 'plans': return <Plans currentLang={i18n.language} />;
       case 'financials': return <Financials currentLang={i18n.language} />;
@@ -177,7 +189,9 @@ function AppContent() {
       case 'clinics': return <Clinics viewMode="requests" />;
       case 'manage-clinics': return <Clinics viewMode="manage" />;
       case 'clinic-messages': return <ClinicMessages />;
-      default: return <Dashboard currentLang={i18n.language} setPage={setPage} />;
+      default: return product === 'CLINIC'
+        ? <ClinicDashboard setPage={setPage} />
+        : <Dashboard currentLang={i18n.language} setPage={setPage} />;
     }
   };
 
