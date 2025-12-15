@@ -284,7 +284,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setPage }) => {
         <div className="lg:col-span-8 space-y-6">
 
           {/* Revenue Chart */}
-          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
+          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 min-w-0">
             <div className="flex justify-between items-center mb-4">
               <div>
                 <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -301,7 +301,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setPage }) => {
                 <option value="6months">Last 6 Months</option>
               </select>
             </div>
-            <div className="h-[250px] w-full">
+            <div className="h-[250px] w-full min-w-0">
               {mounted ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chartData}>
@@ -366,9 +366,9 @@ const Dashboard: React.FC<DashboardProps> = ({ setPage }) => {
 
           {/* Plans Performance */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 min-w-0">
               <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">Sales by Plan</h3>
-              <div className="h-[180px] w-full">
+              <div className="h-[180px] w-full min-w-0">
                 {mounted && (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={plansData} layout="vertical">
