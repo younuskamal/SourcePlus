@@ -84,9 +84,47 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
         return filtered.length > 0 ? filtered : plans;
     }, [plans]);
 
+    const fetchSubscriptions = async (items: Clinic[]) => {
+        const results = await Promise.all(items.map(async (clinic) => {
+            try {
+                const status = await api.getSubscriptionStatus(clinic.id);
+                return [clinic.id, status] as const;
+            } catch {
+                return null;
+            }
+        }));
+        const map: Record<string, ClinicSubscriptionStatus> = {};
+        results.forEach(item => {
+            if (item) map[item[0]] = item[1];
+        });
+        setSubscriptions(map);
+    };
+
+    const fetchClinics = useCallback(async () => {
+        try {
+            setLoading(true);
+            const defaultStatus = viewMode === 'requests' ? RegistrationStatus.PENDING : undefined;
+            const data = await api.getClinics(defaultStatus);
+            setClinics(data);
+            await fetchSubscriptions(data);
+        } catch (e) {
+            console.error('Failed to fetch clinics', e);
+        } finally {
+            setLoading(false);
+            setProcessing(null);
+        }
+    }, [viewMode]);
+
     useEffect(() => {
         fetchClinics();
     }, [viewMode, fetchClinics]);
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            fetchClinics();
+        }, 15000);
+        return () => clearInterval(timer);
+    }, [fetchClinics]);
 
     useEffect(() => {
         setStatusFilter(viewMode === 'requests' ? RegistrationStatus.PENDING : 'ALL');
@@ -107,44 +145,6 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
         } finally {
             setLoadingPlans(false);
         }
-    };
-
-    const fetchClinics = useCallback(async () => {
-        try {
-            setLoading(true);
-            const defaultStatus = viewMode === 'requests' ? RegistrationStatus.PENDING : undefined;
-            const data = await api.getClinics(defaultStatus);
-            setClinics(data);
-            await fetchSubscriptions(data);
-        } catch (e) {
-            console.error('Failed to fetch clinics', e);
-        } finally {
-            setLoading(false);
-            setProcessing(null);
-        }
-    }, [viewMode]);
-
-    useEffect(() => {
-        const timer = setInterval(() => {
-            fetchClinics();
-        }, 15000);
-        return () => clearInterval(timer);
-    }, [fetchClinics]);
-
-    const fetchSubscriptions = async (items: Clinic[]) => {
-        const results = await Promise.all(items.map(async (clinic) => {
-            try {
-                const status = await api.getSubscriptionStatus(clinic.id);
-                return [clinic.id, status] as const;
-            } catch {
-                return null;
-            }
-        }));
-        const map: Record<string, ClinicSubscriptionStatus> = {};
-        results.forEach(item => {
-            if (item) map[item[0]] = item[1];
-        });
-        setSubscriptions(map);
     };
 
     const filtered = useMemo(() => {
