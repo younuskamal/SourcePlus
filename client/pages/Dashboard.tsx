@@ -136,6 +136,25 @@ const QuickActionCard = ({ title, icon: Icon, colorClass, onClick }: any) => (
   </button>
 );
 
+class ChartBoundary extends React.Component<{ children: React.ReactNode, fallback?: React.ReactNode }, { hasError: boolean }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: any) {
+    console.error('Chart render error', error);
+  }
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback || null;
+    }
+    return this.props.children;
+  }
+}
+
 const Dashboard: React.FC<DashboardProps> = ({ setPage }) => {
   const { t, i18n } = useTranslation();
   const { tick: autoRefreshTick } = useAutoRefresh();
@@ -308,7 +327,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setPage }) => {
       </div>
 
       {/* Main Content Area */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6" suppressHydrationWarning>
 
         {/* Left Column (Charts & Quick Actions) */}
         <div className="lg:col-span-8 space-y-6">
@@ -333,35 +352,37 @@ const Dashboard: React.FC<DashboardProps> = ({ setPage }) => {
             </div>
             <div className="h-[250px] w-full min-w-0" ref={revenueRef}>
               {canRenderRevenue && revenueSize.width > 10 ? (
-                <AreaChart
-                  width={Math.max(200, revenueSize.width)}
-                  height={250}
-                  data={chartData}
-                >
-                  <defs>
-                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" strokeOpacity={0.1} />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#1e293b', borderRadius: '8px', border: 'none', color: '#fff', fontSize: '12px' }}
-                    itemStyle={{ color: '#fff' }}
-                    formatter={(value: any) => [`$${value}`, 'Revenue']}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="#6366f1"
-                    strokeWidth={2}
-                    fillOpacity={1}
-                    fill="url(#colorRevenue)"
-                    animationDuration={1000}
-                  />
-                </AreaChart>
+                <ChartBoundary fallback={<div className="h-full w-full flex items-center justify-center bg-slate-50 dark:bg-slate-700/20 rounded-xl text-slate-400 text-xs">Chart unavailable</div>}>
+                  <AreaChart
+                    width={Math.max(200, revenueSize.width)}
+                    height={250}
+                    data={chartData}
+                  >
+                    <defs>
+                      <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" strokeOpacity={0.1} />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#1e293b', borderRadius: '8px', border: 'none', color: '#fff', fontSize: '12px' }}
+                      itemStyle={{ color: '#fff' }}
+                      formatter={(value: any) => [`$${value}`, 'Revenue']}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke="#6366f1"
+                      strokeWidth={2}
+                      fillOpacity={1}
+                      fill="url(#colorRevenue)"
+                      animationDuration={1000}
+                    />
+                  </AreaChart>
+                </ChartBoundary>
               ) : (
                 <div className="h-full w-full flex items-center justify-center bg-slate-50 dark:bg-slate-700/20 rounded-xl text-slate-400 text-xs">
                   {mounted ? 'No data to display' : 'Loading chart...'}
@@ -404,21 +425,23 @@ const Dashboard: React.FC<DashboardProps> = ({ setPage }) => {
               <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">Sales by Plan</h3>
               <div className="h-[180px] w-full min-w-0" ref={plansRef}>
                 {canRenderPlans && plansSize.width > 10 ? (
-                  <BarChart
-                    width={Math.max(200, plansSize.width)}
-                    height={180}
-                    data={plansData}
-                    layout="vertical"
-                  >
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#334155" strokeOpacity={0.1} />
-                    <XAxis type="number" hide />
-                    <YAxis dataKey="name" type="category" width={90} tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={false} tickLine={false} />
-                    <Tooltip
-                      cursor={{ fill: 'transparent' }}
-                      contentStyle={{ backgroundColor: '#1e293b', borderRadius: '8px', border: 'none', color: '#fff', fontSize: '12px' }}
-                    />
-                    <Bar dataKey="count" fill="#0ea5e9" radius={[0, 4, 4, 0]} barSize={12} />
-                  </BarChart>
+                  <ChartBoundary fallback={<div className="h-full w-full flex items-center justify-center bg-slate-50 dark:bg-slate-700/20 rounded-xl text-slate-400 text-xs">Chart unavailable</div>}>
+                    <BarChart
+                      width={Math.max(200, plansSize.width)}
+                      height={180}
+                      data={plansData}
+                      layout="vertical"
+                    >
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#334155" strokeOpacity={0.1} />
+                      <XAxis type="number" hide />
+                      <YAxis dataKey="name" type="category" width={90} tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <Tooltip
+                        cursor={{ fill: 'transparent' }}
+                        contentStyle={{ backgroundColor: '#1e293b', borderRadius: '8px', border: 'none', color: '#fff', fontSize: '12px' }}
+                      />
+                      <Bar dataKey="count" fill="#0ea5e9" radius={[0, 4, 4, 0]} barSize={12} />
+                    </BarChart>
+                  </ChartBoundary>
                 ) : (
                   <div className="h-full w-full flex items-center justify-center bg-slate-50 dark:bg-slate-700/20 rounded-xl text-slate-400 text-xs">
                     {mounted ? 'No plan data yet' : 'Loading chart...'}
