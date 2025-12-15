@@ -71,6 +71,16 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
     const pageTitle = viewMode === 'requests' ? 'Clinic Requests' : 'Manage Clinics';
     const pageIcon = viewMode === 'requests' ? Stethoscope : LayoutDashboard;
 
+    const clinicPlans = useMemo(() => {
+        const matchProductType = (plan: SubscriptionPlan) => {
+            const productType = ((plan.limits as any)?.productType || (plan.features as any)?.productType || '').toString().toUpperCase();
+            if (productType === 'CLINIC') return true;
+            return plan.name.toLowerCase().includes('clinic');
+        };
+        const filtered = plans.filter(matchProductType);
+        return filtered.length > 0 ? filtered : plans;
+    }, [plans]);
+
     useEffect(() => {
         fetchClinics();
     }, [viewMode]);
@@ -95,16 +105,6 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
             setLoadingPlans(false);
         }
     };
-
-    const clinicPlans = useMemo(() => {
-        const matchProductType = (plan: SubscriptionPlan) => {
-            const productType = ((plan.limits as any)?.productType || (plan.features as any)?.productType || '').toString().toUpperCase();
-            if (productType === 'CLINIC') return true;
-            return plan.name.toLowerCase().includes('clinic');
-        };
-        const filtered = plans.filter(matchProductType);
-        return filtered.length > 0 ? filtered : plans;
-    }, [plans]);
 
     const fetchClinics = async () => {
         try {
