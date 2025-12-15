@@ -32,7 +32,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
   BarChart,
   Bar
 } from 'recharts';
@@ -333,34 +332,36 @@ const Dashboard: React.FC<DashboardProps> = ({ setPage }) => {
               </select>
             </div>
             <div className="h-[250px] w-full min-w-0" ref={revenueRef}>
-              {canRenderRevenue && revenueSize.width > 0 && revenueSize.height > 0 ? (
-                <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={200} debounce={100}>
-                  <AreaChart data={chartData}>
-                    <defs>
-                      <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" strokeOpacity={0.1} />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: '#1e293b', borderRadius: '8px', border: 'none', color: '#fff', fontSize: '12px' }}
-                      itemStyle={{ color: '#fff' }}
-                      formatter={(value: any) => [`$${value}`, 'Revenue']}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="revenue"
-                      stroke="#6366f1"
-                      strokeWidth={2}
-                      fillOpacity={1}
-                      fill="url(#colorRevenue)"
-                      animationDuration={1000}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+              {canRenderRevenue && revenueSize.width > 10 ? (
+                <AreaChart
+                  width={Math.max(200, revenueSize.width)}
+                  height={250}
+                  data={chartData}
+                >
+                  <defs>
+                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" strokeOpacity={0.1} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#1e293b', borderRadius: '8px', border: 'none', color: '#fff', fontSize: '12px' }}
+                    itemStyle={{ color: '#fff' }}
+                    formatter={(value: any) => [`$${value}`, 'Revenue']}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#6366f1"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorRevenue)"
+                    animationDuration={1000}
+                  />
+                </AreaChart>
               ) : (
                 <div className="h-full w-full flex items-center justify-center bg-slate-50 dark:bg-slate-700/20 rounded-xl text-slate-400 text-xs">
                   {mounted ? 'No data to display' : 'Loading chart...'}
@@ -402,19 +403,22 @@ const Dashboard: React.FC<DashboardProps> = ({ setPage }) => {
             <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 min-w-0">
               <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">Sales by Plan</h3>
               <div className="h-[180px] w-full min-w-0" ref={plansRef}>
-                {canRenderPlans && plansSize.width > 0 && plansSize.height > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={160} debounce={100}>
-                    <BarChart data={plansData} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#334155" strokeOpacity={0.1} />
-                      <XAxis type="number" hide />
-                      <YAxis dataKey="name" type="category" width={90} tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={false} tickLine={false} />
-                      <Tooltip
-                        cursor={{ fill: 'transparent' }}
-                        contentStyle={{ backgroundColor: '#1e293b', borderRadius: '8px', border: 'none', color: '#fff', fontSize: '12px' }}
-                      />
-                      <Bar dataKey="count" fill="#0ea5e9" radius={[0, 4, 4, 0]} barSize={12} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                {canRenderPlans && plansSize.width > 10 ? (
+                  <BarChart
+                    width={Math.max(200, plansSize.width)}
+                    height={180}
+                    data={plansData}
+                    layout="vertical"
+                  >
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#334155" strokeOpacity={0.1} />
+                    <XAxis type="number" hide />
+                    <YAxis dataKey="name" type="category" width={90} tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={false} tickLine={false} />
+                    <Tooltip
+                      cursor={{ fill: 'transparent' }}
+                      contentStyle={{ backgroundColor: '#1e293b', borderRadius: '8px', border: 'none', color: '#fff', fontSize: '12px' }}
+                    />
+                    <Bar dataKey="count" fill="#0ea5e9" radius={[0, 4, 4, 0]} barSize={12} />
+                  </BarChart>
                 ) : (
                   <div className="h-full w-full flex items-center justify-center bg-slate-50 dark:bg-slate-700/20 rounded-xl text-slate-400 text-xs">
                     {mounted ? 'No plan data yet' : 'Loading chart...'}
