@@ -73,9 +73,9 @@ const ClinicMessages: React.FC = () => {
 
     const fetchConversations = async () => {
         try {
+            setLoading(true);
             const data = await api.getConversations();
             setConversations(data);
-            if (!loading) setLoading(false);
         } catch (error) {
             console.error('Failed to fetch conversations', error);
         } finally {

@@ -177,7 +177,7 @@ const ClinicApiDocs: React.FC = () => {
                             "Access Token صالح لمدة 15 دقيقة",
                             "Refresh Token صالح لمدة 7 أيام",
                             "إذا كانت حالة المستخدم PENDING أو REJECTED أو SUSPENDED، سيتم رفض الدخول",
-                            "clinicId يتم إرجاعه في بيانات المستخدم"
+                            "حمولة الـ JWT تحتوي الحقول: userId, clinicId, role"
                         ]}
                     />
 
@@ -243,8 +243,8 @@ const ClinicApiDocs: React.FC = () => {
 # أو إرسال clinicId في Query:`}
                         queryParams="?clinicId=550e8400-e29b-41d4-a716-446655440000"
                         response={`{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "name": "عيادة الأمل الطبية",
+  "clinicId": "550e8400-e29b-41d4-a716-446655440000",
+  "clinicName": "عيادة الأمل الطبية",
   "status": "APPROVED",
   "license": {
     "id": "770e8400-e29b-41d4-a716-446655440002",
@@ -254,24 +254,18 @@ const ClinicApiDocs: React.FC = () => {
     "deviceLimit": 3,
     "activationCount": 1,
     "plan": {
+      "id": "plan-123",
       "name": "خطة العيادات الأساسية",
-      "durationMonths": 12,
-      "features": {
-        "patients": true,
-        "appointments": true,
-        "reports": true
-      }
+      "durationMonths": 12
     }
   },
   "remainingDays": 365,
   "forceLogout": false
 }`}
                         notes={[
-                            "إذا كانت الحالة PENDING: العيادة بانتظار الموافقة",
-                            "إذا كانت الحالة APPROVED: العيادة مفعلة ويوجد license",
-                            "إذا كانت الحالة SUSPENDED: العيادة معلقة مؤقتاً",
-                            "إذا كانت الحالة REJECTED: تم رفض الطلب",
-                            "forceLogout: true يعني يجب تسجيل الخروج فوراً"
+                            "الحالات الممكنة: PENDING / APPROVED / SUSPENDED / REJECTED",
+                            "forceLogout=true يعني يجب إنهاء الجلسات فوراً (يُفعّل تلقائياً عند التعليق أو انتهاء الترخيص)",
+                            "يمكن تمرير clinicId أو الاكتفاء بالتوكن المصدق ليتم التعرف على العيادة تلقائياً"
                         ]}
                     />
 
