@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Stethoscope, ShieldCheck, Ban, Clock, CheckCircle2, AlertTriangle, Bell, Mail, MapPin, Phone, LayoutDashboard } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Stethoscope, ShieldCheck, Ban, Clock, CheckCircle2, AlertTriangle, Bell, Mail, MapPin, Phone, LayoutDashboard, RefreshCw, Zap, Activity, Radio } from 'lucide-react';
 import { api } from '../services/api';
 import { Clinic, RegistrationStatus } from '../types';
 
@@ -22,6 +22,7 @@ const StatCard = ({ label, value, icon: Icon, className }: { label: string; valu
 const ClinicDashboard: React.FC<Props> = ({ setPage }) => {
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [loading, setLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -29,6 +30,7 @@ const ClinicDashboard: React.FC<Props> = ({ setPage }) => {
       try {
         const data = await api.getClinics();
         setClinics(data);
+        setLastUpdated(new Date());
       } catch (e) {
         console.error('Failed to load clinics', e);
       } finally {
@@ -36,6 +38,8 @@ const ClinicDashboard: React.FC<Props> = ({ setPage }) => {
       }
     };
     load();
+    const timer = setInterval(load, 15000);
+    return () => clearInterval(timer);
   }, []);
 
   const statusCounts = clinics.reduce<Record<RegistrationStatus, number>>((acc, c) => {
@@ -48,8 +52,32 @@ const ClinicDashboard: React.FC<Props> = ({ setPage }) => {
     [RegistrationStatus.REJECTED]: 0
   });
 
-  const pending = clinics.filter(c => c.status === RegistrationStatus.PENDING).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-  const approved = clinics.filter(c => c.status === RegistrationStatus.APPROVED).slice(0, 5);
+  const pending = useMemo(
+    () => clinics.filter(c => c.status === RegistrationStatus.PENDING).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')),
+    [clinics]
+  );
+
+  const approved = useMemo(
+    () => clinics.filter(c => c.status === RegistrationStatus.APPROVED).slice(0, 5),
+    [clinics]
+  );
+
+  const expiringSoon = useMemo(() => {
+    const today = Date.now();
+    const in30 = 1000 * 60 * 60 * 24 * 30;
+    return clinics
+      .filter(c => c.license?.expireDate)
+      .map(c => ({
+        ...c,
+        expireTs: new Date(c.license!.expireDate as any).getTime()
+      }))
+      .filter(c => c.expireTs - today <= in30 && c.expireTs - today > 0)
+      .sort((a, b) => a.expireTs - b.expireTs)
+      .slice(0, 5);
+  }, [clinics]);
+
+  const forceLogoutCount = clinics.filter(c => c.status === RegistrationStatus.APPROVED && (c as any).forceLogout).length;
+  const expiringCount = expiringSoon.length;
 
   return (
     <div className="space-y-6">
@@ -81,6 +109,80 @@ const ClinicDashboard: React.FC<Props> = ({ setPage }) => {
         <StatCard label="قيد الانتظار" value={statusCounts[RegistrationStatus.PENDING] || 0} icon={Clock} className="bg-amber-50/50 dark:bg-amber-900/10" />
         <StatCard label="مفعلة" value={statusCounts[RegistrationStatus.APPROVED] || 0} icon={ShieldCheck} className="bg-emerald-50/50 dark:bg-emerald-900/10" />
         <StatCard label="معلقة / مرفوضة" value={(statusCounts[RegistrationStatus.SUSPENDED] || 0) + (statusCounts[RegistrationStatus.REJECTED] || 0)} icon={Ban} className="bg-rose-50/50 dark:bg-rose-900/10" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500 to-sky-600 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-wider opacity-80 font-semibold">Live Status</p>
+              <p className="text-3xl font-extrabold mt-1">{clinics.length} عيادات</p>
+            </div>
+            <div className="p-3 bg-white/20 rounded-full">
+              <Radio />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2 mt-4 text-sm">
+            <div className="bg-white/10 rounded-xl p-3">
+              <p className="text-xs opacity-80">قيد الانتظار</p>
+              <p className="text-lg font-bold">{statusCounts[RegistrationStatus.PENDING] || 0}</p>
+            </div>
+            <div className="bg-white/10 rounded-xl p-3">
+              <p className="text-xs opacity-80">مفعلة</p>
+              <p className="text-lg font-bold">{statusCounts[RegistrationStatus.APPROVED] || 0}</p>
+            </div>
+            <div className="bg-white/10 rounded-xl p-3">
+              <p className="text-xs opacity-80">تنتهي قريباً</p>
+              <p className="text-lg font-bold">{expiringCount}</p>
+            </div>
+            <div className="bg-white/10 rounded-xl p-3">
+              <p className="text-xs opacity-80">Force Logout</p>
+              <p className="text-lg font-bold">{forceLogoutCount}</p>
+            </div>
+          </div>
+          <div className="mt-3 text-xs opacity-80">
+            {lastUpdated ? `آخر تحديث ${lastUpdated.toLocaleTimeString()}` : '...'}
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Zap className="text-indigo-500" size={16} />
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">حالة سريعة</h3>
+            </div>
+            <span className="text-xs text-slate-500">+ تلقائي</span>
+          </div>
+          <div className="space-y-2">
+            {Object.entries(statusCounts).map(([status, count]) => (
+              <div key={status} className="flex items-center gap-3">
+                <div className="w-24 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase">{status}</div>
+                <div className="flex-1 h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-500"
+                    style={{ width: clinics.length ? `${(count / clinics.length) * 100}%` : '0%' }}
+                  ></div>
+                </div>
+                <div className="w-10 text-right text-xs text-slate-500">{count}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Activity className="text-sky-500" size={16} />
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">أولوية العمل</h3>
+            </div>
+            <button onClick={() => setPage('clinics')} className="text-xs text-primary-600 hover:underline">انتقل</button>
+          </div>
+          <ul className="text-sm text-slate-700 dark:text-slate-300 space-y-2">
+            <li>• {pending.length} طلب قيد الانتظار</li>
+            <li>• {expiringCount} تراخيص تنتهي خلال 30 يوماً</li>
+            <li>• {forceLogoutCount} عيادات تحت تسجيل خروج إجباري</li>
+          </ul>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
