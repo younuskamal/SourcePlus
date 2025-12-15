@@ -134,16 +134,16 @@ export default async function clinicRoutes(app: FastifyInstance) {
             include: { license: { include: { plan: true } } }
         });
         if (!clinic) return reply.code(404).send({ message: 'Clinic not found' });
-        if (clinic.status === RegistrationStatus.REJECTED) return reply.code(400).send({ message: 'Rejected clinic cannot receive a license' });
-        if (clinic.status === RegistrationStatus.REJECTED) return reply.code(400).send({ message: 'Rejected clinic cannot be approved' });
-        if (clinic.status === RegistrationStatus.APPROVED) return reply.code(400).send({ message: 'Clinic already approved' });
+        const status = clinic.status as RegistrationStatus;
+        if (status === RegistrationStatus.REJECTED) return reply.code(400).send({ message: 'Rejected clinic cannot be approved' });
+        if (status === RegistrationStatus.APPROVED) return reply.code(400).send({ message: 'Clinic already approved' });
 
         const plan = body.planId
             ? await app.prisma.plan.findFirst({ where: { id: body.planId, isActive: true } })
             : await app.prisma.plan.findFirst({ where: { isActive: true }, orderBy: { createdAt: 'asc' } });
 
         if (!plan) return reply.code(500).send({ message: 'No active plans found to assign license.' });
-        if (clinic.status === RegistrationStatus.SUSPENDED) return reply.code(400).send({ message: 'Suspended clinic must be reactivated instead of approved' });
+        if (status === RegistrationStatus.SUSPENDED) return reply.code(400).send({ message: 'Suspended clinic must be reactivated instead of approved' });
 
         const expireDate = addMonths(body.durationMonths || plan.durationMonths);
         const serial = clinic.license?.serial || generateSerial(plan);
@@ -202,8 +202,9 @@ export default async function clinicRoutes(app: FastifyInstance) {
             include: { license: true }
         });
         if (!clinic) return reply.code(404).send({ message: 'Clinic not found' });
-        if (clinic.status === RegistrationStatus.REJECTED) return reply.code(400).send({ message: 'Rejected clinic cannot be suspended' });
-        if (clinic.status === RegistrationStatus.PENDING) return reply.code(400).send({ message: 'Pending clinic cannot be suspended' });
+        const status = clinic.status as RegistrationStatus;
+        if (status === RegistrationStatus.REJECTED) return reply.code(400).send({ message: 'Rejected clinic cannot be suspended' });
+        if (status === RegistrationStatus.PENDING) return reply.code(400).send({ message: 'Pending clinic cannot be suspended' });
 
         const updated = await app.prisma.$transaction(async (prisma) => {
             if (clinic.licenseId) {
@@ -240,8 +241,9 @@ export default async function clinicRoutes(app: FastifyInstance) {
             include: { license: { include: { plan: true } } }
         });
         if (!clinic) return reply.code(404).send({ message: 'Clinic not found' });
-        if (clinic.status === RegistrationStatus.REJECTED) return reply.code(400).send({ message: 'Rejected clinic cannot be reactivated' });
-        if (clinic.status !== RegistrationStatus.SUSPENDED) return reply.code(400).send({ message: 'Clinic is not suspended' });
+        const status = clinic.status as RegistrationStatus;
+        if (status === RegistrationStatus.REJECTED) return reply.code(400).send({ message: 'Rejected clinic cannot be reactivated' });
+        if (status !== RegistrationStatus.SUSPENDED) return reply.code(400).send({ message: 'Clinic is not suspended' });
 
         const plan = body.planId
             ? await app.prisma.plan.findFirst({ where: { id: body.planId, isActive: true } })
@@ -305,10 +307,11 @@ export default async function clinicRoutes(app: FastifyInstance) {
             include: { license: { include: { plan: true } }, users: { select: safeUserSelect } }
         });
         if (!clinic) return reply.code(404).send({ message: 'Clinic not found' });
-        if (clinic.status === RegistrationStatus.REJECTED) return reply.code(400).send({ message: 'Rejected clinic cannot change status' });
-        if (clinic.status === RegistrationStatus.PENDING) return reply.code(400).send({ message: 'Pending clinic must be approved before toggling' });
+        const status = clinic.status as RegistrationStatus;
+        if (status === RegistrationStatus.REJECTED) return reply.code(400).send({ message: 'Rejected clinic cannot change status' });
+        if (status === RegistrationStatus.PENDING) return reply.code(400).send({ message: 'Pending clinic must be approved before toggling' });
 
-        if (clinic.status === RegistrationStatus.SUSPENDED) {
+        if (status === RegistrationStatus.SUSPENDED) {
             const updated = await app.prisma.$transaction(async (prisma) => {
                 if (clinic.licenseId) {
                     await prisma.license.update({
@@ -356,7 +359,8 @@ export default async function clinicRoutes(app: FastifyInstance) {
             include: { license: true }
         });
         if (!clinic) return reply.code(404).send({ message: 'Clinic not found' });
-        if (clinic.status === RegistrationStatus.REJECTED) {
+        const status = clinic.status as RegistrationStatus;
+        if (status === RegistrationStatus.REJECTED) {
             return reply.code(400).send({ message: 'Clinic already rejected' });
         }
 
