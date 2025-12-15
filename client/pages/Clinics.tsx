@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../services/api';
-import { Clinic, RegistrationStatus } from '../types';
+import { Clinic, RegistrationStatus, SubscriptionPlan, ClinicSubscriptionStatus } from '../types';
 import {
     CheckCircle2,
     XCircle,
@@ -17,41 +17,92 @@ import {
     Key,
     Calendar,
     RefreshCw,
-    Trash2,
     Eye,
     Landmark,
-    FileText
+    FileText,
+    LogOut,
+    ShieldAlert,
+    KeyRound
 } from 'lucide-react';
 
 interface ClinicsProps {
     viewMode: 'requests' | 'manage';
 }
 
+type ActionType = 'approve' | 'reject' | 'suspend' | 'reactivate' | 'force-logout';
+
+const statusOptions: { label: string; value: RegistrationStatus | 'ALL' }[] = [
+    { label: 'All statuses', value: 'ALL' },
+    { label: 'Pending', value: RegistrationStatus.PENDING },
+    { label: 'Approved', value: RegistrationStatus.APPROVED },
+    { label: 'Suspended', value: RegistrationStatus.SUSPENDED },
+    { label: 'Rejected', value: RegistrationStatus.REJECTED }
+];
+
+const statusBadge = (status: RegistrationStatus) => {
+    switch (status) {
+        case RegistrationStatus.APPROVED: return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20';
+        case RegistrationStatus.PENDING: return 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20';
+        case RegistrationStatus.SUSPENDED: return 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20';
+        case RegistrationStatus.REJECTED: return 'bg-slate-500/10 text-slate-600 dark:text-slate-300 border-slate-500/20';
+        default: return 'bg-slate-500/10 text-slate-500 border-slate-500/20';
+    }
+};
+
+const formatDate = (dateString?: string) => {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
 const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
     const [clinics, setClinics] = useState<Clinic[]>([]);
+    const [subscriptions, setSubscriptions] = useState<Record<string, ClinicSubscriptionStatus>>({});
+    const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
+    const [statusFilter, setStatusFilter] = useState<RegistrationStatus | 'ALL'>(viewMode === 'requests' ? RegistrationStatus.PENDING : 'ALL');
     const [processing, setProcessing] = useState<string | null>(null);
-
-    // Modal State
-    const [confirmModal, setConfirmModal] = useState<{
-        isOpen: boolean;
-        type: 'approve' | 'reject' | 'suspend' | 'activate' | 'delete';
-        clinicId: string;
-        clinicName: string;
-    } | null>(null);
-
-    const [rejectModal, setRejectModal] = useState<{ clinicId: string; clinicName: string } | null>(null);
+    const [confirmAction, setConfirmAction] = useState<{ type: ActionType; clinic: Clinic } | null>(null);
     const [rejectReason, setRejectReason] = useState('');
-
     const [detailsModal, setDetailsModal] = useState<Clinic | null>(null);
+    const [assignModal, setAssignModal] = useState<{ clinic: Clinic; planId?: string; durationMonths?: number; activateClinic?: boolean } | null>(null);
+    const [loadingPlans, setLoadingPlans] = useState(false);
 
-    // Initial Fetch
+    const pageTitle = viewMode === 'requests' ? 'Clinic Requests' : 'Manage Clinics';
+    const pageIcon = viewMode === 'requests' ? Stethoscope : LayoutDashboard;
+
+    useEffect(() => {
+        fetchClinics();
+    }, [viewMode]);
+
+    useEffect(() => {
+        setStatusFilter(viewMode === 'requests' ? RegistrationStatus.PENDING : 'ALL');
+    }, [viewMode]);
+
+    useEffect(() => {
+        if (assignModal && !assignModal.planId && plans.length > 0) {
+            setAssignModal({ ...assignModal, planId: plans[0].id });
+        }
+    }, [plans, assignModal]);
+
+    const fetchPlans = async () => {
+        if (plans.length > 0 || loadingPlans) return;
+        try {
+            setLoadingPlans(true);
+            const data = await api.getPlans();
+            setPlans(data);
+        } finally {
+            setLoadingPlans(false);
+        }
+    };
+
     const fetchClinics = async () => {
         try {
             setLoading(true);
-            const data = await api.getClinicRequests();
+            const defaultStatus = viewMode === 'requests' ? RegistrationStatus.PENDING : undefined;
+            const data = await api.getClinics(defaultStatus);
             setClinics(data);
+            await fetchSubscriptions(data);
         } catch (e) {
             console.error('Failed to fetch clinics', e);
         } finally {
@@ -60,130 +111,157 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
         }
     };
 
-    useEffect(() => {
-        fetchClinics();
-    }, [viewMode]);
+    const fetchSubscriptions = async (items: Clinic[]) => {
+        const results = await Promise.all(items.map(async (clinic) => {
+            try {
+                const status = await api.getSubscriptionStatus(clinic.id);
+                return [clinic.id, status] as const;
+            } catch {
+                return null;
+            }
+        }));
+        const map: Record<string, ClinicSubscriptionStatus> = {};
+        results.forEach(item => {
+            if (item) map[item[0]] = item[1];
+        });
+        setSubscriptions(map);
+    };
 
-    // Action Handlers
-    const onApproveClick = (clinic: Clinic) => setConfirmModal({ isOpen: true, type: 'approve', clinicId: clinic.id, clinicName: clinic.name });
-    const onRejectClick = (clinic: Clinic) => {
-        setRejectModal({ clinicId: clinic.id, clinicName: clinic.name });
+    const filtered = useMemo(() => {
+        return clinics.filter((clinic) => {
+            const matchesView = viewMode === 'requests'
+                ? clinic.status === RegistrationStatus.PENDING || clinic.status === RegistrationStatus.REJECTED
+                : true;
+            if (!matchesView) return false;
+
+            const matchesStatus = statusFilter === 'ALL' ? true : clinic.status === statusFilter;
+            if (!matchesStatus) return false;
+
+            const term = search.toLowerCase().trim();
+            if (!term) return true;
+
+            return (
+                clinic.name.toLowerCase().includes(term) ||
+                clinic.email.toLowerCase().includes(term) ||
+                clinic.doctorName?.toLowerCase().includes(term) ||
+                clinic.id.toLowerCase().includes(term) ||
+                clinic.phone?.toLowerCase().includes(term) ||
+                clinic.address?.toLowerCase().includes(term)
+            );
+        });
+    }, [clinics, search, statusFilter, viewMode]);
+
+    const remainingDays = (clinic: Clinic) => {
+        const sub = subscriptions[clinic.id];
+        if (sub) return sub.remainingDays;
+        if (clinic.license?.expireDate) {
+            const now = new Date();
+            const expire = new Date(clinic.license.expireDate);
+            return Math.max(0, Math.ceil((expire.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+        }
+        return null;
+    };
+
+    const handleAction = async () => {
+        if (!confirmAction) return;
+        const { clinic, type } = confirmAction;
+        setProcessing(clinic.id);
+        try {
+            if (type === 'approve') await api.approveClinic(clinic.id);
+            if (type === 'reject') await api.rejectClinic(clinic.id, rejectReason);
+            if (type === 'suspend') await api.suspendClinic(clinic.id);
+            if (type === 'reactivate') await api.reactivateClinic(clinic.id);
+            if (type === 'force-logout') await api.forceLogoutClinic(clinic.id);
+            await fetchClinics();
+        } catch (err: any) {
+            alert(err?.message || 'Action failed');
+            setProcessing(null);
+        } finally {
+            setConfirmAction(null);
+        }
+    };
+
+    const openRejectModal = (clinic: Clinic) => {
         setRejectReason('');
+        setConfirmAction({ type: 'reject', clinic });
     };
-    const onToggleClick = (clinic: Clinic) => {
-        const type = clinic.status === RegistrationStatus.SUSPENDED ? 'activate' : 'suspend';
-        setConfirmModal({ isOpen: true, type, clinicId: clinic.id, clinicName: clinic.name });
+
+    const openAssignModal = (clinic: Clinic) => {
+        fetchPlans();
+        setAssignModal({
+            clinic,
+            planId: clinic.license?.plan?.id || plans[0]?.id,
+            durationMonths: clinic.license?.plan?.durationMonths || undefined,
+            activateClinic: clinic.status !== RegistrationStatus.APPROVED
+        });
     };
-    const onDeleteClick = (clinic: Clinic) => setConfirmModal({ isOpen: true, type: 'delete', clinicId: clinic.id, clinicName: clinic.name });
 
-    const performAction = async () => {
-        if (!confirmModal) return;
-        const { type, clinicId } = confirmModal;
-
+    const submitAssign = async () => {
+        if (!assignModal || !assignModal.planId) return;
         try {
-            setProcessing(clinicId);
-            setConfirmModal(null);
-
-            if (type === 'approve') await api.approveClinic(clinicId);
-            else if (type === 'reject') await api.rejectClinic(clinicId);
-            else if (type === 'delete') await api.deleteClinic(clinicId);
-            else await api.toggleClinicStatus(clinicId);
-
-            setTimeout(() => fetchClinics(), 500);
-        } catch (e) {
-            alert(`Failed to ${type} clinic`);
-            console.error(e);
+            setProcessing(assignModal.clinic.id);
+            await api.assignClinicLicense(assignModal.clinic.id, {
+                planId: assignModal.planId,
+                durationMonths: assignModal.durationMonths,
+                activateClinic: assignModal.activateClinic
+            });
+            setAssignModal(null);
+            await fetchClinics();
+        } catch (err: any) {
+            alert(err?.message || 'Failed to assign license');
             setProcessing(null);
         }
     };
 
-    const performReject = async () => {
-        if (!rejectModal) return;
-        try {
-            setProcessing(rejectModal.clinicId);
-            setRejectModal(null);
-            await api.rejectClinic(rejectModal.clinicId, rejectReason);
-            setTimeout(() => fetchClinics(), 500);
-        } catch (e) {
-            alert('Failed to reject clinic');
-            console.error(e);
-            setProcessing(null);
-        }
-    };
-
-    // Filter Logic - Enhanced Search
-    const filtered = clinics.filter(c => {
-        const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
-            c.email.toLowerCase().includes(search.toLowerCase()) ||
-            c.doctorName?.toLowerCase().includes(search.toLowerCase()) ||
-            c.id.toLowerCase().includes(search.toLowerCase()) ||
-            c.phone?.toLowerCase().includes(search.toLowerCase()) ||
-            c.address?.toLowerCase().includes(search.toLowerCase());
-
-        if (!matchesSearch) return false;
-
-        if (viewMode === 'requests') {
-            return c.status === RegistrationStatus.PENDING || c.status === RegistrationStatus.REJECTED;
-        } else {
-            return c.status === RegistrationStatus.APPROVED || c.status === RegistrationStatus.SUSPENDED;
-        }
-    });
-
-    const getStatusColor = (status: RegistrationStatus) => {
-        switch (status) {
-            case RegistrationStatus.APPROVED: return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
-            case RegistrationStatus.PENDING: return 'bg-amber-500/10 text-amber-500 border-amber-500/20';
-            case RegistrationStatus.SUSPENDED: return 'bg-rose-500/10 text-rose-500 border-rose-500/20';
-            default: return 'bg-slate-500/10 text-slate-500 border-slate-500/20';
-        }
-    };
-
-    const formatDate = (dateString?: string) => {
-        if (!dateString) return '-';
-        return new Date(dateString).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-    };
-
-    const pageTitle = viewMode === 'requests' ? 'Clinic Requests' : 'Manage Clinics';
-    const pageIcon = viewMode === 'requests' ? Stethoscope : LayoutDashboard;
+    const subscriptionFor = (clinic: Clinic) => subscriptions[clinic.id];
 
     return (
         <div className="space-y-6 relative">
-            {/* --- Confirmation Modal --- */}
-            {confirmModal && (
+            {/* Confirmation Modal */}
+            {confirmAction && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-700 scale-100 animate-in zoom-in-95 duration-200">
-                        <div className="flex flex-col items-center text-center gap-4">
-                            <div className={`p-4 rounded-full ${confirmModal.type === 'delete' || confirmModal.type === 'suspend'
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-700 animate-in zoom-in-95 duration-200">
+                        <div className="flex flex-col gap-4">
+                            <div className={`p-3 rounded-full w-fit ${['suspend', 'force-logout', 'reject'].includes(confirmAction.type)
                                 ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400'
                                 : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
                                 }`}>
-                                {confirmModal.type === 'delete' ? <Trash2 size={32} /> :
-                                    confirmModal.type === 'suspend' ? <Ban size={32} /> : <CheckCircle2 size={32} />}
+                                {confirmAction.type === 'approve' && <CheckCircle2 size={26} />}
+                                {confirmAction.type === 'reject' && <XCircle size={26} />}
+                                {confirmAction.type === 'suspend' && <Ban size={26} />}
+                                {confirmAction.type === 'reactivate' && <PlayCircle size={26} />}
+                                {confirmAction.type === 'force-logout' && <LogOut size={26} />}
                             </div>
-
                             <div>
                                 <h3 className="text-xl font-bold text-slate-900 dark:text-white capitalize">
-                                    {confirmModal.type} Clinic?
+                                    {confirmAction.type.replace('-', ' ')} clinic?
                                 </h3>
-                                <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm leading-relaxed">
-                                    Are you sure you want to <strong>{confirmModal.type}</strong> "<span>{confirmModal.clinicName}</span>"?
-                                    {confirmModal.type === 'delete' && <span className="block mt-1 text-rose-600 dark:text-rose-400 font-bold">This cannot be undone. All data and licenses will be lost.</span>}
+                                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                                    This will apply immediately to <strong>{confirmAction.clinic.name}</strong>.
                                 </p>
                             </div>
-
-                            <div className="flex items-center gap-3 w-full mt-2">
+                            {confirmAction.type === 'reject' && (
+                                <div className="space-y-2">
+                                    <label className="text-sm text-slate-600 dark:text-slate-300">Reason (optional)</label>
+                                    <textarea
+                                        value={rejectReason}
+                                        onChange={(e) => setRejectReason(e.target.value)}
+                                        className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm focus:ring-2 focus:ring-rose-500 outline-none"
+                                        rows={3}
+                                        placeholder="Explain why this clinic is rejected"
+                                    />
+                                </div>
+                            )}
+                            <div className="flex items-center gap-3 justify-end">
                                 <button
-                                    onClick={() => setConfirmModal(null)}
-                                    className="flex-1 px-4 py-2.5 rounded-xl text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                    onClick={() => setConfirmAction(null)}
+                                    className="px-4 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                                 >
                                     Cancel
                                 </button>
                                 <button
-                                    onClick={performAction}
-                                    className={`flex-1 px-4 py-2.5 rounded-xl text-white font-bold shadow-lg transition-transform active:scale-95 ${confirmModal.type === 'delete' || confirmModal.type === 'suspend'
-                                        ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/25'
-                                        : 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/25'
-                                        }`}
+                                    onClick={handleAction}
+                                    className="px-4 py-2 rounded-lg text-white font-semibold bg-emerald-500 hover:bg-emerald-600 transition-colors shadow-sm"
                                 >
                                     Confirm
                                 </button>
@@ -193,171 +271,144 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                 </div>
             )}
 
-            {/* --- Reject Modal with Reason --- */}
-            {rejectModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-700 scale-100 animate-in zoom-in-95 duration-200">
-                        <div className="flex flex-col gap-4">
-                            <div className="flex items-center gap-3">
-                                <div className="p-3 rounded-full bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400">
-                                    <XCircle size={24} />
-                                </div>
-                                <div>
-                                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">Reject Clinic</h3>
-                                    <p className="text-sm text-slate-500 dark:text-slate-400">{rejectModal.clinicName}</p>
-                                </div>
+            {/* Assign License Modal */}
+            {assignModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-lg w-full border border-slate-200 dark:border-slate-700 p-6 space-y-5">
+                        <div className="flex items-center gap-3">
+                            <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+                                <KeyRound size={22} />
                             </div>
-
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                    Reason for rejection (optional)
-                                </label>
-                                <textarea
-                                    value={rejectReason}
-                                    onChange={(e) => setRejectReason(e.target.value)}
-                                    placeholder="Provide a reason for rejection..."
-                                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-rose-500 outline-none resize-none"
-                                    rows={4}
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Assign / Update License</h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">{assignModal.clinic.name}</p>
+                            </div>
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-sm font-medium text-slate-600 dark:text-slate-300 mb-1 block">Plan</label>
+                                <select
+                                    value={assignModal.planId || ''}
+                                    onChange={(e) => setAssignModal({ ...assignModal, planId: e.target.value })}
+                                    className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                                >
+                                    {loadingPlans && <option>Loading...</option>}
+                                    {plans.map(plan => (
+                                        <option key={plan.id} value={plan.id}>{plan.name} ({plan.durationMonths}m)</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-sm font-medium text-slate-600 dark:text-slate-300 mb-1 block">Duration (months)</label>
+                                <input
+                                    type="number"
+                                    min={1}
+                                    placeholder="Leave empty to use plan default"
+                                    value={assignModal.durationMonths || ''}
+                                    onChange={(e) => setAssignModal({ ...assignModal, durationMonths: e.target.value ? Number(e.target.value) : undefined })}
+                                    className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
                                 />
                             </div>
-
-                            <div className="flex items-center gap-3 mt-2">
-                                <button
-                                    onClick={() => setRejectModal(null)}
-                                    className="flex-1 px-4 py-2.5 rounded-xl text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={performReject}
-                                    className="flex-1 px-4 py-2.5 rounded-xl text-white font-bold bg-rose-500 hover:bg-rose-600 shadow-lg shadow-rose-500/25 transition-transform active:scale-95"
-                                >
-                                    Reject Clinic
-                                </button>
-                            </div>
+                            <label className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                                <input
+                                    type="checkbox"
+                                    checked={!!assignModal.activateClinic}
+                                    onChange={(e) => setAssignModal({ ...assignModal, activateClinic: e.target.checked })}
+                                    className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                                />
+                                Activate clinic after assigning
+                            </label>
+                        </div>
+                        <div className="flex items-center justify-end gap-3">
+                            <button
+                                onClick={() => setAssignModal(null)}
+                                className="px-4 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={submitAssign}
+                                className="px-4 py-2 rounded-lg text-white font-semibold bg-emerald-500 hover:bg-emerald-600 transition-colors shadow-sm"
+                            >
+                                Save
+                            </button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* --- Details Modal --- */}
+            {/* Details Modal */}
             {detailsModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-2xl w-full border border-slate-200 dark:border-slate-700 scale-100 animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
-
-                        {/* Header */}
-                        <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-800">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl text-emerald-600 dark:text-emerald-400">
-                                    <Landmark size={24} />
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-3xl w-full border border-slate-200 dark:border-slate-700 flex flex-col max-h-[90vh]">
+                        <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-800">
+                            <div className="flex items-center gap-3">
+                                <div className="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+                                    <Landmark size={22} />
                                 </div>
                                 <div>
-                                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">{detailsModal.name}</h2>
-                                    <p className="text-slate-500 dark:text-slate-400 text-sm">Clinic Details & Configuration</p>
+                                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">{detailsModal.name}</h3>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400">{detailsModal.email}</p>
                                 </div>
                             </div>
-                            <button onClick={() => setDetailsModal(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-slate-600">
-                                <XCircle size={24} />
+                            <button onClick={() => setDetailsModal(null)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600">
+                                <XCircle size={22} />
                             </button>
                         </div>
 
-                        {/* Content */}
-                        <div className="p-6 overflow-y-auto space-y-6 flex-1">
-                            {/* Status Badge */}
-                            <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
-                                <div className="text-sm font-medium text-slate-500 dark:text-slate-400">Current Status</div>
-                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(detailsModal.status)}`}>
+                        <div className="p-6 overflow-y-auto space-y-6">
+                            <div className="flex items-center gap-3">
+                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border ${statusBadge(detailsModal.status)}`}>
                                     {detailsModal.status}
                                 </span>
+                                {subscriptionFor(detailsModal)?.forceLogout && (
+                                    <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold text-rose-600 bg-rose-100 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800">
+                                        <ShieldAlert size={14} /> Force logout active
+                                    </span>
+                                )}
                             </div>
 
-                            {/* Details Grid */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Column 1: Contact */}
-                                <div className="space-y-4">
+                                <div className="space-y-3">
                                     <h4 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                                        <Mail size={16} className="text-emerald-500" /> Contact Info
+                                        <Mail size={16} className="text-emerald-500" /> Contact
                                     </h4>
-                                    <div className="space-y-3 pl-2 border-l-2 border-slate-100 dark:border-slate-800 ml-2">
-                                        <div>
-                                            <div className="text-xs text-slate-400">Doctor Name</div>
-                                            <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Dr. {detailsModal.doctorName || 'N/A'}</div>
-                                        </div>
-                                        <div>
-                                            <div className="text-xs text-slate-400">Email Address</div>
-                                            <div className="text-sm font-medium text-slate-700 dark:text-slate-300">{detailsModal.email}</div>
-                                        </div>
-                                        <div>
-                                            <div className="text-xs text-slate-400">Phone Number</div>
-                                            <div className="text-sm font-medium text-slate-700 dark:text-slate-300">{detailsModal.phone || 'N/A'}</div>
-                                        </div>
-                                        <div>
-                                            <div className="text-xs text-slate-400">Address</div>
-                                            <div className="text-sm font-medium text-slate-700 dark:text-slate-300">{detailsModal.address || 'N/A'}</div>
-                                        </div>
+                                    <div className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
+                                        <div className="flex items-center gap-2"><FileText size={14} /> Dr. {detailsModal.doctorName || 'N/A'}</div>
+                                        <div className="flex items-center gap-2"><Mail size={14} /> {detailsModal.email}</div>
+                                        <div className="flex items-center gap-2"><Phone size={14} /> {detailsModal.phone || 'N/A'}</div>
+                                        <div className="flex items-center gap-2"><MapPin size={14} /> {detailsModal.address || 'N/A'}</div>
                                     </div>
                                 </div>
-
-                                {/* Column 2: System */}
-                                <div className="space-y-4">
+                                <div className="space-y-3">
                                     <h4 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                                        <Cpu size={16} className="text-emerald-500" /> System Info
+                                        <Cpu size={16} className="text-emerald-500" /> System
                                     </h4>
-                                    <div className="space-y-3 pl-2 border-l-2 border-slate-100 dark:border-slate-800 ml-2">
-                                        <div>
-                                            <div className="text-xs text-slate-400">Clinic ID</div>
-                                            <div className="text-sm font-mono font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded border border-emerald-200 dark:border-emerald-900/30 w-fit">{detailsModal.id}</div>
-                                        </div>
-                                        <div>
-                                            <div className="text-xs text-slate-400">System Version</div>
-                                            <div className="text-sm font-medium text-slate-700 dark:text-slate-300">v{detailsModal.systemVersion || '1.0.0'}</div>
-                                        </div>
-                                        <div>
-                                            <div className="text-xs text-slate-400">Registration Date</div>
-                                            <div className="text-sm font-medium text-slate-700 dark:text-slate-300">{formatDate(detailsModal.createdAt)}</div>
-                                        </div>
+                                    <div className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
+                                        <div className="flex items-center gap-2"><span className="text-slate-500">Clinic ID:</span> <span className="font-mono">{detailsModal.id}</span></div>
+                                        <div className="flex items-center gap-2"><span className="text-slate-500">Version:</span> v{detailsModal.systemVersion || '1.0.0'}</div>
+                                        <div className="flex items-center gap-2"><span className="text-slate-500">Created:</span> {formatDate(detailsModal.createdAt)}</div>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Users Section */}
                             {detailsModal.users && detailsModal.users.length > 0 && (
-                                <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-700">
-                                    <h4 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2 mb-4">
-                                        <FileText size={16} className="text-emerald-500" /> Clinic Users ({detailsModal.users.length})
+                                <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
+                                    <h4 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2 mb-3">
+                                        <FileText size={16} className="text-emerald-500" /> Users ({detailsModal.users.length})
                                     </h4>
-                                    <div className="space-y-3">
-                                        {detailsModal.users.map((user: any) => (
-                                            <div key={user.id} className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
-                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                                    <div>
-                                                        <div className="text-xs text-slate-400">Name</div>
-                                                        <div className="text-sm font-medium text-slate-900 dark:text-white">{user.name}</div>
-                                                    </div>
-                                                    <div>
-                                                        <div className="text-xs text-slate-400">Email</div>
-                                                        <div className="text-sm font-medium text-slate-700 dark:text-slate-300">{user.email}</div>
-                                                    </div>
-                                                    <div>
-                                                        <div className="text-xs text-slate-400">Role</div>
-                                                        <div className="text-sm">
-                                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
-                                                                {user.role}
-                                                            </span>
-                                                        </div>
-                                                    </div>
+                                    <div className="grid gap-3">
+                                        {detailsModal.users.map(user => (
+                                            <div key={user.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                                                <div>
+                                                    <div className="text-sm font-semibold text-slate-900 dark:text-white">{user.name}</div>
+                                                    <div className="text-xs text-slate-500">{user.email}</div>
                                                 </div>
-                                                <div className="mt-3 flex items-center gap-4 text-xs border-t border-slate-200 dark:border-slate-600 pt-3">
-                                                    <div>
-                                                        <span className="text-slate-400">Status: </span>
-                                                        <span className={`font-medium ${user.status === 'APPROVED' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                                                            {user.status}
-                                                        </span>
-                                                    </div>
-                                                    <div>
-                                                        <span className="text-slate-400">User ID: </span>
-                                                        <span className="font-mono text-slate-600 dark:text-slate-400">{user.id.substring(0, 8)}...</span>
-                                                    </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">{user.role}</span>
+                                                    {user.status && (
+                                                        <span className="px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">{user.status}</span>
+                                                    )}
                                                 </div>
                                             </div>
                                         ))}
@@ -365,56 +416,85 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                                 </div>
                             )}
 
-                            {/* License Section */}
-                            {detailsModal.license && (
-                                <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
-                                    <h4 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2 mb-4">
-                                        <Key size={16} className="text-emerald-500" /> Active License
-                                    </h4>
-                                    <div className="bg-emerald-50/50 dark:bg-emerald-900/10 p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/20">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <span className="text-xs font-mono text-emerald-700 dark:text-emerald-400">{detailsModal.license.serial}</span>
-                                            <span className="text-xs text-emerald-600 dark:text-emerald-500 font-bold">{detailsModal.license.status}</span>
+                            <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
+                                <h4 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                                    <Key size={16} className="text-emerald-500" /> License & Subscription
+                                </h4>
+                                {detailsModal.license ? (
+                                    <div className="p-4 rounded-xl border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50/50 dark:bg-emerald-900/10 space-y-2">
+                                        <div className="flex items-center justify-between text-xs font-mono text-emerald-700 dark:text-emerald-300">
+                                            <span>{detailsModal.license.serial}</span>
+                                            <span className="font-semibold">{detailsModal.license.status}</span>
                                         </div>
-                                        <div className="text-xs text-emerald-600/70 dark:text-emerald-400/70 flex items-center gap-1">
-                                            <Calendar size={12} /> Expires: {formatDate(detailsModal.license.expireDate)}
+                                        <div className="text-sm text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                                            <Calendar size={14} /> Expires: {formatDate(detailsModal.license.expireDate)}
                                         </div>
+                                        <div className="text-sm text-slate-700 dark:text-slate-200">
+                                            Plan: {detailsModal.license.plan?.name || 'N/A'} · Device limit: {detailsModal.license.deviceLimit}
+                                        </div>
+                                        {subscriptionFor(detailsModal) && (
+                                            <div className="text-sm text-slate-600 dark:text-slate-300">
+                                                Remaining days: <span className="font-semibold">{subscriptionFor(detailsModal)?.remainingDays}</span>
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
-                            )}
+                                ) : (
+                                    <div className="text-sm text-slate-500">No active license. Assign one to activate the clinic.</div>
+                                )}
+                            </div>
                         </div>
 
-                        {/* Footer Actions */}
-                        <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex justify-end gap-3 rounded-b-2xl">
+                        <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-wrap gap-3 justify-end rounded-b-2xl">
                             <button
                                 onClick={() => setDetailsModal(null)}
-                                className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+                                className="px-4 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                             >
                                 Close
                             </button>
-                            {/* Shortcut Action Buttons inside Detail Modal */}
-                            {detailsModal.status === RegistrationStatus.PENDING ? (
+                            <button
+                                onClick={() => openAssignModal(detailsModal)}
+                                className="px-4 py-2 rounded-lg text-white bg-sky-500 hover:bg-sky-600 transition-colors text-sm font-semibold"
+                            >
+                                Assign/Update License
+                            </button>
+                            {detailsModal.status === RegistrationStatus.PENDING && (
                                 <>
                                     <button
-                                        onClick={() => { setDetailsModal(null); onRejectClick(detailsModal); }}
-                                        className="px-4 py-2 bg-rose-500 text-white text-sm font-bold rounded-lg hover:bg-rose-600 transition-colors shadow-sm"
+                                        onClick={() => setConfirmAction({ type: 'reject', clinic: detailsModal })}
+                                        className="px-4 py-2 rounded-lg text-white bg-rose-500 hover:bg-rose-600 text-sm font-semibold"
                                     >
                                         Reject
                                     </button>
                                     <button
-                                        onClick={() => { setDetailsModal(null); onApproveClick(detailsModal); }}
-                                        className="px-4 py-2 bg-emerald-500 text-white text-sm font-bold rounded-lg hover:bg-emerald-600 transition-colors shadow-sm"
+                                        onClick={() => setConfirmAction({ type: 'approve', clinic: detailsModal })}
+                                        className="px-4 py-2 rounded-lg text-white bg-emerald-500 hover:bg-emerald-600 text-sm font-semibold"
                                     >
-                                        Approve Now
+                                        Approve
                                     </button>
                                 </>
-                            ) : (
+                            )}
+                            {detailsModal.status === RegistrationStatus.APPROVED && (
+                                <>
+                                    <button
+                                        onClick={() => setConfirmAction({ type: 'suspend', clinic: detailsModal })}
+                                        className="px-4 py-2 rounded-lg text-white bg-amber-500 hover:bg-amber-600 text-sm font-semibold"
+                                    >
+                                        Suspend
+                                    </button>
+                                    <button
+                                        onClick={() => setConfirmAction({ type: 'force-logout', clinic: detailsModal })}
+                                        className="px-4 py-2 rounded-lg text-white bg-rose-500 hover:bg-rose-600 text-sm font-semibold"
+                                    >
+                                        Force Logout
+                                    </button>
+                                </>
+                            )}
+                            {detailsModal.status === RegistrationStatus.SUSPENDED && (
                                 <button
-                                    onClick={() => { setDetailsModal(null); onToggleClick(detailsModal); }}
-                                    className={`px-4 py-2 text-white text-sm font-bold rounded-lg transition-colors shadow-sm ${detailsModal.status === 'SUSPENDED' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-rose-500 hover:bg-rose-600'
-                                        }`}
+                                    onClick={() => setConfirmAction({ type: 'reactivate', clinic: detailsModal })}
+                                    className="px-4 py-2 rounded-lg text-white bg-emerald-500 hover:bg-emerald-600 text-sm font-semibold"
                                 >
-                                    {detailsModal.status === 'SUSPENDED' ? 'Activate Clinic' : 'Suspend Clinic'}
+                                    Reactivate
                                 </button>
                             )}
                         </div>
@@ -430,12 +510,31 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                     </h1>
                     <p className="text-slate-500 mt-1">
                         {viewMode === 'requests'
-                            ? 'Review and approve incoming registration requests.'
-                            : 'Monitor active clinics, license details, and status.'}
+                            ? 'Review and approve incoming clinic registrations.'
+                            : 'Manage active clinics, licenses, and enforcement.'}
                     </p>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <input
+                            type="text"
+                            placeholder="Search by name, email, or ID"
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            className="pl-10 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none w-full md:w-72"
+                        />
+                    </div>
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value as RegistrationStatus | 'ALL')}
+                        className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none"
+                    >
+                        {statusOptions.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                    </select>
                     <button
                         onClick={fetchClinics}
                         disabled={loading}
@@ -444,16 +543,6 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                     >
                         <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
                     </button>
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                        <input
-                            type="text"
-                            placeholder="Search clinics..."
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                            className="pl-10 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none w-full md:w-64"
-                        />
-                    </div>
                 </div>
             </div>
 
@@ -464,168 +553,133 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                     </div>
                 ) : filtered.length === 0 ? (
                     <div className="p-12 text-center text-slate-500">
-                        {search ? "No clinics found matching your search." : (
-                            viewMode === 'requests'
-                                ? "No pending registration requests."
-                                : "No active clinics found."
-                        )}
+                        {search ? "No clinics found matching your search." : "No clinics to display."}
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm">
                             <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700">
                                 <tr>
-                                    <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Clinic Info</th>
-                                    <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Clinic ID</th>
-                                    <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Contact</th>
-                                    {viewMode === 'manage' && (
-                                        <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">License Info</th>
-                                    )}
-                                    <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">System Info</th>
+                                    <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Clinic</th>
                                     <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Status</th>
+                                    <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Plan</th>
+                                    <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Remaining</th>
+                                    <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">Created</th>
                                     <th className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300 text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                                {filtered.map((clinic) => (
-                                    <tr key={clinic.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                                        <td className="px-6 py-4">
-                                            <div>
-                                                <p className="font-bold text-slate-900 dark:text-white text-base">{clinic.name}</p>
-                                                {clinic.doctorName && (
-                                                    <p className="text-slate-500 text-xs flex items-center gap-1 mt-1">
-                                                        Dr. {clinic.doctorName}
-                                                        <span className="mx-1">•</span>
-                                                        <span className='text-[10px]'>{formatDate(clinic.createdAt)}</span>
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="font-mono text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded border border-emerald-200 dark:border-emerald-900/30 w-fit">
-                                                {clinic.id.substring(0, 8)}...
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="space-y-1">
-                                                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                                                    <Mail size={14} />
+                                {filtered.map((clinic) => {
+                                    const sub = subscriptions[clinic.id];
+                                    const days = remainingDays(clinic);
+                                    return (
+                                        <tr key={clinic.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors">
+                                            <td className="px-6 py-4">
+                                                <div className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                                                    {clinic.name}
+                                                    {sub?.forceLogout && (
+                                                        <span className="px-2 py-0.5 text-[11px] rounded bg-rose-100 dark:bg-rose-900/40 text-rose-600 border border-rose-200 dark:border-rose-800">force logout</span>
+                                                    )}
+                                                </div>
+                                                <div className="text-xs text-slate-500 flex items-center gap-1 mt-1">
+                                                    <span className="font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-900/40">
+                                                        {clinic.id.substring(0, 8)}...
+                                                    </span>
                                                     <span>{clinic.email}</span>
                                                 </div>
-                                                {clinic.phone && (
-                                                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                                                        <Phone size={14} />
-                                                        <span>{clinic.phone}</span>
-                                                    </div>
-                                                )}
-                                                {clinic.address && (
-                                                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                                                        <MapPin size={14} />
-                                                        <span className="truncate max-w-[150px]" title={clinic.address}>{clinic.address}</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </td>
-
-                                        {viewMode === 'manage' && (
+                                            </td>
                                             <td className="px-6 py-4">
-                                                {clinic.license ? (
-                                                    <div className="space-y-1 text-slate-600 dark:text-slate-400">
-                                                        <div className="flex items-center gap-2 font-mono text-xs text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-900 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 w-fit">
-                                                            <Key size={12} className="text-emerald-500" />
-                                                            {clinic.license.serial}
-                                                        </div>
-                                                        <div className={`flex items-center gap-2 text-xs ${new Date(clinic.license.expireDate || '') < new Date()
-                                                            ? 'text-rose-500 font-bold'
-                                                            : 'text-slate-500'
-                                                            }`}>
-                                                            <Calendar size={12} />
-                                                            {formatDate(clinic.license.expireDate || '')}
-                                                        </div>
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusBadge(clinic.status)}`}>
+                                                    {clinic.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm text-slate-700 dark:text-slate-200">
+                                                    {clinic.license?.plan?.name || '—'}
+                                                </div>
+                                                {clinic.license && (
+                                                    <div className="text-xs text-slate-500 flex items-center gap-1">
+                                                        <Key size={12} /> {clinic.license.serial.substring(0, 10)}...
                                                     </div>
-                                                ) : (
-                                                    <span className="text-xs text-slate-400 italic">No License Linked</span>
                                                 )}
                                             </td>
-                                        )}
-
-                                        <td className="px-6 py-4">
-                                            <div className="space-y-1 text-slate-600 dark:text-slate-400">
-                                                {clinic.systemVersion ? <div className="text-xs">v{clinic.systemVersion}</div> : <span className="text-xs italic">Web App</span>}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(clinic.status)}`}>
-                                                {clinic.status}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <div className="flex items-center justify-end gap-2">
-
-                                                {/* View Details Action (Everyone has this) */}
-                                                <button
-                                                    onClick={() => setDetailsModal(clinic)}
-                                                    className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-600"
-                                                    title="View Details"
-                                                >
-                                                    <Eye size={18} />
-                                                </button>
-
-                                                {/* Approve Action (Only Requests) */}
-                                                {clinic.status === RegistrationStatus.PENDING && (
-                                                    <>
-                                                        <button
-                                                            onClick={() => onApproveClick(clinic)}
-                                                            disabled={!!processing}
-                                                            className="p-2 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-colors border border-emerald-500/10"
-                                                            title="Approve & Generate License"
-                                                        >
-                                                            {processing === clinic.id ? <Loader2 size={18} className="animate-spin" /> : <div className="flex items-center gap-2"><CheckCircle2 size={18} /></div>}
-                                                        </button>
-                                                        <button
-                                                            onClick={() => onRejectClick(clinic)}
-                                                            disabled={!!processing}
-                                                            className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors border border-rose-500/10"
-                                                            title="Reject Registration"
-                                                        >
-                                                            {processing === clinic.id ? <Loader2 size={18} className="animate-spin" /> : <XCircle size={18} />}
-                                                        </button>
-                                                    </>
-                                                )}
-
-                                                {/* Toggle Status (Only Manage) */}
-                                                {(clinic.status === RegistrationStatus.APPROVED || clinic.status === RegistrationStatus.SUSPENDED) && (
+                                            <td className="px-6 py-4 text-slate-700 dark:text-slate-200">
+                                                {days !== null ? `${days} days` : '—'}
+                                            </td>
+                                            <td className="px-6 py-4 text-slate-700 dark:text-slate-200">
+                                                {formatDate(clinic.createdAt)}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center justify-end gap-2">
                                                     <button
-                                                        onClick={() => onToggleClick(clinic)}
-                                                        disabled={!!processing}
-                                                        className={`p-2 rounded-lg transition-colors border ${clinic.status === RegistrationStatus.SUSPENDED
-                                                            ? 'text-emerald-500 hover:bg-emerald-500/10 border-emerald-500/10'
-                                                            : 'text-amber-500 hover:bg-amber-500/10 border-amber-500/10'
-                                                            }`}
-                                                        title={clinic.status === RegistrationStatus.SUSPENDED ? 'Activate' : 'Suspend'}
+                                                        onClick={() => setDetailsModal(clinic)}
+                                                        className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-600"
+                                                        title="View Details"
                                                     >
-                                                        {processing === clinic.id ?
-                                                            <Loader2 size={18} className="animate-spin" /> :
-                                                            (clinic.status === RegistrationStatus.SUSPENDED ? <PlayCircle size={18} /> : <Ban size={18} />)
-                                                        }
+                                                        <Eye size={18} />
                                                     </button>
-                                                )}
-
-                                                {/* Delete Action (Only for Rejected or Suspended/Pending requests in manage view or simple cleanup) 
-                                                    Let's allow delete for everyone but with heavy warning. 
-                                                */}
-                                                <button
-                                                    onClick={() => onDeleteClick(clinic)}
-                                                    className="p-2 text-rose-400 hover:bg-rose-500/10 hover:text-rose-500 rounded-lg transition-colors border border-transparent hover:border-rose-200 dark:hover:border-rose-900/30"
-                                                    title="Delete Clinic"
-                                                >
-                                                    <Trash2 size={18} />
-                                                </button>
-
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
+                                                    <button
+                                                        onClick={() => openAssignModal(clinic)}
+                                                        className="p-2 text-sky-500 hover:bg-sky-500/10 rounded-lg transition-colors border border-sky-500/20"
+                                                        title="Assign license"
+                                                    >
+                                                        <KeyRound size={18} />
+                                                    </button>
+                                                    {clinic.status === RegistrationStatus.PENDING && (
+                                                        <>
+                                                            <button
+                                                                onClick={() => setConfirmAction({ type: 'approve', clinic })}
+                                                                disabled={processing === clinic.id}
+                                                                className="p-2 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-colors border border-emerald-500/20"
+                                                                title="Approve clinic"
+                                                            >
+                                                                {processing === clinic.id ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
+                                                            </button>
+                                                            <button
+                                                                onClick={() => openRejectModal(clinic)}
+                                                                disabled={processing === clinic.id}
+                                                                className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors border border-rose-500/20"
+                                                                title="Reject clinic"
+                                                            >
+                                                                {processing === clinic.id ? <Loader2 size={18} className="animate-spin" /> : <XCircle size={18} />}
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                    {clinic.status === RegistrationStatus.APPROVED && (
+                                                        <>
+                                                            <button
+                                                                onClick={() => setConfirmAction({ type: 'suspend', clinic })}
+                                                                disabled={processing === clinic.id}
+                                                                className="p-2 text-amber-500 hover:bg-amber-500/10 rounded-lg transition-colors border border-amber-500/20"
+                                                                title="Suspend clinic"
+                                                            >
+                                                                {processing === clinic.id ? <Loader2 size={18} className="animate-spin" /> : <Ban size={18} />}
+                                                            </button>
+                                                            <button
+                                                                onClick={() => setConfirmAction({ type: 'force-logout', clinic })}
+                                                                disabled={processing === clinic.id}
+                                                                className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors border border-rose-500/20"
+                                                                title="Force logout all sessions"
+                                                            >
+                                                                {processing === clinic.id ? <Loader2 size={18} className="animate-spin" /> : <LogOut size={18} />}
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                    {clinic.status === RegistrationStatus.SUSPENDED && (
+                                                        <button
+                                                            onClick={() => setConfirmAction({ type: 'reactivate', clinic })}
+                                                            disabled={processing === clinic.id}
+                                                            className="p-2 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-colors border border-emerald-500/20"
+                                                            title="Reactivate clinic"
+                                                        >
+                                                            {processing === clinic.id ? <Loader2 size={18} className="animate-spin" /> : <PlayCircle size={18} />}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>

@@ -1,4 +1,4 @@
-import { LicenseKey, SubscriptionPlan, CurrencyRate, Notification, SupportRequest, AppVersion, SystemSettings, AuditLog, Transaction, User, ProductType } from '../types';
+import { LicenseKey, SubscriptionPlan, CurrencyRate, Notification, SupportRequest, AppVersion, SystemSettings, AuditLog, Transaction, User, ProductType, Clinic, RegistrationStatus, ClinicSubscriptionStatus } from '../types';
 
 const API_URL =
   import.meta.env.VITE_API_URL ||
@@ -296,23 +296,43 @@ export const api = {
   },
 
   // -- Clinics --
-  getClinicRequests() {
-    return doRequest<any[]>('/api/clinics/requests');
+  getClinics(status?: RegistrationStatus) {
+    const q = status ? `?status=${status}` : '';
+    return doRequest<Clinic[]>(`/api/clinics/requests${q}`);
   },
-  approveClinic(id: string) {
-    return doRequest<any>(`/api/clinics/${id}/approve`, { method: 'POST' });
+  approveClinic(id: string, payload?: { planId?: string; durationMonths?: number }) {
+    return doRequest<Clinic>(`/api/clinics/${id}/approve`, {
+      method: 'POST',
+      body: payload ? JSON.stringify(payload) : undefined
+    });
   },
   rejectClinic(id: string, reason?: string) {
-    return doRequest<any>(`/api/clinics/${id}/reject`, {
+    return doRequest<Clinic>(`/api/clinics/${id}/reject`, {
       method: 'POST',
       body: JSON.stringify({ reason })
     });
   },
-  toggleClinicStatus(id: string) {
-    return doRequest<any>(`/api/clinics/${id}/toggle-status`, { method: 'POST' });
+  suspendClinic(id: string) {
+    return doRequest<Clinic>(`/api/clinics/${id}/suspend`, { method: 'POST' });
   },
-  deleteClinic(id: string) {
-    return doRequest<void>(`/api/clinics/${id}`, { method: 'DELETE' });
+  reactivateClinic(id: string, payload?: { planId?: string; durationMonths?: number }) {
+    return doRequest<Clinic>(`/api/clinics/${id}/reactivate`, {
+      method: 'POST',
+      body: payload ? JSON.stringify(payload) : undefined
+    });
+  },
+  assignClinicLicense(id: string, payload: { planId: string; durationMonths?: number; activateClinic?: boolean }) {
+    return doRequest<Clinic>(`/api/clinics/${id}/license`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+  forceLogoutClinic(id: string) {
+    return doRequest<{ success: boolean }>(`/api/clinics/${id}/force-logout`, { method: 'POST' });
+  },
+  getSubscriptionStatus(clinicId?: string) {
+    const q = clinicId ? `?clinicId=${clinicId}` : '';
+    return doRequest<ClinicSubscriptionStatus>(`/api/subscription/status${q}`);
   },
 
   // -- Messages --

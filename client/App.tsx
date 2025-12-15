@@ -157,6 +157,10 @@ function AppContent() {
       }
     }
 
+    if (['clinics', 'manage-clinics', 'clinic-messages'].includes(currentPage) && user.role !== 'admin') {
+      return <div className="p-8 text-center text-slate-500 dark:text-slate-400">Access Restricted</div>;
+    }
+
     switch (currentPage) {
       case 'dashboard': return <Dashboard currentLang={i18n.language} setPage={setPage} />;
       case 'licenses': return <Licenses currentLang={i18n.language} />;

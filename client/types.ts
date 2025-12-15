@@ -8,7 +8,7 @@ export enum LicenseStatus {
   PAUSED = 'paused'
 }
 
-export type UserRole = 'admin' | 'developer' | 'viewer';
+export type UserRole = 'admin' | 'developer' | 'viewer' | 'clinic_admin';
 
 export interface User {
   id: string; // UUID
@@ -18,6 +18,7 @@ export interface User {
   avatar?: string;
   createdAt: string;
   clinicId?: string; // UUID of associated clinic
+  status?: RegistrationStatus;
 }
 
 
@@ -227,8 +228,33 @@ export interface Clinic {
   systemVersion?: string;
   status: RegistrationStatus;
   licenseId?: string;
-  license?: LicenseKey;
+  license?: ClinicLicense;
   users?: User[]; // Associated users
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ClinicLicense extends LicenseKey {
+  plan?: Pick<SubscriptionPlan, 'id' | 'name' | 'durationMonths' | 'deviceLimit'> | null;
+}
+
+export interface ClinicSubscriptionStatus {
+  clinicId: string;
+  clinicName: string;
+  status: RegistrationStatus;
+  license: {
+    id: string;
+    serial: string;
+    status: LicenseStatus;
+    expireDate?: string;
+    deviceLimit?: number;
+    activationCount?: number;
+    plan?: {
+      id: string;
+      name: string;
+      durationMonths: number;
+    } | null;
+  } | null;
+  remainingDays: number;
+  forceLogout: boolean;
 }
