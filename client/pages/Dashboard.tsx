@@ -1,6 +1,6 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from '../hooks/useTranslation';
-import { ServerHealth, SubscriptionPlan, AuditLog } from '../types';
+import { ServerHealth, AuditLog } from '../types';
 import { api } from '../services/api';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import {
@@ -15,7 +15,6 @@ import {
   FileText,
   CreditCard,
   Settings,
-  Zap,
   ArrowUpRight,
   Server,
   Cpu,
@@ -25,16 +24,6 @@ import {
   RefreshCw,
   Globe
 } from 'lucide-react';
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  BarChart,
-  Bar
-} from 'recharts';
 
 interface DashboardProps {
   setPage: (page: string) => void;
@@ -136,37 +125,13 @@ const QuickActionCard = ({ title, icon: Icon, colorClass, onClick }: any) => (
   </button>
 );
 
-class ChartBoundary extends React.Component<{ children: React.ReactNode, fallback?: React.ReactNode }, { hasError: boolean }> {
-  constructor(props: any) {
-    super(props);
-    this.state = { hasError: false };
-  }
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
-  componentDidCatch(error: any) {
-    console.error('Chart render error', error);
-  }
-  render() {
-    if (this.state.hasError) {
-      return this.props.fallback || null;
-    }
-    return this.props.children;
-  }
-}
-
 const Dashboard: React.FC<DashboardProps> = ({ setPage }) => {
   const { t, i18n } = useTranslation();
   const { tick: autoRefreshTick } = useAutoRefresh();
   const [stats, setStats] = useState<any>({ activeLicenses: 0, expiredLicenses: 0, totalRevenueUSD: 0, totalCustomers: 0, expiringSoonCount: 0, openTickets: 0 });
   const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [plansData, setPlansData] = useState<any[]>([]);
-  const [chartData, setChartData] = useState<{ name: string; revenue: number }[]>([]);
-
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [mounted, setMounted] = useState(false);
-  const [chartPeriod, setChartPeriod] = useState<'year' | '6months'>('year');
   const [serverHealth, setServerHealth] = useState<ServerHealth>({
     cpuUsage: 0,
     ramUsage: 0,
@@ -181,17 +146,15 @@ const Dashboard: React.FC<DashboardProps> = ({ setPage }) => {
   useEffect(() => {
     const load = async () => {
       try {
-        const [statsRes, logsRes, plansRes, revenueRes, healthRes, licensesRes] = await Promise.all([
+        const [statsRes, logsRes, plansRes, healthRes, licensesRes] = await Promise.all([
           api.getStats(),
           api.getAuditLogs().catch(() => []),
           api.getPlans(),
-          api.getRevenueHistory(),
           api.getServerHealth(),
           api.getLicenses().catch(() => [])
         ]);
         setStats(statsRes);
         setLogs((logsRes as AuditLog[]).slice(0, 5));
-        setPlans(plansRes);
         setPlansData(
           plansRes.map((p) => ({
             name: p.name,
@@ -199,17 +162,15 @@ const Dashboard: React.FC<DashboardProps> = ({ setPage }) => {
             price: p.priceUSD
           }))
         );
-        setChartData(revenueRes);
         setServerHealth(healthRes);
       } catch (err) {
         console.error(err);
       }
     };
     load();
-  }, [chartPeriod, autoRefreshTick]);
+  }, [autoRefreshTick]);
 
   useEffect(() => {
-    setMounted(true);
     const timeTimer = setInterval(() => setCurrentTime(new Date()), 60000);
     const healthTimer = setInterval(async () => {
       try {
@@ -232,36 +193,12 @@ const Dashboard: React.FC<DashboardProps> = ({ setPage }) => {
     return `${days}d ${hours}h ${minutes}m`;
   };
 
-  const canRenderRevenue = mounted && chartData.length > 0;
-  const canRenderPlans = mounted && plansData.length > 0;
-
-  // --- Safe sizing for charts ---
-  const revenueRef = useRef<HTMLDivElement | null>(null);
-  const plansRef = useRef<HTMLDivElement | null>(null);
-  const [revenueSize, setRevenueSize] = useState({ width: 0, height: 0 });
-  const [plansSize, setPlansSize] = useState({ width: 0, height: 0 });
-
-  useLayoutEffect(() => {
-    const observe = (el: HTMLElement | null, setter: (v: { width: number; height: number }) => void) => {
-      if (!el) return;
-      const update = () => setter({ width: el.clientWidth, height: el.clientHeight });
-      update();
-      if (typeof ResizeObserver !== 'undefined') {
-        const ro = new ResizeObserver(update);
-        ro.observe(el);
-        return () => ro.disconnect();
-      }
-      window.addEventListener('resize', update);
-      return () => window.removeEventListener('resize', update);
-    };
-
-    const cleanRevenue = observe(revenueRef.current, setRevenueSize);
-    const cleanPlans = observe(plansRef.current, setPlansSize);
-    return () => {
-      cleanRevenue?.();
-      cleanPlans?.();
-    };
-  }, []);
+  const totalLicenses = plansData.reduce((sum, item) => sum + item.count, 0);
+  const bestPlan = plansData.reduce(
+    (prev, current) => (prev.count > current.count ? prev : current),
+    { name: 'No Data', count: 0, price: 0 }
+  );
+  const bestPlanShare = totalLicenses > 0 ? Math.round((bestPlan.count / totalLicenses) * 100) : 0;
 
   return (
     <div className="space-y-6 pb-8">
@@ -332,62 +269,42 @@ const Dashboard: React.FC<DashboardProps> = ({ setPage }) => {
         {/* Left Column (Charts & Quick Actions) */}
         <div className="lg:col-span-8 space-y-6">
 
-          {/* Revenue Chart */}
+          {/* Revenue Snapshot */}
           <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 min-w-0">
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-start mb-4">
               <div>
                 <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <DollarSign className="w-4 h-4 text-indigo-500" />
                   {t('dashboard.revenueTrend')}
                 </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Live totals refreshed automatically
+                </p>
               </div>
-              <select
-                value={chartPeriod}
-                onChange={(e) => setChartPeriod(e.target.value as any)}
-                className="bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-xs px-2 py-1 text-slate-600 dark:text-slate-300 outline-none cursor-pointer"
-              >
-                <option value="year">This Year</option>
-                <option value="6months">Last 6 Months</option>
-              </select>
+              <div className="text-right">
+                <p className="text-3xl font-extrabold text-slate-900 dark:text-white leading-tight">
+                  ${stats.totalRevenueUSD?.toLocaleString?.() || 0}
+                </p>
+                <p className="text-[11px] text-slate-400">{stats.activeLicenses} active licenses</p>
+              </div>
             </div>
-            <div className="h-[250px] w-full min-w-0" ref={revenueRef}>
-              {canRenderRevenue && revenueSize.width > 10 ? (
-                <ChartBoundary fallback={<div className="h-full w-full flex items-center justify-center bg-slate-50 dark:bg-slate-700/20 rounded-xl text-slate-400 text-xs">Chart unavailable</div>}>
-                  <AreaChart
-                    width={Math.max(200, revenueSize.width)}
-                    height={250}
-                    data={chartData}
-                  >
-                    <defs>
-                      <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" strokeOpacity={0.1} />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: '#1e293b', borderRadius: '8px', border: 'none', color: '#fff', fontSize: '12px' }}
-                      itemStyle={{ color: '#fff' }}
-                      formatter={(value: any) => [`$${value}`, 'Revenue']}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="revenue"
-                      stroke="#6366f1"
-                      strokeWidth={2}
-                      fillOpacity={1}
-                      fill="url(#colorRevenue)"
-                      animationDuration={1000}
-                    />
-                  </AreaChart>
-                </ChartBoundary>
-              ) : (
-                <div className="h-full w-full flex items-center justify-center bg-slate-50 dark:bg-slate-700/20 rounded-xl text-slate-400 text-xs">
-                  {mounted ? 'No data to display' : 'Loading chart...'}
-                </div>
-              )}
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-700/30 border border-slate-100 dark:border-slate-700/50">
+                <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Expiring soon</p>
+                <p className="text-lg font-bold text-slate-900 dark:text-white">{stats.expiringSoonCount || 0}</p>
+                <p className="text-[11px] text-slate-400">Next 30 days</p>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-700/30 border border-slate-100 dark:border-slate-700/50">
+                <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Expired</p>
+                <p className="text-lg font-bold text-slate-900 dark:text-white">{stats.expiredLicenses || 0}</p>
+                <p className="text-[11px] text-slate-400">Require renewal</p>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-700/30 border border-slate-100 dark:border-slate-700/50">
+                <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Customers</p>
+                <p className="text-lg font-bold text-slate-900 dark:text-white">{stats.totalCustomers || 0}</p>
+                <p className="text-[11px] text-slate-400">Accounts served</p>
+              </div>
             </div>
           </div>
 
@@ -423,53 +340,48 @@ const Dashboard: React.FC<DashboardProps> = ({ setPage }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 min-w-0">
               <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">Sales by Plan</h3>
-              <div className="h-[180px] w-full min-w-0" ref={plansRef}>
-                {canRenderPlans && plansSize.width > 10 ? (
-                  <ChartBoundary fallback={<div className="h-full w-full flex items-center justify-center bg-slate-50 dark:bg-slate-700/20 rounded-xl text-slate-400 text-xs">Chart unavailable</div>}>
-                    <BarChart
-                      width={Math.max(200, plansSize.width)}
-                      height={180}
-                      data={plansData}
-                      layout="vertical"
-                    >
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#334155" strokeOpacity={0.1} />
-                      <XAxis type="number" hide />
-                      <YAxis dataKey="name" type="category" width={90} tick={{ fill: '#94a3b8', fontSize: 10 }} axisLine={false} tickLine={false} />
-                      <Tooltip
-                        cursor={{ fill: 'transparent' }}
-                        contentStyle={{ backgroundColor: '#1e293b', borderRadius: '8px', border: 'none', color: '#fff', fontSize: '12px' }}
-                      />
-                      <Bar dataKey="count" fill="#0ea5e9" radius={[0, 4, 4, 0]} barSize={12} />
-                    </BarChart>
-                  </ChartBoundary>
-                ) : (
-                  <div className="h-full w-full flex items-center justify-center bg-slate-50 dark:bg-slate-700/20 rounded-xl text-slate-400 text-xs">
-                    {mounted ? 'No plan data yet' : 'Loading chart...'}
-                  </div>
-                )}
-              </div>
+              {plansData.length > 0 ? (
+                <div className="space-y-3">
+                  {plansData.map((plan) => {
+                    const percent = totalLicenses > 0 ? Math.round((plan.count / totalLicenses) * 100) : 0;
+                    return (
+                      <div key={plan.name} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700/50">
+                        <div className="flex justify-between text-xs font-medium text-slate-700 dark:text-slate-200">
+                          <span>{plan.name}</span>
+                          <span className="font-mono text-slate-500 dark:text-slate-300">{plan.count} licenses</span>
+                        </div>
+                        <div className="w-full bg-slate-200/60 dark:bg-slate-900/40 rounded-full h-1.5 mt-2 overflow-hidden">
+                          <div className="bg-sky-500 h-full rounded-full transition-all" style={{ width: `${percent}%` }}></div>
+                        </div>
+                        <div className="flex justify-between text-[10px] text-slate-400 mt-1">
+                          <span>${plan.price} / plan</span>
+                          <span>{percent}%</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="h-full flex items-center justify-center text-slate-400 text-xs">No plan data yet</div>
+              )}
             </div>
 
             <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-center">
-              {(() => {
-                const bestPlan = plansData.reduce((prev, current) => (prev.count > current.count ? prev : current), { name: 'No Data', count: 0, price: 0 });
-                const totalLicenses = plansData.reduce((sum, item) => sum + item.count, 0);
-                const percent = totalLicenses > 0 ? Math.round((bestPlan.count / totalLicenses) * 100) : 0;
-
-                return (
-                  <div className="text-center">
-                    <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 mb-2">
-                      <CreditCard size={24} />
-                    </div>
-                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">{bestPlan.name || 'No Plans Yet'}</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">Best Performing Plan</p>
-                    <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1.5 mb-2 overflow-hidden">
-                      <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${percent}%` }}></div>
-                    </div>
-                    <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">{percent}% of active licenses</span>
-                  </div>
-                );
-              })()}
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 mb-2">
+                  <CreditCard size={24} />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white">{bestPlan.name || 'No Plans Yet'}</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">Best Performing Plan</p>
+                <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1.5 mb-2 overflow-hidden">
+                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${bestPlanShare}%` }}></div>
+                </div>
+                <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">{bestPlanShare}% of active licenses</span>
+              </div>
+              <div className="mt-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-700/30 border border-slate-100 dark:border-slate-700/50 text-left">
+                <p className="text-[10px] font-bold text-slate-500 uppercase">Total Licenses</p>
+                <p className="text-lg font-bold text-slate-900 dark:text-white">{totalLicenses}</p>
+              </div>
             </div>
           </div>
         </div>
