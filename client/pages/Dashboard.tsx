@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from '../hooks/useTranslation';
 import { ServerHealth, SubscriptionPlan, AuditLog } from '../types';
 import { api } from '../services/api';
@@ -217,6 +217,34 @@ const Dashboard: React.FC<DashboardProps> = ({ setPage }) => {
   const canRenderRevenue = mounted && chartData.length > 0;
   const canRenderPlans = mounted && plansData.length > 0;
 
+  // --- Safe sizing for charts ---
+  const revenueRef = useRef<HTMLDivElement | null>(null);
+  const plansRef = useRef<HTMLDivElement | null>(null);
+  const [revenueSize, setRevenueSize] = useState({ width: 0, height: 0 });
+  const [plansSize, setPlansSize] = useState({ width: 0, height: 0 });
+
+  useLayoutEffect(() => {
+    const observe = (el: HTMLElement | null, setter: (v: { width: number; height: number }) => void) => {
+      if (!el) return;
+      const update = () => setter({ width: el.clientWidth, height: el.clientHeight });
+      update();
+      if (typeof ResizeObserver !== 'undefined') {
+        const ro = new ResizeObserver(update);
+        ro.observe(el);
+        return () => ro.disconnect();
+      }
+      window.addEventListener('resize', update);
+      return () => window.removeEventListener('resize', update);
+    };
+
+    const cleanRevenue = observe(revenueRef.current, setRevenueSize);
+    const cleanPlans = observe(plansRef.current, setPlansSize);
+    return () => {
+      cleanRevenue?.();
+      cleanPlans?.();
+    };
+  }, []);
+
   return (
     <div className="space-y-6 pb-8">
       {/* Header */}
@@ -304,8 +332,8 @@ const Dashboard: React.FC<DashboardProps> = ({ setPage }) => {
                 <option value="6months">Last 6 Months</option>
               </select>
             </div>
-            <div className="h-[250px] w-full min-w-0">
-              {canRenderRevenue ? (
+            <div className="h-[250px] w-full min-w-0" ref={revenueRef}>
+              {canRenderRevenue && revenueSize.width > 0 && revenueSize.height > 0 ? (
                 <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={200} debounce={100}>
                   <AreaChart data={chartData}>
                     <defs>
@@ -373,8 +401,8 @@ const Dashboard: React.FC<DashboardProps> = ({ setPage }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 min-w-0">
               <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">Sales by Plan</h3>
-              <div className="h-[180px] w-full min-w-0">
-                {canRenderPlans ? (
+              <div className="h-[180px] w-full min-w-0" ref={plansRef}>
+                {canRenderPlans && plansSize.width > 0 && plansSize.height > 0 ? (
                   <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={160} debounce={100}>
                     <BarChart data={plansData} layout="vertical">
                       <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#334155" strokeOpacity={0.1} />
