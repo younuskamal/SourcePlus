@@ -214,6 +214,9 @@ const Dashboard: React.FC<DashboardProps> = ({ setPage }) => {
     return `${days}d ${hours}h ${minutes}m`;
   };
 
+  const canRenderRevenue = mounted && chartData.length > 0;
+  const canRenderPlans = mounted && plansData.length > 0;
+
   return (
     <div className="space-y-6 pb-8">
       {/* Header */}
@@ -302,7 +305,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setPage }) => {
               </select>
             </div>
             <div className="h-[250px] w-full min-w-0">
-              {mounted ? (
+              {canRenderRevenue ? (
                 <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={200} debounce={100}>
                   <AreaChart data={chartData}>
                     <defs>
@@ -331,7 +334,9 @@ const Dashboard: React.FC<DashboardProps> = ({ setPage }) => {
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-full w-full flex items-center justify-center bg-slate-50 dark:bg-slate-700/20 rounded-xl animate-pulse text-slate-400">Loading Chart...</div>
+                <div className="h-full w-full flex items-center justify-center bg-slate-50 dark:bg-slate-700/20 rounded-xl text-slate-400 text-xs">
+                  {mounted ? 'No data to display' : 'Loading chart...'}
+                </div>
               )}
             </div>
           </div>
@@ -369,7 +374,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setPage }) => {
             <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 min-w-0">
               <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4">Sales by Plan</h3>
               <div className="h-[180px] w-full min-w-0">
-                {mounted && (
+                {canRenderPlans ? (
                   <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={160} debounce={100}>
                     <BarChart data={plansData} layout="vertical">
                       <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#334155" strokeOpacity={0.1} />
@@ -382,6 +387,10 @@ const Dashboard: React.FC<DashboardProps> = ({ setPage }) => {
                       <Bar dataKey="count" fill="#0ea5e9" radius={[0, 4, 4, 0]} barSize={12} />
                     </BarChart>
                   </ResponsiveContainer>
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center bg-slate-50 dark:bg-slate-700/20 rounded-xl text-slate-400 text-xs">
+                    {mounted ? 'No plan data yet' : 'Loading chart...'}
+                  </div>
                 )}
               </div>
             </div>
