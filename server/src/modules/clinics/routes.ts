@@ -44,6 +44,11 @@ const sanitizeClinic = (clinic: any) => ({
     name: clinic.name,
     email: clinic.email,
     doctorName: clinic.doctorName,
+    phone: clinic.phone,
+    address: clinic.address,
+    systemVersion: clinic.systemVersion,
+    createdAt: clinic.createdAt,
+    updatedAt: clinic.updatedAt,
     status: clinic.status,
     licenseId: clinic.licenseId,
     license: clinic.license ? {

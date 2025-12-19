@@ -19,6 +19,7 @@ import {
     Calendar,
     RefreshCw,
     Eye,
+    EyeOff,
     Landmark,
     FileText,
     LogOut,
@@ -68,6 +69,7 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
     const [confirmAction, setConfirmAction] = useState<{ type: ActionType; clinic: Clinic } | null>(null);
     const [rejectReason, setRejectReason] = useState('');
     const [detailsModal, setDetailsModal] = useState<Clinic | null>(null);
+    const [showClinicId, setShowClinicId] = useState(false);
     const [assignModal, setAssignModal] = useState<{ clinic: Clinic; planId?: string; durationMonths?: number; activateClinic?: boolean } | null>(null);
     const [loadingPlans, setLoadingPlans] = useState(false);
 
@@ -251,9 +253,9 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                                 {confirmAction.type === 'reject' && <XCircle size={26} />}
                                 {confirmAction.type === 'suspend' && <Ban size={26} />}
                                 {confirmAction.type === 'reactivate' && <PlayCircle size={26} />}
-                                    {confirmAction.type === 'force-logout' && <LogOut size={26} />}
-                                    {confirmAction.type === 'delete' && <Trash2 size={26} />}
-                                </div>
+                                {confirmAction.type === 'force-logout' && <LogOut size={26} />}
+                                {confirmAction.type === 'delete' && <Trash2 size={26} />}
+                            </div>
                             <div>
                                 <h3 className="text-xl font-bold text-slate-900 dark:text-white capitalize">
                                     {t('clinics.confirmTitle', { action: t(`clinics.action.${confirmAction.type}` as any), clinic: confirmAction.clinic.name })}
@@ -407,7 +409,21 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                                         <Cpu size={16} className="text-emerald-500" /> System
                                     </h4>
                                     <div className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
-                                        <div className="flex items-center gap-2"><span className="text-slate-500">{t('clinics.clinicId')}:</span> <span className="font-mono">{detailsModal.id}</span></div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-slate-500">{t('clinics.clinicId')}:</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-mono">
+                                                    {showClinicId ? detailsModal.id : '••••••••-••••-••••-••••-••••••••••••'}
+                                                </span>
+                                                <button
+                                                    onClick={() => setShowClinicId(!showClinicId)}
+                                                    className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+                                                    title={showClinicId ? "Hide ID" : "Show ID"}
+                                                >
+                                                    {showClinicId ? <EyeOff size={14} /> : <Eye size={14} />}
+                                                </button>
+                                            </div>
+                                        </div>
                                         <div className="flex items-center gap-2"><span className="text-slate-500">{t('clinics.version')}:</span> v{detailsModal.systemVersion || '1.0.0'}</div>
                                         <div className="flex items-center gap-2"><span className="text-slate-500">{t('clinics.createdAt')}:</span> {formatDate(detailsModal.createdAt)}</div>
                                     </div>
@@ -614,10 +630,10 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusBadge(clinic.status)}`}>
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusBadge(clinic.status)}`}>
                                                     {t(`clinics.statusLabel.${clinic.status.toLowerCase()}` as any)}
-                                                    </span>
-                                                </td>
+                                                </span>
+                                            </td>
                                             <td className="px-6 py-4">
                                                 <div className="text-sm text-slate-700 dark:text-slate-200">
                                                     {clinic.license?.plan?.name || '—'}
@@ -637,7 +653,10 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center justify-end gap-2">
                                                     <button
-                                                        onClick={() => setDetailsModal(clinic)}
+                                                        onClick={() => {
+                                                            setDetailsModal(clinic);
+                                                            setShowClinicId(false);
+                                                        }}
                                                         className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-600"
                                                         title={t('clinics.viewDetails')}
                                                     >
