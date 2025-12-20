@@ -1,8 +1,7 @@
 import { LicenseKey, SubscriptionPlan, CurrencyRate, Notification, SupportRequest, AppVersion, SystemSettings, AuditLog, Transaction, User, ProductType, Clinic, RegistrationStatus, ClinicSubscriptionStatus } from '../types';
-
 const API_URL =
   import.meta.env.VITE_API_URL ||
-  'https://sourceplus.onrender.com';
+  (window.location.hostname === 'localhost' ? 'http://localhost:3001' : 'https://sourceplus.onrender.com');
 
 const getStorage = () => {
   const localAccess = localStorage.getItem('sp_access_token');
@@ -49,13 +48,13 @@ const doRequest = async <T>(path: string, options: RequestInit = {}, retry = tru
   if (hasBody && !isFormData && !headers['Content-Type']) {
     headers['Content-Type'] = 'application/json';
   }
-  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  if (accessToken) headers.Authorization = `Bearer ${accessToken} `;
 
-  const res = await fetch(`${API_URL}${path}`, { ...options, headers });
+  const res = await fetch(`${API_URL}${path} `, { ...options, headers });
 
   if (res.status === 401 && refreshToken && retry) {
     try {
-      const refreshRes = await fetch(`${API_URL}/api/auth/refresh`, {
+      const refreshRes = await fetch(`${API_URL} /api/auth / refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refreshToken })
@@ -132,10 +131,10 @@ export const api = {
     });
   },
   updateLicense(id: string, payload: Partial<LicenseKey>) {
-    return doRequest<LicenseKey>(`/licenses/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+    return doRequest<LicenseKey>(`/ licenses / ${id} `, { method: 'PATCH', body: JSON.stringify(payload) });
   },
   renewLicense(id: string, months: number) {
-    return doRequest<LicenseKey>(`/licenses/${id}/renew`, { method: 'POST', body: JSON.stringify({ months }) });
+    return doRequest<LicenseKey>(`/ licenses / ${id}/renew`, { method: 'POST', body: JSON.stringify({ months }) });
   },
   togglePause(id: string) {
     return doRequest<LicenseKey>(`/licenses/${id}/pause`, { method: 'POST' });

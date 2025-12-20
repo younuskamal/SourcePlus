@@ -70,6 +70,7 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
     const [rejectReason, setRejectReason] = useState('');
     const [detailsModal, setDetailsModal] = useState<Clinic | null>(null);
     const [showClinicId, setShowClinicId] = useState(false);
+    const [showLicenseSerial, setShowLicenseSerial] = useState(false);
     const [assignModal, setAssignModal] = useState<{ clinic: Clinic; planId?: string; durationMonths?: number; activateClinic?: boolean } | null>(null);
     const [loadingPlans, setLoadingPlans] = useState(false);
 
@@ -461,7 +462,15 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                                 {detailsModal.license ? (
                                     <div className="p-4 rounded-xl border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50/50 dark:bg-emerald-900/10 space-y-2">
                                         <div className="flex items-center justify-between text-xs font-mono text-emerald-700 dark:text-emerald-300">
-                                            <span>{detailsModal.license.serial}</span>
+                                            <div className="flex items-center gap-2">
+                                                <span>{showLicenseSerial ? detailsModal.license.serial : '••••-••••-••••-••••'}</span>
+                                                <button
+                                                    onClick={() => setShowLicenseSerial(!showLicenseSerial)}
+                                                    className="p-0.5 text-emerald-600/50 hover:text-emerald-700 dark:text-emerald-400/50 dark:hover:text-emerald-300 transition-colors"
+                                                >
+                                                    {showLicenseSerial ? <EyeOff size={12} /> : <Eye size={12} />}
+                                                </button>
+                                            </div>
                                             <span className="font-semibold">{detailsModal.license.status}</span>
                                         </div>
                                         <div className="text-sm text-slate-700 dark:text-slate-200 flex items-center gap-2">
@@ -656,6 +665,7 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                                                         onClick={() => {
                                                             setDetailsModal(clinic);
                                                             setShowClinicId(false);
+                                                            setShowLicenseSerial(false);
                                                         }}
                                                         className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-600"
                                                         title={t('clinics.viewDetails')}
