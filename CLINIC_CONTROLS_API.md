@@ -1,76 +1,47 @@
-# Clinic Controls API Documentation
+# Clinic Controls API - Technical Reference
 
-## Overview
-This API allows SourcePlus to act as a centralized Control Center for all clinics. Each clinic has independent settings that Smart Clinic systems read and enforce.
-
-## Key Principles
-- ❌ **No Plan Dependencies**: Clinic controls are independent of subscription plans
-- ✅ **SourcePlus as Single Source of Truth**: All control settings come from SourcePlus
-- ✅ **Smart Clinic Read-Only**: Smart Clinic applications only read and enforce settings
-- ✅ **Instant Changes**: Any control update reflects immediately on the clinic
+**Version**: 2.0  
+**Last Updated**: 2025-12-21  
+**Status**: Production Ready
 
 ---
 
-## Endpoints
+## 📌 Quick Overview
 
-### 1. Get Clinic Controls (Read-Only for Smart Clinic)
+هذا الـ API يسمح لـ **SourcePlus** بالتحكم الكامل في إعدادات كل عيادة، و**Smart Clinic** بقراءة وتطبيق هذه الإعدادات.
 
-**Endpoint**: `GET /api/clinics/:id/controls`
-
-**Authentication**: None required (can be called by Smart Clinic)
-
-**Description**: Returns the current control settings for a clinic. If no controls exist, they are automatically created with default values.
-
-**Response**:
-```json
-{
-  "storageLimitMB": 1024,
-  "usersLimit": 3,
-  "features": {
-    "patients": true,
-    "appointments": true,
-    "orthodontics": false,
-    "xray": false,
-    "ai": false
-  },
-  "locked": false
-}
-```
-
-**Fields**:
-- `storageLimitMB` (number): Maximum storage allowed in megabytes
-- `usersLimit` (number): Maximum number of users allowed
-- `features` (object): Feature toggles
-  - `patients` (boolean): Enable/disable patients module
-  - `appointments` (boolean): Enable/disable appointments module
-  - `orthodontics` (boolean): Enable/disable orthodontics module
-  - `xray` (boolean): Enable/disable X-ray module
-  - `ai` (boolean): Enable/disable AI features
-- `locked` (boolean): If true, clinic is completely locked from access
-
-**Usage in Smart Clinic**:
-Smart Clinic should call this endpoint on:
-- System bootstrap/startup
-- Periodic intervals (e.g., every 5-10 minutes)
-- After user login
+### **الأدوار**:
+- **SourcePlus**: يكتب ويدير الـ Controls (Admin فقط)
+- **Smart Clinic**: يقرأ وينفذ الـ Controls (Public access)
 
 ---
 
-### 2. Update Clinic Controls (Admin Only)
+## 🔌 Endpoints
 
-**Endpoint**: `PUT /api/clinics/:id/controls`
+### **1. GET /api/clinics/:id/controls**
 
-**Authentication**: Required (Admin role)
+#### **الغرض**
+قراءة إعدادات وحدود العيادة (للاستخدام من Smart Clinic)
 
-**Headers**:
+#### **URL**
 ```
-Authorization: Bearer <access_token>
-Content-Type: application/json
+GET https://sourceplus.yourdomain.com/api/clinics/:id/controls
 ```
 
-**Description**: Updates clinic control settings. Creates controls if they don't exist.
+#### **Parameters**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `id` | string | path | ✅ Yes | معرّف العيادة (Clinic ID) |
 
-**Request Body**:
+#### **Authentication**
+❌ **Not Required** - هذا endpoint عام ليستطيع Smart Clinic الوصول إليه بدون authentication
+
+#### **Request Example**
+```bash
+curl -X GET "https://sourceplus.yourdomain.com/api/clinics/abc-123-def/controls"
+```
+
+#### **Response 200 OK**
 ```json
 {
   "storageLimitMB": 2048,
@@ -82,196 +53,163 @@ Content-Type: application/json
     "xray": false,
     "ai": true
   },
-  "locked": false
+  "locked": false,
+  "lockReason": null
 }
 ```
 
-**Note**: All fields are optional. Only provided fields will be updated.
+#### **Response Fields**
+| Field | Type | Description |
+|-------|------|-------------|
+| `storageLimitMB` | number | الحد الأقصى للتخزين بالميجابايت |
+| `usersLimit` | number | الحد الأقصى للمستخدمين |
+| `features` | object | كائن يحتوي على feature flags |
+| `features.patients` | boolean | تفعيل/تعطيل وحدة المرضى |
+| `features.appointments` | boolean | تفعيل/تعطيل المواعيد |
+| `features.orthodontics` | boolean | تفعيل/تعطيل تقويم الأسنان |
+| `features.xray` | boolean | تفعيل/تعطيل الأشعة |
+| `features.ai` | boolean | تفعيل/تعطيل ميزات الذكاء الاصطناعي |
+| `locked` | boolean | هل العيادة مقفلة؟ |
+| `lockReason` | string \| null | سبب القفل (إذا كانت مقفلة) |
 
-**Response**:
-```json
-{
-  "storageLimitMB": 2048,
-  "usersLimit": 5,
-  "features": {
-    "patients": true,
-    "appointments": true,
-    "orthodontics": true,
-    "xray": false,
-    "ai": true
-  },
-  "locked": false
-}
-```
-
-**Audit Logging**: All changes are automatically logged in AuditLog with:
-- `action`: "UPDATE_CLINIC_CONTROLS"
-- `details`: Description of changes made
-- `userId`: Admin who made the change
-- `ip`: IP address of the request
-
----
-
-## Default Values
-
-When a clinic is created or controls don't exist, these defaults are applied:
-
-```javascript
-{
-  storageLimitMB: 1024,      // 1GB
-  usersLimit: 3,
-  features: {
-    patients: true,
-    appointments: true,
-    orthodontics: false,
-    xray: false,
-    ai: false
-  },
-  locked: false
-}
-```
-
----
-
-## Integration with Smart Clinic
-
-### 1. Bootstrap Endpoint Integration
-
-Smart Clinic's `/system/bootstrap` should fetch clinic controls and return them:
-
-```typescript
-// In Smart Clinic
-app.get('/system/bootstrap', async (req, res) => {
-  const clinicId = req.user.clinicId;
-  
-  // Fetch controls from SourcePlus
-  const controls = await fetch(
-    `${SOURCEPLUS_URL}/api/clinics/${clinicId}/controls`
-  ).then(r => r.json());
-  
-  // Enforce limits locally
-  const storageUsed = await calculateStorageUsage();
-  const usersCount = await getUsersCount();
-  
-  res.json({
-    clinic: {...},
-    controls: {
-      storageLimitMB: controls.storageLimitMB,
-      storageUsedMB: storageUsed,
-      storageExceeded: storageUsed > controls.storageLimitMB,
-      usersLimit: controls.usersLimit,
-      usersCount: usersCount,
-      usersLimitReached: usersCount >= controls.usersLimit,
-      features: controls.features,
-      locked: controls.locked
-    }
-  });
-});
-```
-
-### 2. Feature Toggle Enforcement
-
-```typescript
-// Check if feature is enabled
-if (controls.features.orthodontics) {
-  // Show orthodontics module
-} else {
-  // Hide or disable orthodontics module
-}
-```
-
-### 3. Locked Clinic Handling
-
-```typescript
-// On every request
-if (controls.locked) {
-  return res.status(403).json({
-    error: 'CLINIC_LOCKED',
-    message: 'This clinic has been temporarily suspended'
-  });
-}
-```
-
----
-
-## Examples
-
-### Example 1: Check Clinic Controls (Smart Clinic)
-
-```bash
-curl http://sourceplus.com/api/clinics/abc-123/controls
-```
-
-Response:
-```json
-{
-  "storageLimitMB": 1024,
-  "usersLimit": 3,
-  "features": {
-    "patients": true,
-    "appointments": true,
-    "orthodontics": false,
-    "xray": false,
-    "ai": false
-  },
-  "locked": false
-}
-```
-
-### Example 2: Update Storage Limit (Admin)
-
-```bash
-curl -X PUT http://sourceplus.com/api/clinics/abc-123/controls \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "storageLimitMB": 2048
-  }'
-```
-
-### Example 3: Enable AI Feature (Admin)
-
-```bash
-curl -X PUT http://sourceplus.com/api/clinics/abc-123/controls \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "features": {
-      "ai": true
-    }
-  }'
-```
-
-### Example 4: Lock Clinic (Admin)
-
-```bash
-curl -X PUT http://sourceplus.com/api/clinics/abc-123/controls \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "locked": true
-  }'
-```
-
----
-
-## Error Responses
-
-### 404 - Clinic Not Found
+#### **Response 404 Not Found**
 ```json
 {
   "message": "Clinic not found"
 }
 ```
 
-### 401 - Unauthorized (for PUT requests)
+#### **Special Behavior**
+⚡ إذا لم توجد `ClinicControl` للعيادة، يتم إنشاؤها **تلقائياً** بالقيم الافتراضية:
+```json
+{
+  "storageLimitMB": 1024,
+  "usersLimit": 3,
+  "features": {
+    "patients": true,
+    "appointments": true,
+    "orthodontics": false,
+    "xray": false,
+    "ai": false
+  },
+  "locked": false,
+  "lockReason": null
+}
+```
+
+---
+
+### **2. PUT /api/clinics/:id/controls**
+
+#### **الغرض**
+تحديث إعدادات وحدود العيادة (Admin فقط من SourcePlus Dashboard)
+
+#### **URL**
+```
+PUT https://sourceplus.yourdomain.com/api/clinics/:id/controls
+```
+
+#### **Parameters**
+| Name | Type | In | Required | Description |
+|------|------|-----|----------|-------------|
+| `id` | string | path | ✅ Yes | معرّف العيادة (Clinic ID) |
+
+#### **Authentication**
+✅ **Required** - يجب أن يكون المستخدم `admin`
+
+```
+Authorization: Bearer <admin_access_token>
+```
+
+#### **Request Headers**
+```
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+#### **Request Body** (جميع الحقول اختيارية)
+```json
+{
+  "storageLimitMB": 4096,
+  "usersLimit": 10,
+  "features": {
+    "ai": true,
+    "orthodontics": true
+  },
+  "locked": false,
+  "lockReason": null
+}
+```
+
+#### **Body Fields**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `storageLimitMB` | number | ❌ | الحد الأقصى للتخزين (يجب أن يكون > 0) |
+| `usersLimit` | number | ❌ | الحد الأقصى للمستخدمين (يجب أن يكون > 0) |
+| `features` | object | ❌ | كائن features (يتم دمجه مع الموجود) |
+| `locked` | boolean | ❌ | قفل/فتح العيادة |
+| `lockReason` | string \| null | ❌ | سبب القفل |
+
+#### **Feature Merging**
+عند إرسال `features`، يتم **دمجها** مع الـ features الموجودة، لا استبدالها:
+
+**مثال**:
+```javascript
+// القيمة الحالية
+{ patients: true, appointments: true, ai: false }
+
+// الإرسال
+{ ai: true }
+
+// النتيجة
+{ patients: true, appointments: true, ai: true }
+```
+
+#### **Request Example**
+```bash
+curl -X PUT "https://sourceplus.yourdomain.com/api/clinics/abc-123/controls" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "storageLimitMB": 4096,
+    "features": {
+      "ai": true
+    }
+  }'
+```
+
+#### **Response 200 OK**
+```json
+{
+  "storageLimitMB": 4096,
+  "usersLimit": 5,
+  "features": {
+    "patients": true,
+    "appointments": true,
+    "orthodontics": false,
+    "xray": false,
+    "ai": true
+  },
+  "locked": false,
+  "lockReason": null
+}
+```
+
+#### **Response 404 Not Found**
+```json
+{
+  "message": "Clinic not found"
+}
+```
+
+#### **Response 401 Unauthorized**
 ```json
 {
   "message": "Unauthorized"
 }
 ```
 
-### 400 - Validation Error
+#### **Response 400 Bad Request**
 ```json
 {
   "message": "Validation error: storageLimitMB must be a positive number"
@@ -280,7 +218,113 @@ curl -X PUT http://sourceplus.com/api/clinics/abc-123/controls \
 
 ---
 
-## Database Schema
+## 🔐 Authentication & Authorization
+
+### **GET Endpoint**
+- ❌ لا يحتاج authentication
+- متاح لـ Smart Clinic للقراءة فقط
+
+### **PUT Endpoint**
+- ✅ يحتاج JWT token
+- يجب أن يكون role = `admin`
+- يتم التحقق عبر middleware:
+  ```typescript
+  app.authorize([Role.admin])
+  ```
+
+---
+
+## 📝 Audit Logging
+
+**كل عملية تحديث (PUT) تُسجّل في AuditLog**:
+
+### **Logged Data**:
+- `userId`: معرّف الـ admin الذي قام بالتعديل
+- `action`: `"UPDATE_CLINIC_CONTROLS"`
+- `details`: وصف تفصيلي للتغييرات
+- `ip`: عنوان IP للطلب
+- `timestamp`: وقت التعديل
+
+### **Details Format** (Before/After):
+```
+Updated controls for clinic ABC Dental: 
+storage: 1024MB → 2048MB; 
+features: ai: false → true. 
+Before: {"storageLimitMB":1024,"usersLimit":3,...}. 
+After: {"storageLimitMB":2048,"usersLimit":3,...}
+```
+
+---
+
+## 🎯 Use Cases
+
+### **Use Case 1: Smart Clinic Bootstrap**
+
+**Smart Clinic** يستدعي الـ endpoint عند:
+- 🔹 بدء التشغيل (bootstrap)
+- 🔹 تسجيل دخول المستخدم
+- 🔹 كل 5-10 دقائق (refresh)
+
+**Flow**:
+```
+User Login → Smart Clinic calls GET /controls → Check if locked → Apply limits
+```
+
+---
+
+### **Use Case 2: Admin Updates Limits**
+
+**SourcePlus Admin** يقوم بـ:
+1. فتح Clinic Control Dashboard
+2. تعديل Storage Limit من 1GB إلى 2GB
+3. الضغط على Save
+4. PUT request يُرسل
+5. Audit log يُسجّل
+6. Smart Clinic يحصل على التحديث في الـ refresh التالي
+
+---
+
+### **Use Case 3: Lock Clinic**
+
+**Admin يقفل العيادة**:
+```json
+PUT /api/clinics/abc-123/controls
+{
+  "locked": true,
+  "lockReason": "Payment overdue"
+}
+```
+
+**Smart Clinic Response**:
+- في الـ heartbeat التالي، يكتشف `locked: true`
+- يعرض صفحة "Clinic Locked"
+- يمنع الوصول لجميع المستخدمين
+
+---
+
+## ⚙️ Default Values
+
+عند إنشاء `ClinicControl` جديد (تلقائياً):
+
+```json
+{
+  "storageLimitMB": 1024,
+  "usersLimit": 3,
+  "features": {
+    "patients": true,
+    "appointments": true,
+    "orthodontics": false,
+    "xray": false,
+    "ai": false
+  },
+  "locked": false,
+  "lockReason": null
+}
+```
+
+---
+
+## 🗄️ Database Schema
 
 ```prisma
 model ClinicControl {
@@ -290,6 +334,7 @@ model ClinicControl {
   usersLimit       Int      @default(3)
   features         Json     @default("{\"patients\":true,\"appointments\":true,\"orthodontics\":false,\"xray\":false,\"ai\":false}")
   locked           Boolean  @default(false)
+  lockReason       String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -299,33 +344,155 @@ model ClinicControl {
 }
 ```
 
----
-
-## Architecture Benefits
-
-1. **Centralized Control**: All clinic settings managed from one place (SourcePlus)
-2. **No Plan Coupling**: Controls are independent of subscription plans
-3. **Instant Updates**: Changes reflect immediately without restart
-4. **Scalable**: Easy to add new features or limits
-5. **Audit Trail**: All changes are logged for compliance
-6. **Flexible**: Each clinic can have completely different settings
+**Cascade Delete**: عند حذف `Clinic`، يتم حذف `ClinicControl` تلقائياً
 
 ---
 
-## Migration Path
+## 🔁 Data Flow
 
-For existing clinics without controls:
-1. Controls are automatically created on first GET request
-2. Default values ensure backward compatibility
-3. No manual migration needed
+```
+┌──────────────────────────────────────────────────────────┐
+│                    SourcePlus Admin                      │
+│                                                           │
+│  1. Opens Clinic Control Dashboard                       │
+│  2. Modifies limits/features                             │
+│  3. Clicks "Save"                                        │
+│  4. PUT /api/clinics/:id/controls                        │
+│     ↓                                                     │
+│  5. Database updated                                     │
+│  6. Audit log created                                    │
+│     ↓                                                     │
+└──────────────────────────────────────────────────────────┘
+                         ↓
+┌──────────────────────────────────────────────────────────┐
+│                      Smart Clinic                        │
+│                                                           │
+│  7. Periodic refresh (every 5 min)                       │
+│  8. GET /api/clinics/:id/controls                        │
+│     ↓                                                     │
+│  9. Receives updated controls                            │
+│ 10. Applies new limits immediately                       │
+│ 11. Shows/hides features                                 │
+│ 12. If locked → logout all users                         │
+└──────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## Future Enhancements
+## 🧪 Testing
 
-Possible future additions:
-- API rate limiting per clinic
-- Custom feature flags
-- Scheduled limit changes
-- Usage analytics and recommendations
-- Automatic scaling based on usage
+### **Test 1: Read Controls (Public)**
+```bash
+curl -X GET "http://localhost:3001/api/clinics/test-clinic-id/controls"
+```
+
+**Expected**: Returns controls (with defaults if not found)
+
+---
+
+### **Test 2: Update Controls (Admin)**
+```bash
+curl -X PUT "http://localhost:3001/api/clinics/test-clinic-id/controls" \
+  -H "Authorization: Bearer <admin-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"storageLimitMB": 2048}'
+```
+
+**Expected**: Updates storage limit, returns new controls
+
+---
+
+### **Test 3: Lock Clinic**
+```bash
+curl -X PUT "http://localhost:3001/api/clinics/test-clinic-id/controls" \
+  -H "Authorization: Bearer <admin-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "locked": true,
+    "lockReason": "Testing lock feature"
+  }'
+```
+
+**Expected**: Clinic is locked, audit log created
+
+---
+
+### **Test 4: Enable Feature**
+```bash
+curl -X PUT "http://localhost:3001/api/clinics/test-clinic-id/controls" \
+  -H "Authorization: Bearer <admin-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "features": {
+      "ai": true
+    }
+  }'
+```
+
+**Expected**: AI feature enabled, other features unchanged
+
+---
+
+## ⚠️ Error Handling
+
+### **Common Errors**
+
+| Status | Error | Cause | Solution |
+|--------|-------|-------|----------|
+| 404 | Clinic not found | Invalid clinic ID | Check clinic ID |
+| 401 | Unauthorized | Missing/invalid token | Provide valid admin token |
+| 400 | Validation error | Invalid data | Check request body |
+| 500 | Internal server error | Server issue | Check server logs |
+
+### **Error Response Format**
+```json
+{
+  "message": "Error description"
+}
+```
+
+---
+
+## 📊 Rate Limiting
+
+**Recommendations**:
+- Smart Clinic: Call every 5-10 minutes (not on every request)
+- Use caching to reduce load
+- Implement exponential backoff on errors
+
+---
+
+## 🔐 Security Best Practices
+
+1. ✅ **HTTPS Only** in production
+2. ✅ **Validate clinicId** before processing
+3. ✅ **Sanitize inputs** (Zod validation)
+4. ✅ **Admin-only writes** (role check)
+5. ✅ **Audit all changes** (logging)
+6. ✅ **CORS properly configured**
+7. ✅ **Rate limiting** implemented
+
+---
+
+## 📚 Related Documentation
+
+- 📖 **Smart Clinic Integration**: `SMART_CLINIC_INTEGRATION.md`
+- 📖 **Dashboard Guide**: `CLINIC_CONTROL_DASHBOARD.md`
+- 📖 **Quick Reference**: `CLINIC_CONTROLS_QUICK_REF.md`
+- 📖 **Implementation**: `CLINIC_CONTROLS_IMPLEMENTATION.md`
+
+---
+
+## 🆘 Support
+
+**Issues or Questions?**
+- Check server logs for errors
+- Verify authentication tokens
+- Test with curl/Postman first
+- Review audit logs for changes
+
+---
+
+**API Version**: 2.0  
+**Maintained by**: SourcePlus Development Team  
+**Last Updated**: 2025-12-21
