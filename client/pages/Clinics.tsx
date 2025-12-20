@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../services/api';
 import { Clinic, RegistrationStatus, SubscriptionPlan, ClinicSubscriptionStatus } from '../types';
 import { useTranslation } from '../hooks/useTranslation';
-import ClinicControlsModal from '../components/ClinicControlsModal';
+import ClinicControlDashboard from '../components/ClinicControlDashboard';
 import {
     CheckCircle2,
     XCircle,
@@ -244,12 +244,12 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
 
     return (
         <div className="space-y-6 relative">
-            {/* Controls Modal */}
+            {/* Controls Dashboard */}
             {controlsModal && (
-                <ClinicControlsModal
+                <ClinicControlDashboard
                     clinic={controlsModal}
                     onClose={() => setControlsModal(null)}
-                    onSuccess={() => {
+                    onUpdate={() => {
                         setControlsModal(null);
                         fetchClinics();
                     }}
