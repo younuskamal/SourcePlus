@@ -116,6 +116,8 @@ export const translations = {
       tableCreated: "Created",
       noResults: "No clinics found matching your search.",
       noClinics: "No clinics to display.",
+      showId: "Show ID",
+      hideId: "Hide ID",
       days: "days",
       statusLabel: {
         pending: "Pending",
@@ -436,6 +438,8 @@ export const translations = {
       tableCreated: "تاريخ الإنشاء",
       noResults: "لا توجد عيادات مطابقة لبحثك.",
       noClinics: "لا توجد عيادات للعرض.",
+      showId: "عرض المعرف",
+      hideId: "إخفاء المعرف",
       days: "يوم",
       statusLabel: {
         pending: "قيد الانتظار",

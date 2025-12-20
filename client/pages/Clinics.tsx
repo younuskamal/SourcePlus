@@ -419,7 +419,7 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                                                 <button
                                                     onClick={() => setShowClinicId(!showClinicId)}
                                                     className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
-                                                    title={showClinicId ? "Hide ID" : "Show ID"}
+                                                    title={showClinicId ? t('clinics.hideId') : t('clinics.showId')}
                                                 >
                                                     {showClinicId ? <EyeOff size={14} /> : <Eye size={14} />}
                                                 </button>
@@ -462,16 +462,20 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                                 {detailsModal.license ? (
                                     <div className="p-4 rounded-xl border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50/50 dark:bg-emerald-900/10 space-y-2">
                                         <div className="flex items-center justify-between text-xs font-mono text-emerald-700 dark:text-emerald-300">
-                                            <div className="flex items-center gap-2">
-                                                <span>{showLicenseSerial ? detailsModal.license.serial : '••••-••••-••••-••••'}</span>
-                                                <button
-                                                    onClick={() => setShowLicenseSerial(!showLicenseSerial)}
-                                                    className="p-0.5 text-emerald-600/50 hover:text-emerald-700 dark:text-emerald-400/50 dark:hover:text-emerald-300 transition-colors"
-                                                >
-                                                    {showLicenseSerial ? <EyeOff size={12} /> : <Eye size={12} />}
-                                                </button>
+                                            <div className="flex flex-col gap-1">
+                                                <span className="text-[10px] uppercase font-bold text-emerald-600/70 dark:text-emerald-400/70">{t('licenses.serial')}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span>{showLicenseSerial ? detailsModal.license.serial : '••••-••••-••••-••••'}</span>
+                                                    <button
+                                                        onClick={() => setShowLicenseSerial(!showLicenseSerial)}
+                                                        className="p-0.5 text-emerald-600/50 hover:text-emerald-700 dark:text-emerald-400/50 dark:hover:text-emerald-300 transition-colors"
+                                                        title={showLicenseSerial ? t('clinics.hideId') : t('clinics.showId')}
+                                                    >
+                                                        {showLicenseSerial ? <EyeOff size={12} /> : <Eye size={12} />}
+                                                    </button>
+                                                </div>
                                             </div>
-                                            <span className="font-semibold">{detailsModal.license.status}</span>
+                                            <span className="font-semibold px-2 py-1 rounded bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">{detailsModal.license.status}</span>
                                         </div>
                                         <div className="text-sm text-slate-700 dark:text-slate-200 flex items-center gap-2">
                                             <Calendar size={14} /> {t('clinics.expires')}: {formatDate(detailsModal.license.expireDate)}
