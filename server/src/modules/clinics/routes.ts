@@ -5,6 +5,7 @@ import { ProductType, RegistrationStatus, Role, LicenseStatus } from '@prisma/cl
 import { generateSerial } from '../../utils/serial.js';
 import { logAudit } from '../../utils/audit.js';
 import { invalidateClinicSessions } from '../../utils/session.js';
+import clinicControlsRoutes from './controls.js';
 
 const registerSchema = z.object({
     name: z.string().min(2),
@@ -70,10 +71,19 @@ const sanitizeClinic = (clinic: any) => ({
         role: u.role,
         status: u.status,
         clinicId: u.clinicId
-    }))
+    })),
+    control: clinic.control ? {
+        storageLimitMB: clinic.control.storageLimitMB,
+        usersLimit: clinic.control.usersLimit,
+        features: clinic.control.features,
+        locked: clinic.control.locked
+    } : null
 });
 
 export default async function clinicRoutes(app: FastifyInstance) {
+    // Register controls routes
+    await clinicControlsRoutes(app);
+
     // Public Route: Register Clinic
     app.post('/register', async (request, reply) => {
         const { password, ...data } = registerSchema.parse(request.body);
@@ -91,7 +101,7 @@ export default async function clinicRoutes(app: FastifyInstance) {
         const passwordHash = await bcrypt.hash(password, 10);
 
         const clinic = await app.prisma.$transaction(async (prisma) => {
-            return prisma.clinic.create({
+            const newClinic = await prisma.clinic.create({
                 data: {
                     ...data,
                     status: RegistrationStatus.PENDING,
@@ -109,6 +119,25 @@ export default async function clinicRoutes(app: FastifyInstance) {
                     users: { select: safeUserSelect }
                 }
             });
+
+            // Create default ClinicControl
+            await prisma.clinicControl.create({
+                data: {
+                    clinicId: newClinic.id,
+                    storageLimitMB: 1024,
+                    usersLimit: 3,
+                    features: {
+                        patients: true,
+                        appointments: true,
+                        orthodontics: false,
+                        xray: false,
+                        ai: false
+                    },
+                    locked: false
+                }
+            });
+
+            return newClinic;
         });
 
         return reply.code(201).send(sanitizeClinic(clinic));
@@ -124,7 +153,8 @@ export default async function clinicRoutes(app: FastifyInstance) {
             orderBy: { createdAt: 'desc' },
             include: {
                 license: { include: { plan: true } },
-                users: { select: safeUserSelect }
+                users: { select: safeUserSelect },
+                control: true
             }
         });
         return reply.send(clinics.map(sanitizeClinic));
@@ -189,7 +219,8 @@ export default async function clinicRoutes(app: FastifyInstance) {
                 data: { status: RegistrationStatus.APPROVED, licenseId: license.id },
                 include: {
                     license: { include: { plan: true } },
-                    users: { select: safeUserSelect }
+                    users: { select: safeUserSelect },
+                    control: true
                 }
             });
         });
@@ -226,7 +257,8 @@ export default async function clinicRoutes(app: FastifyInstance) {
                 data: { status: RegistrationStatus.SUSPENDED },
                 include: {
                     license: { include: { plan: true } },
-                    users: { select: safeUserSelect }
+                    users: { select: safeUserSelect },
+                    control: true
                 }
             });
         });
@@ -293,7 +325,8 @@ export default async function clinicRoutes(app: FastifyInstance) {
                 data: { status: RegistrationStatus.APPROVED, licenseId: license.id },
                 include: {
                     license: { include: { plan: true } },
-                    users: { select: safeUserSelect }
+                    users: { select: safeUserSelect },
+                    control: true
                 }
             });
         });
@@ -309,7 +342,7 @@ export default async function clinicRoutes(app: FastifyInstance) {
         const { id } = request.params as { id: string };
         const clinic = await app.prisma.clinic.findUnique({
             where: { id },
-            include: { license: { include: { plan: true } }, users: { select: safeUserSelect } }
+            include: { license: { include: { plan: true } }, users: { select: safeUserSelect }, control: true }
         });
         if (!clinic) return reply.code(404).send({ message: 'Clinic not found' });
         const status = clinic.status as RegistrationStatus;
@@ -328,7 +361,7 @@ export default async function clinicRoutes(app: FastifyInstance) {
                 return prisma.clinic.update({
                     where: { id },
                     data: { status: RegistrationStatus.APPROVED },
-                    include: { license: { include: { plan: true } }, users: { select: safeUserSelect } }
+                    include: { license: { include: { plan: true } }, users: { select: safeUserSelect }, control: true }
                 });
             });
             await invalidateClinicSessions(app.prisma, id);
@@ -347,7 +380,7 @@ export default async function clinicRoutes(app: FastifyInstance) {
             return prisma.clinic.update({
                 where: { id },
                 data: { status: RegistrationStatus.SUSPENDED },
-                include: { license: { include: { plan: true } }, users: { select: safeUserSelect } }
+                include: { license: { include: { plan: true } }, users: { select: safeUserSelect }, control: true }
             });
         });
         await invalidateClinicSessions(app.prisma, id);
@@ -387,7 +420,8 @@ export default async function clinicRoutes(app: FastifyInstance) {
                 data: { status: RegistrationStatus.REJECTED },
                 include: {
                     license: { include: { plan: true } },
-                    users: { select: safeUserSelect }
+                    users: { select: safeUserSelect },
+                    control: true
                 }
             });
         });
@@ -458,7 +492,8 @@ export default async function clinicRoutes(app: FastifyInstance) {
                 },
                 include: {
                     license: { include: { plan: true } },
-                    users: { select: safeUserSelect }
+                    users: { select: safeUserSelect },
+                    control: true
                 }
             });
         });
@@ -507,6 +542,8 @@ export default async function clinicRoutes(app: FastifyInstance) {
 
             await tx.conversation.deleteMany({ where: { clinicId: id } });
             await tx.user.deleteMany({ where: { clinicId: id } });
+
+            // ClinicControl will be auto-deleted due to onDelete: Cascade
 
             // detach license reference if present
             if (clinic.licenseId) {

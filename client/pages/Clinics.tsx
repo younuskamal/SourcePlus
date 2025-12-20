@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../services/api';
 import { Clinic, RegistrationStatus, SubscriptionPlan, ClinicSubscriptionStatus } from '../types';
 import { useTranslation } from '../hooks/useTranslation';
+import ClinicControlsModal from '../components/ClinicControlsModal';
 import {
     CheckCircle2,
     XCircle,
@@ -25,7 +26,8 @@ import {
     LogOut,
     ShieldAlert,
     KeyRound,
-    Trash2
+    Trash2,
+    Settings
 } from 'lucide-react';
 
 interface ClinicsProps {
@@ -73,6 +75,7 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
     const [showLicenseSerial, setShowLicenseSerial] = useState(false);
     const [assignModal, setAssignModal] = useState<{ clinic: Clinic; planId?: string; durationMonths?: number; activateClinic?: boolean } | null>(null);
     const [loadingPlans, setLoadingPlans] = useState(false);
+    const [controlsModal, setControlsModal] = useState<Clinic | null>(null);
 
     const pageTitle = viewMode === 'requests' ? t('clinics.requestsTitle') : t('clinics.manageTitle');
     const pageIcon = viewMode === 'requests' ? Stethoscope : LayoutDashboard;
@@ -241,6 +244,18 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
 
     return (
         <div className="space-y-6 relative">
+            {/* Controls Modal */}
+            {controlsModal && (
+                <ClinicControlsModal
+                    clinic={controlsModal}
+                    onClose={() => setControlsModal(null)}
+                    onSuccess={() => {
+                        setControlsModal(null);
+                        fetchClinics();
+                    }}
+                />
+            )}
+
             {/* Confirmation Modal */}
             {confirmAction && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -682,6 +697,13 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                                                         title={t('clinics.assignCta')}
                                                     >
                                                         <KeyRound size={18} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setControlsModal(clinic)}
+                                                        className="p-2 text-purple-500 hover:bg-purple-500/10 rounded-lg transition-colors border border-purple-500/20"
+                                                        title="Manage Controls"
+                                                    >
+                                                        <Settings size={18} />
                                                     </button>
                                                     {clinic.status === RegistrationStatus.PENDING && (
                                                         <>

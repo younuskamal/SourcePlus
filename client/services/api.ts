@@ -336,6 +336,45 @@ export const api = {
     const q = clinicId ? `?clinicId=${clinicId}` : '';
     return doRequest<ClinicSubscriptionStatus>(`/api/subscription/status${q}`);
   },
+  getClinicControls(id: string) {
+    return doRequest<{
+      storageLimitMB: number;
+      usersLimit: number;
+      features: {
+        patients: boolean;
+        appointments: boolean;
+        orthodontics: boolean;
+        xray: boolean;
+        ai: boolean;
+      };
+      locked: boolean;
+      lockReason: string | null;
+    }>(`/api/clinics/${id}/controls`);
+  },
+  updateClinicControls(id: string, payload: {
+    storageLimitMB?: number;
+    usersLimit?: number;
+    features?: {
+      patients?: boolean;
+      appointments?: boolean;
+      orthodontics?: boolean;
+      xray?: boolean;
+      ai?: boolean;
+    };
+    locked?: boolean;
+    lockReason?: string | null;
+  }) {
+    return doRequest<{
+      storageLimitMB: number;
+      usersLimit: number;
+      features: any;
+      locked: boolean;
+      lockReason: string | null;
+    }>(`/api/clinics/${id}/controls`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
+  },
 
   // -- Messages --
   getConversations() {
