@@ -9,6 +9,7 @@ import {
     ConfirmActionModal,
     ErrorAlert
 } from '../components/clinics';
+import ClinicControlDashboard from '../components/ClinicControlDashboard';
 import { Building2, CheckCircle2, Clock, Ban, Loader2 } from 'lucide-react';
 import { RefreshCw } from 'lucide-react';
 
@@ -31,6 +32,7 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
     );
     const [processing, setProcessing] = useState<string | null>(null);
     const [selectedClinic, setSelectedClinic] = useState<Clinic | null>(null);
+    const [controlsModal, setControlsModal] = useState<Clinic | null>(null);
     const [confirmAction, setConfirmAction] = useState<{ type: ActionType; clinic: Clinic } | null>(null);
     const [rejectReason, setRejectReason] = useState('');
     const [error, setError] = useState<string | null>(null);
@@ -271,7 +273,7 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                                 subscription={subscriptions[clinic.id]}
                                 onSelect={setSelectedClinic}
                                 onAction={(type) => setConfirmAction({ type, clinic })}
-                                onControls={() => console.log('Navigate to clinic control:', clinic.id)}
+                                onControls={() => setControlsModal(clinic)}
                                 processing={processing === clinic.id}
                                 viewMode={viewMode}
                             />
@@ -286,6 +288,14 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                     clinic={selectedClinic}
                     subscription={subscriptions[selectedClinic.id]}
                     onClose={() => setSelectedClinic(null)}
+                />
+            )}
+
+            {controlsModal && (
+                <ClinicControlDashboard
+                    clinic={controlsModal}
+                    onClose={() => setControlsModal(null)}
+                    onUpdate={loadData}
                 />
             )}
 
