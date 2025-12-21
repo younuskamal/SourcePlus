@@ -24,7 +24,7 @@ export default async function ticketRoutes(app: FastifyInstance) {
     return app.prisma.supportTicket.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      include: { replies: true, attachments: true, license: true }
+      include: { attachments: true, license: true }
     });
   });
 
@@ -38,12 +38,16 @@ export default async function ticketRoutes(app: FastifyInstance) {
   app.post('/:id/reply', { preHandler: [app.authorize([Role.admin, Role.developer])] }, async (request, reply) => {
     const { message } = z.object({ message: z.string().min(1) }).parse(request.body);
     const id = (request.params as { id: string }).id;
-    const replyRow = await app.prisma.supportReply.create({
-      data: { ticketId: id, userId: request.user?.userId, message }
+
+    // Note: SupportReply is now only for SupportMessage (clinic system), not SupportTicket (POS)
+    // For tickets, we use the adminReply field directly
+    const ticket = await app.prisma.supportTicket.update({
+      where: { id },
+      data: { status: TicketStatus.in_progress, adminReply: message, replyAt: new Date() }
     });
-    await app.prisma.supportTicket.update({ where: { id }, data: { status: TicketStatus.in_progress, adminReply: message, replyAt: new Date() } });
+
     await logAudit(app, { userId: request.user?.userId, action: 'REPLY_TICKET', details: id, ip: request.ip });
-    return reply.send(replyRow);
+    return reply.send(ticket);
   });
 
   app.post('/:id/resolve', { preHandler: [app.authorize([Role.admin, Role.developer])] }, async (request, reply) => {

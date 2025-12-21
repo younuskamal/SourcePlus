@@ -327,7 +327,6 @@ export default async function clientRoutes(app: FastifyInstance) {
 
     const tickets = await app.prisma.supportTicket.findMany({
       where: { serial },
-      include: { replies: { orderBy: { createdAt: 'asc' } } },
       orderBy: { createdAt: 'desc' }
     });
     return reply.send(tickets);

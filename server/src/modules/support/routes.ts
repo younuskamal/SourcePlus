@@ -27,6 +27,7 @@ export default async function supportRoutes(app: FastifyInstance) {
                 clinicId: 'legacy-support', // For backwards compatibility with old POS messages
                 clinicName: data.name,
                 accountCode: data.serial || undefined,
+                subject: 'Legacy POS Support Message', // Required field
                 message: data.message,
                 source: 'LEGACY_POS',
                 status: SupportMessageStatus.NEW

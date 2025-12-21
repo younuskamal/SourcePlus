@@ -68,7 +68,7 @@ export default async function backupRoutes(app: FastifyInstance) {
                 app.prisma.currency.findMany(),
                 app.prisma.license.findMany(),
                 app.prisma.transaction.findMany(),
-                app.prisma.supportTicket.findMany({ include: { replies: true, attachments: true } }),
+                app.prisma.supportTicket.findMany({ include: { attachments: true } }),
                 app.prisma.notification.findMany(),
                 app.prisma.auditLog.findMany(),
                 app.prisma.systemSetting.findMany(),

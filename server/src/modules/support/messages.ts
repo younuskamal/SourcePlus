@@ -269,11 +269,19 @@ export default async function supportMessagesRoutes(app: FastifyInstance) {
             return reply.code(404).send({ message: 'Support message not found' });
         }
 
+        // Get sender name from database
+        const sender = request.user?.userId
+            ? await app.prisma.user.findUnique({
+                where: { id: request.user.userId },
+                select: { name: true }
+            })
+            : null;
+
         const replyRecord = await app.prisma.supportReply.create({
             data: {
                 messageId: id,
                 senderId: request.user?.userId,
-                senderName: request.user?.name || 'Support Team',
+                senderName: sender?.name || 'Support Team',
                 content,
                 isFromAdmin: true
             }
