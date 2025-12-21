@@ -55,6 +55,18 @@ export default async function supportMessagesRoutes(app: FastifyInstance) {
             }
         });
 
+        // Logging for verification (temporary)
+        request.log.info({
+            messageId: message.id,
+            clinicId: data.clinicId,
+            clinicName: data.clinicName,
+            accountCode: data.accountCode,
+            subject: data.subject,
+            priority: message.priority,
+            status: message.status,
+            source: message.source
+        }, 'SUPPORT_MESSAGE_CREATED');
+
         await logAudit(app, {
             action: 'SUPPORT_MESSAGE_CREATED',
             details: `New support message: "${data.subject}" from ${data.clinicName}`,
@@ -150,6 +162,21 @@ export default async function supportMessagesRoutes(app: FastifyInstance) {
                 where: { status: SupportMessageStatus.NEW }
             })
         ]);
+
+        // Logging for verification (temporary)
+        request.log.info({
+            totalMessages: messages.length,
+            unreadCount,
+            filters: { status, clinicId, search, priority, assignedTo },
+            sampleMessages: messages.slice(0, 3).map(m => ({
+                id: m.id,
+                subject: m.subject,
+                clinicName: m.clinicName,
+                status: m.status,
+                priority: m.priority,
+                repliesCount: m._count?.replies || 0
+            }))
+        }, 'SUPPORT_MESSAGES_LIST_FETCHED');
 
         return reply.send({
             messages,

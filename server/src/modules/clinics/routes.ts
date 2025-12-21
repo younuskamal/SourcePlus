@@ -577,14 +577,33 @@ export default async function clinicRoutes(app: FastifyInstance) {
             }
         });
 
+        // Get clinic controls for limits
+        const controls = await app.prisma.clinicControl.findUnique({
+            where: { clinicId: id }
+        });
+
         // TODO: Calculate storage from actual database
         // For now, return 0 until storage tracking is implemented
         const storageUsedMB = 0;
 
-        return reply.send({
+        const usageData = {
             activeUsersCount,
             storageUsedMB,
             lastUpdated: new Date().toISOString()
-        });
+        };
+
+        // Logging for verification (temporary)
+        request.log.info({
+            clinicId: id,
+            clinicName: clinic.name,
+            storageUsedMB,
+            storageLimitMB: controls?.storageLimitMB || 0,
+            activeUsersCount,
+            usersLimit: controls?.usersLimit || 0,
+            locked: controls?.locked || false,
+            lockReason: controls?.lockReason
+        }, 'CLINIC_USAGE_DATA');
+
+        return reply.send(usageData);
     });
 }
