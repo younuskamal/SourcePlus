@@ -64,50 +64,8 @@ export default async function supportMessagesRoutes(app: FastifyInstance) {
         return reply.code(201).send(message);
     });
 
-    /**
-     * POST /api/support/messages/:id/replies
-     * Add a reply from clinic (public)
-     */
-    app.post('/support/messages/:id/replies', async (request, reply) => {
-        const { id } = request.params as { id: string };
-        const { content } = addReplySchema.parse(request.body);
-
-        const message = await app.prisma.supportMessage.findUnique({
-            where: { id }
-        });
-
-        if (!message) {
-            return reply.code(404).send({ message: 'Support message not found' });
-        }
-
-        const replyRecord = await app.prisma.supportReply.create({
-            data: {
-                messageId: id,
-                content,
-                senderName: message.clinicName,
-                isFromAdmin: false
-            }
-        });
-
-        // Re-open message if it was closed
-        if (message.status === SupportMessageStatus.CLOSED) {
-            await app.prisma.supportMessage.update({
-                where: { id },
-                data: {
-                    status: SupportMessageStatus.NEW,
-                    closedAt: null
-                }
-            });
-        }
-
-        await logAudit(app, {
-            action: 'SUPPORT_REPLY_ADDED',
-            details: `Clinic replied to: "${message.subject}"`,
-            ip: request.ip
-        });
-
-        return reply.code(201).send(replyRecord);
-    });
+    // Note: Reply endpoint moved to Admin section to avoid duplication
+    // Both clinic and admin use POST /support/messages/:id/replies
 
     /**
      * GET /api/support/messages/:id/conversation
@@ -253,11 +211,9 @@ export default async function supportMessagesRoutes(app: FastifyInstance) {
 
     /**
      * POST /support/messages/:id/replies
-     * Add admin reply to conversation
+     * Add reply to conversation (Public - works for both clinic and admin)
      */
-    app.post('/support/messages/:id/replies', {
-        preHandler: [app.authenticate, app.authorize([Role.admin])]
-    }, async (request, reply) => {
+    app.post('/support/messages/:id/replies', async (request, reply) => {
         const { id } = request.params as { id: string };
         const { content } = addReplySchema.parse(request.body);
 
@@ -269,39 +225,68 @@ export default async function supportMessagesRoutes(app: FastifyInstance) {
             return reply.code(404).send({ message: 'Support message not found' });
         }
 
-        // Get sender name from database
-        const sender = request.user?.userId
-            ? await app.prisma.user.findUnique({
-                where: { id: request.user.userId },
+        // Determine if this is from admin or clinic
+        let isFromAdmin = false;
+        let senderName = message.clinicName; // Default to clinic name
+        let senderId: string | undefined;
+
+        // Try to get authenticated user (optional)
+        try {
+            const payload = await request.jwtVerify();
+            // If authenticated, it's from admin
+            isFromAdmin = true;
+            senderId = payload.userId;
+
+            // Get admin name
+            const admin = await app.prisma.user.findUnique({
+                where: { id: payload.userId },
                 select: { name: true }
-            })
-            : null;
+            });
+            senderName = admin?.name || 'Support Team';
+        } catch {
+            // Not authenticated = clinic user
+            isFromAdmin = false;
+        }
 
         const replyRecord = await app.prisma.supportReply.create({
             data: {
                 messageId: id,
-                senderId: request.user?.userId,
-                senderName: sender?.name || 'Support Team',
+                senderId,
+                senderName,
                 content,
-                isFromAdmin: true
+                isFromAdmin
             }
         });
 
-        // Mark as read if NEW
-        if (message.status === SupportMessageStatus.NEW) {
-            await app.prisma.supportMessage.update({
-                where: { id },
-                data: {
-                    status: SupportMessageStatus.READ,
-                    readAt: new Date()
-                }
-            });
+        // Update message status based on who is replying
+        if (isFromAdmin) {
+            // Admin reply: mark as read if NEW
+            if (message.status === SupportMessageStatus.NEW) {
+                await app.prisma.supportMessage.update({
+                    where: { id },
+                    data: {
+                        status: SupportMessageStatus.READ,
+                        readAt: new Date()
+                    }
+                });
+            }
+        } else {
+            // Clinic reply: re-open if closed
+            if (message.status === SupportMessageStatus.CLOSED) {
+                await app.prisma.supportMessage.update({
+                    where: { id },
+                    data: {
+                        status: SupportMessageStatus.NEW,
+                        closedAt: null
+                    }
+                });
+            }
         }
 
         await logAudit(app, {
-            userId: request.user?.userId,
-            action: 'SUPPORT_REPLY_SENT',
-            details: `Admin replied to: "${message.subject}"`,
+            userId: isFromAdmin ? senderId : undefined,
+            action: isFromAdmin ? 'SUPPORT_REPLY_SENT' : 'SUPPORT_REPLY_ADDED',
+            details: `${isFromAdmin ? 'Admin' : 'Clinic'} replied to: "${message.subject}"`,
             ip: request.ip
         });
 
