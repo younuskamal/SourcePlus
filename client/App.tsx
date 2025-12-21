@@ -180,8 +180,6 @@ function AppContent() {
       case 'financials': return <Financials currentLang={i18n.language} />;
       case 'updates': return <Updates currentLang={i18n.language} />;
       case 'notifications': return <Notifications currentLang={i18n.language} />;
-      case 'updates': return <Updates currentLang={i18n.language} />;
-      case 'notifications': return <Notifications currentLang={i18n.language} />;
       case 'support': return <Support currentLang={i18n.language} />;
       case 'currencies': return <Currencies currentLang={i18n.language} />;
       case 'config': return <Settings currentLang={i18n.language} onThemeChange={updateThemeColors} />;
