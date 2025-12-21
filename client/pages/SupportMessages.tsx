@@ -82,10 +82,19 @@ const SupportMessages: React.FC = () => {
             if (filterPriority !== 'ALL') params.priority = filterPriority;
             if (searchQuery) params.search = searchQuery;
 
+            console.log('🔍 Loading support messages with params:', params);
+
             const response = await api.getSupportMessages(params);
+
+            console.log('✅ Support messages response:', {
+                count: response.messages?.length || 0,
+                unreadCount: response.unreadCount,
+                messages: response.messages
+            });
+
             setMessages(response.messages || []);
         } catch (error) {
-            console.error('Failed to load messages:', error);
+            console.error('❌ Failed to load messages:', error);
         } finally {
             setLoading(false);
         }
@@ -234,8 +243,8 @@ const SupportMessages: React.FC = () => {
                                     key={msg.id}
                                     onClick={() => handleSelectMessage(msg)}
                                     className={`w-full text-left p-4 rounded-xl border-2 transition-all ${selectedMessage?.id === msg.id
-                                            ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
-                                            : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-purple-300'
+                                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-purple-300'
                                         }`}
                                 >
                                     <div className="flex items-start justify-between gap-2 mb-2">
@@ -369,16 +378,16 @@ const SupportMessages: React.FC = () => {
                                         <div key={reply.id} className={`flex gap-3 ${reply.isFromAdmin ? 'flex-row-reverse' : ''}`}>
                                             <div className="flex-shrink-0">
                                                 <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${reply.isFromAdmin
-                                                        ? 'bg-gradient-to-br from-purple-500 to-pink-500'
-                                                        : 'bg-gradient-to-br from-blue-500 to-cyan-500'
+                                                    ? 'bg-gradient-to-br from-purple-500 to-pink-500'
+                                                    : 'bg-gradient-to-br from-blue-500 to-cyan-500'
                                                     }`}>
                                                     {reply.isFromAdmin ? <Shield size={20} /> : reply.senderName.charAt(0)}
                                                 </div>
                                             </div>
                                             <div className="flex-1 max-w-[70%]">
                                                 <div className={`rounded-2xl p-4 ${reply.isFromAdmin
-                                                        ? 'bg-purple-50 dark:bg-purple-900/20 rounded-tr-sm'
-                                                        : 'bg-blue-50 dark:bg-blue-900/20 rounded-tl-sm'
+                                                    ? 'bg-purple-50 dark:bg-purple-900/20 rounded-tr-sm'
+                                                    : 'bg-blue-50 dark:bg-blue-900/20 rounded-tl-sm'
                                                     }`}>
                                                     <div className="flex items-center gap-2 mb-2">
                                                         <span className="font-semibold text-slate-900 dark:text-white">

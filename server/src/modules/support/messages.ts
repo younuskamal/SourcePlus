@@ -137,6 +137,12 @@ export default async function supportMessagesRoutes(app: FastifyInstance) {
             ];
         }
 
+        // Debug: Log query parameters before fetching
+        request.log.info({
+            whereClause: where,
+            hasFilters: Object.keys(where).length > 0
+        }, 'SUPPORT_MESSAGES_QUERY_START');
+
         const [messages, unreadCount] = await Promise.all([
             app.prisma.supportMessage.findMany({
                 where,
