@@ -232,7 +232,7 @@ export default async function supportMessagesRoutes(app: FastifyInstance) {
 
         // Try to get authenticated user (optional)
         try {
-            const payload = await request.jwtVerify();
+            const payload = await request.jwtVerify() as { userId: string; role: string };
             // If authenticated, it's from admin
             isFromAdmin = true;
             senderId = payload.userId;
