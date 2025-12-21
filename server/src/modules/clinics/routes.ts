@@ -582,9 +582,15 @@ export default async function clinicRoutes(app: FastifyInstance) {
             where: { clinicId: id }
         });
 
-        // TODO: Calculate storage from actual database
-        // For now, return 0 until storage tracking is implemented
-        const storageUsedMB = 0;
+        // ✅ Calculate REAL storage from FileUpload table
+        const fileUploads = await app.prisma.fileUpload.findMany({
+            where: { clinicId: id },
+            select: { size: true }
+        });
+
+        // Sum up total storage in bytes, then convert to MB
+        const totalStorageBytes = fileUploads.reduce((sum, file) => sum + (file.size || 0), 0);
+        const storageUsedMB = Math.round((totalStorageBytes / (1024 * 1024)) * 100) / 100; // Convert to MB with 2 decimals
 
         const usageData = {
             activeUsersCount,
@@ -592,17 +598,20 @@ export default async function clinicRoutes(app: FastifyInstance) {
             lastUpdated: new Date().toISOString()
         };
 
-        // Logging for verification (temporary)
+        // Enhanced Logging for verification
         request.log.info({
             clinicId: id,
             clinicName: clinic.name,
             storageUsedMB,
             storageLimitMB: controls?.storageLimitMB || 0,
+            storagePercentage: controls?.storageLimitMB ? Math.round((storageUsedMB / controls.storageLimitMB) * 100) : 0,
             activeUsersCount,
             usersLimit: controls?.usersLimit || 0,
+            usersPercentage: controls?.usersLimit ? Math.round((activeUsersCount / controls.usersLimit) * 100) : 0,
             locked: controls?.locked || false,
-            lockReason: controls?.lockReason
-        }, 'CLINIC_USAGE_DATA');
+            lockReason: controls?.lockReason,
+            totalFilesCount: fileUploads.length
+        }, 'CONTROL_PANEL_REAL_DATA');
 
         return reply.send(usageData);
     });

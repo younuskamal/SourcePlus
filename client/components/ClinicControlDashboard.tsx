@@ -79,14 +79,18 @@ const ClinicControlDashboard: React.FC<ClinicControlDashboardProps> = ({ clinic,
     const loadData = async () => {
         try {
             setLoading(true);
+
+            console.log('🔍 Loading clinic controls and usage for:', clinic.id, clinic.name);
+
             const [controlsData, usageData] = await Promise.all([
                 api.getClinicControls(clinic.id),
-                api.getClinicUsage(clinic.id).catch(() => ({
-                    activeUsersCount: 0,
-                    storageUsedMB: 0,
-                    lastUpdated: new Date().toISOString()
-                }))
+                api.getClinicUsage(clinic.id)
             ]);
+
+            console.log('✅ Clinic Controls Data:', controlsData);
+            console.log('✅ Clinic Usage Data:', usageData);
+            console.log('📊 Storage:', usageData.storageUsedMB, 'MB /', controlsData.storageLimitMB, 'MB');
+            console.log('👥 Users:', usageData.activeUsersCount, '/', controlsData.usersLimit);
 
             setControls(controlsData);
             setUsage(usageData);
@@ -96,9 +100,14 @@ const ClinicControlDashboard: React.FC<ClinicControlDashboardProps> = ({ clinic,
             setUsersLimit(controlsData.usersLimit);
             setFeatures(controlsData.features);
             setLockReason(controlsData.lockReason || '');
-        } catch (error) {
-            console.error('Failed to load data:', error);
-            showMessage('error', 'Failed to load clinic data');
+        } catch (error: any) {
+            console.error('❌ Failed to load clinic data:', error);
+            console.error('Error details:', {
+                message: error.message,
+                response: error.response,
+                status: error.response?.status
+            });
+            showMessage('error', `Failed to load clinic data: ${error.response?.data?.message || error.message}`);
         } finally {
             setLoading(false);
         }
@@ -222,8 +231,8 @@ const ClinicControlDashboard: React.FC<ClinicControlDashboardProps> = ({ clinic,
                                 onClick={handleToggleLock}
                                 disabled={saving}
                                 className={`flex-1 px-4 py-2 rounded-lg text-white transition-colors ${controls.locked
-                                        ? 'bg-emerald-500 hover:bg-emerald-600'
-                                        : 'bg-rose-500 hover:bg-rose-600'
+                                    ? 'bg-emerald-500 hover:bg-emerald-600'
+                                    : 'bg-rose-500 hover:bg-rose-600'
                                     }`}
                             >
                                 {saving ? <Loader2 className="animate-spin mx-auto" size={20} /> : controls.locked ? 'Unlock' : 'Lock'}
@@ -278,8 +287,8 @@ const ClinicControlDashboard: React.FC<ClinicControlDashboardProps> = ({ clinic,
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id as TabType)}
                                 className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.id
-                                        ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
-                                        : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-emerald-600'
+                                    ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
+                                    : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-emerald-600'
                                     }`}
                             >
                                 <tab.icon size={18} />
@@ -357,10 +366,16 @@ const ClinicControlDashboard: React.FC<ClinicControlDashboardProps> = ({ clinic,
                                             {controls.locked ? 'LOCKED' : 'Active'}
                                         </p>
                                         {usage?.lastUpdated && (
-                                            <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-                                                <Clock size={12} />
-                                                Updated: {new Date(usage.lastUpdated).toLocaleString()}
-                                            </p>
+                                            <div className="mt-2 space-y-1">
+                                                <p className="text-xs text-slate-500 flex items-center gap-1">
+                                                    <Clock size={12} />
+                                                    Data: {new Date(usage.lastUpdated).toLocaleString()}
+                                                </p>
+                                                <p className="text-xs text-emerald-600 font-medium flex items-center gap-1">
+                                                    <CheckCircle size={12} />
+                                                    Real-time from Smart Clinic
+                                                </p>
+                                            </div>
                                         )}
                                     </div>
                                 </div>
@@ -376,8 +391,8 @@ const ClinicControlDashboard: React.FC<ClinicControlDashboardProps> = ({ clinic,
                                             <div
                                                 key={key}
                                                 className={`p-3 rounded-lg text-center ${enabled
-                                                        ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
-                                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                                                    ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
+                                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
                                                     }`}
                                             >
                                                 <p className="text-sm font-medium capitalize">{key}</p>
@@ -517,8 +532,8 @@ const ClinicControlDashboard: React.FC<ClinicControlDashboardProps> = ({ clinic,
                                             <button
                                                 onClick={() => setShowLockConfirm(true)}
                                                 className={`px-6 py-3 rounded-lg font-medium text-white transition-colors ${controls.locked
-                                                        ? 'bg-emerald-500 hover:bg-emerald-600'
-                                                        : 'bg-rose-500 hover:bg-rose-600'
+                                                    ? 'bg-emerald-500 hover:bg-emerald-600'
+                                                    : 'bg-rose-500 hover:bg-rose-600'
                                                     }`}
                                             >
                                                 {controls.locked ? 'Unlock Clinic' : 'Lock Clinic'}
