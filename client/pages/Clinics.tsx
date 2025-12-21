@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { Clinic, RegistrationStatus, SubscriptionPlan, ClinicSubscriptionStatus } from '../types';
 import {
@@ -20,7 +19,6 @@ interface ClinicsProps {
 type ActionType = 'approve' | 'reject' | 'suspend' | 'reactivate' | 'delete';
 
 const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
-    const navigate = useNavigate();
 
     // State
     const [clinics, setClinics] = useState<Clinic[]>([]);
@@ -273,7 +271,7 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                                 subscription={subscriptions[clinic.id]}
                                 onSelect={setSelectedClinic}
                                 onAction={(type) => setConfirmAction({ type, clinic })}
-                                onControls={() => navigate(`/clinic-control/${clinic.id}`)}
+                                onControls={() => console.log('Navigate to clinic control:', clinic.id)}
                                 processing={processing === clinic.id}
                                 viewMode={viewMode}
                             />
