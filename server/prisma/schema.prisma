@@ -62,8 +62,8 @@ model User {
   lastLoginIp  String?
   sessions     Session[]
   auditLogs    AuditLog[]
-  replies      SupportReply[]
   clinicMessages ClinicMessage[]
+  assignedMessages SupportMessage[] // Messages assigned to this admin
 }
 
 enum Role {
@@ -364,18 +364,48 @@ model SupportMessage {
   clinicId     String
   clinicName   String
   accountCode  String?
+  subject      String               // New: Message subject/title
   message      String               @db.Text
   source       String               @default("SMART_CLINIC")
   status       SupportMessageStatus @default(NEW)
+  priority     MessagePriority      @default(NORMAL) // New: Priority level
+  assignedTo   String?              // New: Admin who handles this
+  assignedUser User?                @relation(fields: [assignedTo], references: [id])
   readAt       DateTime?
   closedAt     DateTime?
   createdAt    DateTime             @default(now())
   updatedAt    DateTime             @updatedAt
+  
+  replies      SupportReply[]       // New: Conversation replies
 
   @@index([clinicId])
   @@index([status])
+  @@index([priority])
+  @@index([assignedTo])
   @@index([createdAt])
   @@map("support_messages")
+}
+
+model SupportReply {
+  id        String         @id @default(uuid())
+  messageId String
+  message   SupportMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  senderId  String?        // null for clinic, userId for admin
+  senderName String        // Display name
+  content   String         @db.Text
+  isFromAdmin Boolean      @default(false)
+  createdAt DateTime       @default(now())
+  
+  @@index([messageId])
+  @@index([createdAt])
+  @@map("support_replies")
+}
+
+enum MessagePriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
 }
 
 enum ProductType {

@@ -1,107 +1,45 @@
-# 📚 Clinic System - Complete API Documentation
+# 📚 Clinic System API - Complete Documentation
 
-**Version**: 3.1 (Updated)  
+**Version**: 4.0 - Conversations Update  
 **Last Updated**: 2025-12-21  
-**Status**: Production Ready ✅  
-**Base URL**: `https://your-domain.com`
+**Status**: Production Ready ✅
+
+---
+
+## 🎯 What's New in v4.0
+
+### **💬 Conversation-Based Support System**
+- ✅ Full chat/messaging interface
+- ✅ Real-time replies from both sides
+- ✅ Message threading
+- ✅ Priority levels (LOW, NORMAL, HIGH, URGENT)
+- ✅ Admin assignment
+- ✅ Subject/Title for messages
+- ✅ Auto-reopen on clinic reply
 
 ---
 
 ## 📑 Table of Contents
 
-1. [Overview](#overview)
-2. [Authentication](#authentication)
-3. [Clinic Controls API](#clinic-controls-api)
-4. [Clinic Usage API](#clinic-usage-api)
-5. [Support Messages API (New)](#support-messages-api-new)
-6. [Support Routes API (Legacy)](#support-routes-api-legacy)
-7. [Error Handling](#error-handling)
-8. [Database Schema](#database-schema)
-9. [Best Practices](#best-practices)
-
----
-
-## 🎯 Overview
-
-SourcePlus يوفر مجموعة من الـ APIs لإدارة العيادات بشكل كامل:
-
-### **الأدوار**:
-- **SourcePlus Admin**: إدارة كاملة (create, read, update, delete)
-- **Smart Clinic**: قراءة الإعدادات + إرسال رسائل دعم
-
-### **Core APIs**:
-1. ✅ **Controls API** (2 endpoints) - إدارة حدود وإعدادات العيادة
-2. ✅ **Usage API** (1 endpoint) - تتبع استخدام الموارد
-3. ✅ **Support Messages API** (5 endpoints) - نظام رسائل دعم حديث
-4. ✅ **Support Routes API** (3 endpoints) - للتوافق مع POS القديم
-
----
-
-## 🔐 Authentication
-
-### **JWT Token Structure**
-```javascript
-{
-  "userId": "user-uuid-123",
-  "email": "admin@sourceplus.com",
-  "role": "admin", // or "developer"
-  "iat": 1703145600,
-  "exp": 1703232000
-}
-```
-
-### **How to Get Token**
-```bash
-POST /api/auth/login
-Content-Type: application/json
-
-{
-  "email": "admin@sourceplus.com",
-  "password": "your-password"
-}
-```
-
-### **Response**
-```json
-{
-  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "refreshToken": "...",
-  "user": {
-    "id": "user-uuid-123",
-    "name": "Admin User",
-    "role": "admin"
-  }
-}
-```
-
-### **Using Token**
-```bash
-curl -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-```
+1. [Clinic Controls API](#clinic-controls-api)
+2. [Clinic Usage API](#clinic-usage-api)
+3. [Support Conversations API (NEW)](#support-conversations-api-new)
+4. [Database Schema](#database-schema)
+5. [Best Practices](#best-practices)
 
 ---
 
 ## 🎛️ Clinic Controls API
 
-### **1. GET /api/clinics/:id/controls**
+### **GET /api/clinics/:id/controls**
 
-#### **الغرض**
-قراءة إعدادات وحدود العيادة (للاستخدام من Smart Clinic)
+Get clinic settings and limits (public endpoint).
 
-#### **Authentication**
-❌ **Not Required** - Public access for Smart Clinic
-
-#### **Parameters**
-| Name | Type | In | Required | Description |
-|------|------|-----|----------|-------------|
-| `id` | string (UUID) | path | ✅ Yes | معرّف العيادة |
-
-#### **Request Example**
 ```bash
-curl -X GET "https://api.sourceplus.com/api/clinics/abc-123-def/controls"
+curl "https://api.sourceplus.com/api/clinics/abc-123/controls"
 ```
 
-#### **Response 200 OK**
+**Response**:
 ```json
 {
   "storageLimitMB": 2048,
@@ -118,646 +56,324 @@ curl -X GET "https://api.sourceplus.com/api/clinics/abc-123-def/controls"
 }
 ```
 
-#### **Response Fields**
-| Field | Type | Description |
-|-------|------|-------------|
-| `storageLimitMB` | number | الحد الأقصى للتخزين بالميجابايت |
-| `usersLimit` | number | الحد الأقصى للمستخدمين |
-| `features` | object | كائن يحتوي على feature flags |
-| `features.patients` | boolean | تفعيل/تعطيل وحدة المرضى |
-| `features.appointments` | boolean | تفعيل/تعطيل المواعيد |
-| `features.orthodontics` | boolean | تفعيل/تعطيل تقويم الأسنان |
-| `features.xray` | boolean | تفعيل/تعطيل الأشعة |
-| `features.ai` | boolean | تفعيل/تعطيل ميزات الذكاء الاصطناعي |
-| `locked` | boolean | هل العيادة مقفلة؟ |
-| `lockReason` | string \| null | سبب القفل (إذا كانت مقفلة) |
-
-#### **Auto-Creation Behavior**
-⚡ إذا لم توجد `ClinicControl` للعيادة، يتم إنشاؤها **تلقائياً** بالقيم الافتراضية:
-```json
-{
-  "storageLimitMB": 1024,
-  "usersLimit": 3,
-  "features": {
-    "patients": true,
-    "appointments": true,
-    "orthodontics": false,
-    "xray": false,
-    "ai": false
-  },
-  "locked": false,
-  "lockReason": null
-}
-```
-
-#### **Response 404 Not Found**
-```json
-{
-  "message": "Clinic not found"
-}
-```
-
 ---
 
-### **2. PUT /api/clinics/:id/controls**
+### **PUT /api/clinics/:id/controls**
 
-#### **الغرض**
-تحديث إعدادات وحدود العيادة (Admin فقط)
+Update clinic controls (admin only).
 
-#### **Authentication**
-✅ **Required** - Admin only
-
-```
-Authorization: Bearer <admin_access_token>
-```
-
-#### **Parameters**
-| Name | Type | In | Required | Description |
-|------|------|-----|----------|-------------|
-| `id` | string (UUID) | path | ✅ Yes | معرّف العيادة |
-
-#### **Request Body** (جميع الحقول اختيارية)
-```json
-{
-  "storageLimitMB": 4096,
-  "usersLimit": 10,
-  "features": {
-    "ai": true,
-    "orthodontics": true
-  },
-  "locked": false,
-  "lockReason": null
-}
-```
-
-#### **Validation Rules**
-| Field | Type | Validation |
-|-------|------|------------|
-| `storageLimitMB` | number | Must be positive integer |
-| `usersLimit` | number | Must be positive integer |
-| `features` | object | Boolean values only |
-| `locked` | boolean | true or false |
-| `lockReason` | string \| null | Optional |
-
-#### **Feature Merging**
-عند إرسال `features`، يتم **دمجها** مع الـ features الموجودة:
-
-```javascript
-// القيمة الحالية
-{ patients: true, appointments: true, ai: false }
-
-// الإرسال
-{ ai: true }
-
-// النتيجة
-{ patients: true, appointments: true, ai: true }
-```
-
-#### **Request Example**
 ```bash
 curl -X PUT "https://api.sourceplus.com/api/clinics/abc-123/controls" \
   -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "storageLimitMB": 4096,
-    "features": {
-      "ai": true
-    }
-  }'
+  -d '{"storageLimitMB": 4096}'
 ```
-
-#### **Response 200 OK**
-```json
-{
-  "storageLimitMB": 4096,
-  "usersLimit": 5,
-  "features": {
-    "patients": true,
-    "appointments": true,
-    "orthodontics": false,
-    "xray": false,
-    "ai": true
-  },
-  "locked": false,
-  "lockReason": null
-}
-```
-
-#### **Audit Logging**
-كل عملية تحديث تُسجّل في AuditLog مع تفاصيل Before/After:
-```javascript
-{
-  "userId": "admin-uuid",
-  "action": "UPDATE_CLINIC_CONTROLS",
-  "details": "Updated controls for clinic ABC Dental: storage: 1024MB → 4096MB; features: ai: false → true. Before: {...}. After: {...}",
-  "ip": "192.168.1.1",
-  "timestamp": "2025-12-21T06:15:00.000Z"
-}
-```
-
-#### **Error Responses**
-- **404**: Clinic not found
-- **401**: Unauthorized (missing/invalid token)
-- **400**: Validation error (invalid data)
 
 ---
 
 ## 📊 Clinic Usage API
 
-### **3. GET /api/clinics/:id/usage**
+### **GET /api/clinics/:id/usage**
 
-#### **الغرض**
-الحصول على إحصائيات استخدام موارد العيادة
+Get real-time usage statistics.
 
-#### **Authentication**
-✅ **Required** - Admin only
-
-```
-Authorization: Bearer <admin_access_token>
-```
-
-#### **Parameters**
-| Name | Type | In | Required | Description |
-|------|------|-----|----------|-------------|
-| `id` | string (UUID) | path | ✅ Yes | معرّف العيادة |
-
-#### **Request Example**
 ```bash
-curl -X GET "https://api.sourceplus.com/api/clinics/abc-123/usage" \
+curl "https://api.sourceplus.com/api/clinics/abc-123/usage" \
   -H "Authorization: Bearer <token>"
 ```
 
-#### **Response 200 OK**
+**Response**:
 ```json
 {
   "activeUsersCount": 3,
-  "storageUsedMB": 0,
-  "lastUpdated": "2025-12-21T06:15:00.000Z"
-}
-```
-
-#### **Response Fields**
-| Field | Type | Description |
-|-------|------|-------------|
-| `activeUsersCount` | number | عدد المستخدمين النشطين (status ≠ SUSPENDED) |
-| `storageUsedMB` | number | المساحة المستخدمة بالميجابايت (حالياً: 0) |
-| `lastUpdated` | string (ISO 8601) | آخر وقت تحديث |
-
-#### **Usage Calculation**
-```typescript
-// Active Users Count
-const activeUsersCount = await prisma.user.count({
-    where: {
-        clinicId: id,
-        status: { not: 'SUSPENDED' }
-    }
-});
-
-// Storage (TODO - hardcoded to 0 for now)
-const storageUsedMB = 0; // Will be implemented in future
-```
-
-#### **Response 404 Not Found**
-```json
-{
-  "message": "Clinic not found"
+  "storageUsedMB": 245,
+  "lastUpdated": "2025-12-21T12:00:00Z"
 }
 ```
 
 ---
 
-## 💬 Support Messages API (New)
+## 💬 Support Conversations API (NEW)
 
-### **4. POST /api/support/messages** (Public)
+### **1. POST /api/support/messages** (Public)
 
-#### **الغرض**
-إرسال رسالة دعم من Smart Clinic إلى SourcePlus
+Create a new support conversation.
 
-#### **Authentication**
-❌ **Not Required** - Public endpoint for Smart Clinic
-
-#### **Request Body**
+**Request**:
 ```json
 {
-  "clinicId": "abc-123-def",
-  "clinicName": "ABC Dental Clinic",
-  "accountCode": "CLINIC-2024-001",
-  "message": "نحتاج مساعدة في تفعيل ميزة الأشعة"
+  "clinicId": "abc-123",
+  "clinicName": "ABC Dental",
+  "accountCode": "CLINIC-001",
+  "subject": "Need help with X-Ray feature",
+  "message": "We're having trouble activating the X-Ray module...",
+  "priority": "HIGH"
 }
 ```
 
-#### **Validation Schema**
-```typescript
-{
-  clinicId: z.string().uuid(),
-  clinicName: z.string(),
-  accountCode: z.string().optional(),
-  message: z.string().min(10).max(5000)
-}
-```
-
-#### **Request Example**
-```bash
-curl -X POST "https://api.sourceplus.com/api/support/messages" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "clinicId": "abc-123-def",
-    "clinicName": "ABC Dental Clinic",
-    "accountCode": "CLINIC-2024-001",
-    "message": "نحتاج مساعدة في تفعيل ميزة الأشعة"
-  }'
-```
-
-#### **Response 201 Created**
+**Response**:
 ```json
 {
-  "id": "msg-uuid-123",
-  "clinicId": "abc-123-def",
-  "clinicName": "ABC Dental Clinic",
-  "accountCode": "CLINIC-2024-001",
-  "message": "نحتاج مساعدة في تفعيل ميزة الأشعة",
+  "id": "msg-uuid",
+  "clinicId": "abc-123",
+  "clinicName": "ABC Dental",
+  "accountCode": "CLINIC-001",
+  "subject": "Need help with X-Ray feature",
+  "message": "We're having trouble...",
   "source": "SMART_CLINIC",
   "status": "NEW",
+  "priority": "HIGH",
+  "assignedTo": null,
   "readAt": null,
   "closedAt": null,
-  "createdAt": "2025-12-21T06:15:00.000Z",
-  "updatedAt": "2025-12-21T06:15:00.000Z"
-}
-```
-
-#### **Audit Log**
-```javascript
-{
-  "action": "SUPPORT_MESSAGE_CREATED",
-  "details": "Support message from ABC Dental Clinic (abc-123-def)",
-  "ip": "192.168.1.1"
+  "createdAt": "2025-12-21T12:00:00Z",
+  "updatedAt": "2025-12-21T12:00:00Z"
 }
 ```
 
 ---
 
-### **5. GET /support/messages** (Admin)
+### **2. POST /api/support/messages/:id/replies** (Public)
 
-#### **الغرض**
-الحصول على جميع رسائل الدعم (مع filtering)
+Add a reply from clinic.
 
-#### **Authentication**
-✅ **Required** - Admin only
-
-#### **Query Parameters**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `status` | string | ❌ No | Filter: NEW, READ, CLOSED |
-| `clinicId` | string | ❌ No | Filter by clinic ID |
-| `search` | string | ❌ No | Search in name/code/message |
-
-#### **Request Examples**
-```bash
-# Get all messages
-curl "https://api.sourceplus.com/support/messages" \
-  -H "Authorization: Bearer <token>"
-
-# Get only new messages
-curl "https://api.sourceplus.com/support/messages?status=NEW" \
-  -H "Authorization: Bearer <token>"
-
-# Search
-curl "https://api.sourceplus.com/support/messages?search=الأشعة" \
-  -H "Authorization: Bearer <token>"
-```
-
-#### **Response 200 OK**
+**Request**:
 ```json
 {
-  "messages": [
-    {
-      "id": "msg-uuid-123",
-      "clinicId": "abc-123-def",
-      "clinicName": "ABC Dental Clinic",
-      "accountCode": "CLINIC-2024-001",
-      "message": "نحتاج مساعدة في تفعيل ميزة الأشعة",
-      "source": "SMART_CLINIC",
-      "status": "NEW",
-      "readAt": null,
-      "closedAt": null,
-      "createdAt": "2025-12-21T06:15:00.000Z",
-      "updatedAt": "2025-12-21T06:15:00.000Z"
-    }
-  ],
-  "unreadCount": 5
+  "content": "We also noticed the same issue yesterday..."
 }
 ```
 
-#### **Search Logic**
-```typescript
-// Case-insensitive search in multiple fields
-where: {
-  OR: [
-    { clinicName: { contains: search, mode: 'insensitive' } },
-    { accountCode: { contains: search, mode: 'insensitive' } },
-    { message: { contains: search, mode: 'insensitive' } }
+**Behavior**:
+- ✅ Adds reply to conversation
+- ✅ Re-opens message if it was closed
+- ✅ Notifies assigned admin
+
+---
+
+### **3. GET /api/support/messages/:id/conversation** (Public)
+
+Get full conversation (for clinic to view their messages).
+
+**Response**:
+```json
+{
+  "id": "msg-uuid",
+  "subject": "Need help with X-Ray feature",
+  "message": "Initial message...",
+  "status": "READ",
+  "priority": "HIGH",
+  "createdAt": "2025-12-21T12:00:00Z",
+  "replies": [
+    {
+      "id": "reply-1",
+      "senderName": "ABC Dental",
+      "content": "We also noticed...",
+      "isFromAdmin": false,
+      "createdAt": "2025-12-21T12:05:00Z"
+    },
+    {
+      "id": "reply-2",
+      "senderName": "Support Team",
+      "content": "Thank you for reporting...",
+      "isFromAdmin": true,
+      "createdAt": "2025-12-21T12:10:00Z"
+    }
   ]
 }
 ```
 
-#### **Limits**
-- Maximum 100 messages per request
-- Ordered by `createdAt DESC`
-
 ---
 
-### **6. GET /support/messages/:id** (Admin)
+### **4. GET /support/messages** (Admin)
 
-#### **الغرض**
-الحصول على رسالة واحدة (auto-marks as READ)
+Get all support conversations with filters.
 
-#### **Authentication**
-✅ **Required** - Admin only
+**Query Parameters**:
+- `status`: NEW | READ | CLOSED
+- `priority`: LOW | NORMAL | HIGH | URGENT
+- `clinicId`: Filter by clinic
+- `search`: Search in subject/message
+- `assignedTo`: Filter by assigned admin
 
-#### **Parameters**
-| Name | Type | In | Required | Description |
-|------|------|-----|----------|-------------|
-| `id` | string (UUID) | path | ✅ Yes | معرّف الرسالة |
-
-#### **Special Behavior**
-⚡ **Auto-mark as READ**: إذا كانت الرسالة `NEW`، يتم تحديثها تلقائياً إلى `READ` وتسجيل `readAt`
-
-#### **Request Example**
+**Request**:
 ```bash
-curl "https://api.sourceplus.com/support/messages/msg-uuid-123" \
+curl "https://api.sourceplus.com/support/messages?status=NEW&priority=URGENT" \
   -H "Authorization: Bearer <token>"
 ```
 
-#### **Response 200 OK**
+**Response**:
 ```json
 {
-  "id": "msg-uuid-123",
-  "clinicId": "abc-123-def",
-  "clinicName": "ABC Dental Clinic",
-  "accountCode": "CLINIC-2024-001",
-  "message": "نحتاج مساعدة في تفعيل ميزة الأشعة",
-  "source": "SMART_CLINIC",
-  "status": "READ",
-  "readAt": "2025-12-21T06:20:00.000Z",
-  "closedAt": null,
-  "createdAt": "2025-12-21T06:15:00.000Z",
-  "updatedAt": "2025-12-21T06:20:00.000Z"
-}
-```
-
-#### **Audit Log (if auto-marked)**
-```javascript
-{
-  "userId": "admin-uuid",
-  "action": "SUPPORT_MESSAGE_READ",
-  "details": "Read support message from ABC Dental Clinic",
-  "ip": "192.168.1.1"
-}
-```
-
-#### **Response 404 Not Found**
-```json
-{
-  "message": "Support message not found"
+  "messages": [
+    {
+      "id": "msg-uuid",
+      "subject": "Urgent: System down",
+      "clinicName": "XYZ Clinic",
+      "status": "NEW",
+      "priority": "URGENT",
+      "assignedUser": {
+        "id": "admin-1",
+        "name": "John Doe",
+        "email": "john@support.com"
+      },
+      "replies": [...],
+      "_count": { "replies": 3 },
+      "createdAt": "2025-12-21T12:00:00Z"
+    }
+  ],
+  "unreadCount": 15
 }
 ```
 
 ---
 
-### **7. PATCH /support/messages/:id** (Admin)
+### **5. GET /support/messages/:id** (Admin)
 
-#### **الغرض**
-تحديث حالة الرسالة
+Get single conversation with full details.
 
-#### **Authentication**
-✅ **Required** - Admin only
+**Behavior**:
+- ✅ Auto-marks as READ if status is NEW
+- ✅ Logs admin view in audit
+- ✅ Returns full conversation history
 
-#### **Parameters**
-| Name | Type | In | Required | Description |
-|------|------|-----|----------|-------------|
-| `id` | string (UUID) | path | ✅ Yes | معرّف الرسالة |
+---
 
-#### **Request Body**
+### **6. POST /support/messages/:id/replies** (Admin)
+
+Send admin reply.
+
+**Request**:
+```json
+{
+  "content": "I can help you with that. Please try..."
+}
+```
+
+**Behavior**:
+- ✅ Adds reply as admin
+- ✅ Marks message as READ
+- ✅ Logs in audit trail
+
+---
+
+### **7. PATCH /support/messages/:id/status** (Admin)
+
+Update conversation status.
+
+**Request**:
 ```json
 {
   "status": "CLOSED"
 }
 ```
 
-####** Validation Schema**
-```typescript
-{
-  status: z.enum(['NEW', 'READ', 'CLOSED'])
-}
-```
+**Values**: NEW | READ | CLOSED
 
-#### **Request Example**
-```bash
-curl -X PATCH "https://api.sourceplus.com/support/messages/msg-uuid-123" \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{"status": "CLOSED"}'
-```
+---
 
-#### **Response 200 OK**
+### **8. PATCH /support/messages/:id/assign** (Admin)
+
+Assign conversation to admin.
+
+**Request**:
 ```json
 {
-  "id": "msg-uuid-123",
-  "status": "CLOSED",
-  "closedAt": "2025-12-21T06:25:00.000Z",
-  "readAt": "2025-12-21T06:20:00.000Z",
-  "...": "..."
-}
-```
-
-#### **Timestamp Logic**
-```typescript
-if (status === 'READ' && !message.readAt) {
-  updateData.readAt = new Date();
-}
-
-if (status === 'CLOSED' && !message.closedAt) {
-  updateData.closedAt = new Date();
-}
-```
-
-#### **Audit Log**
-```javascript
-{
-  "userId": "admin-uuid",
-  "action": "SUPPORT_MESSAGE_STATUS_UPDATED",
-  "details": "Changed support message status to CLOSED for ABC Dental Clinic",
-  "ip": "192.168.1.1"
+  "assignedTo": "admin-uuid"
 }
 ```
 
 ---
 
-### **8. DELETE /support/messages/:id** (Admin)
+### **9. PATCH /support/messages/:id/priority** (Admin)
 
-#### **الغرض**
-حذف رسالة دعم
+Update priority level.
 
-#### **Authentication**
-✅ **Required** - Admin only
+**Request**:
+```json
+{
+  "priority": "URGENT"
+}
+```
 
-#### **Parameters**
-| Name | Type | In | Required | Description |
-|------|------|-----|----------|-------------|
-| `id` | string (UUID) | path | ✅ Yes | معرّف الرسالة |
+**Values**: LOW | NORMAL | HIGH | URGENT
 
-#### **Request Example**
+---
+
+### **10. DELETE /support/messages/:id** (Admin)
+
+Delete conversation and all replies (cascade).
+
 ```bash
-curl -X DELETE "https://api.sourceplus.com/support/messages/msg-uuid-123" \
+curl -X DELETE "https://api.sourceplus.com/support/messages/msg-uuid" \
   -H "Authorization: Bearer <token>"
-```
-
-#### **Response 200 OK**
-```json
-{
-  "success": true
-}
-```
-
-#### **Audit Log**
-```javascript
-{
-  "userId": "admin-uuid",
-  "action": "SUPPORT_MESSAGE_DELETED",
-  "details": "Deleted support message from ABC Dental Clinic",
-  "ip": "192.168.1.1"
-}
-```
-
-#### **Response 404 Not Found**
-```json
-{
-  "message": "Support message not found"
-}
-```
-
----
-
-## 📮 Support Routes API (Legacy)
-
-هذه الـ endpoints للتوافق مع POS القديم. تستخدم نفس الـ database لكن بـ schema مختلف.
-
-### **9. POST /api/support/messages** (Public - Legacy)
-
-#### **Request Body**
-```json
-{
-  "name": "ABC Dental Clinic",
-  "serial": "CLINIC-001",
-  "message": "نحتاج مساعدة"
-}
-```
-
-#### **Mapping to New Schema**
-```typescript
-{
-  clinicId: 'legacy-support',
-  clinicName: data.name,
-  accountCode: data.serial,
-  message: data.message,
-  source: 'LEGACY_POS',
-  status: 'NEW'
-}
-```
-
----
-
-## ⚠️ Error Handling
-
-### **HTTP Status Codes**
-| Code | Meaning | When |
-|------|---------|------|
-| 200 | OK | Successful GET/PUT/PATCH/DELETE |
-| 201 | Created | Successful POST |
-| 400 | Bad Request | Validation error |
-| 401 | Unauthorized | Missing/invalid token |
-| 403 | Forbidden | Insufficient permissions |
-| 404 | Not Found | Resource doesn't exist |
-| 500 | Server Error | Internal error |
-
-### **Error Response Format**
-```json
-{
-  "message": "Error description"
-}
-```
-
-### **Common Errors**
-
-#### **Validation Error (400)**
-```json
-{
-  "message": "Validation error: message must be between 10 and 5000 characters"
-}
-```
-
-#### **Unauthorized (401)**
-```json
-{
-  "message": "Unauthorized"
-}
-```
-
-#### **Not Found (404)**
-```json
-{
-  "message": "Clinic not found"
-}
 ```
 
 ---
 
 ## 🗄️ Database Schema
 
-### **ClinicControl Model**
-```prisma
-model ClinicControl {
-  id               String   @id @default(uuid())
-  clinicId         String   @unique
-  storageLimitMB   Int      @default(1024)
-  usersLimit       Int      @default(3)
-  features         Json     @default("{\"patients\":true,\"appointments\":true,\"orthodontics\":false,\"xray\":false,\"ai\":false}")
-  locked           Boolean  @default(false)
-  lockReason       String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  clinic           Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  
-  @@map("clinic_controls")
-}
-```
-
 ### **SupportMessage Model**
+
 ```prisma
 model SupportMessage {
   id           String               @id @default(uuid())
   clinicId     String
   clinicName   String
   accountCode  String?
+  subject      String               // ✨ NEW
   message      String               @db.Text
   source       String               @default("SMART_CLINIC")
   status       SupportMessageStatus @default(NEW)
+  priority     MessagePriority      @default(NORMAL) // ✨ NEW
+  assignedTo   String?              // ✨ NEW
+  assignedUser User?                @relation(...)
   readAt       DateTime?
   closedAt     DateTime?
   createdAt    DateTime             @default(now())
   updatedAt    DateTime             @updatedAt
-
+  
+  replies      SupportReply[]       // ✨ NEW
+  
   @@index([clinicId])
   @@index([status])
-  @@index([createdAt])
+  @@index([priority])
+  @@index([assignedTo])
   @@map("support_messages")
 }
+```
 
+### **SupportReply Model** (NEW)
+
+```prisma
+model SupportReply {
+  id          String         @id @default(uuid())
+  messageId   String
+  message     SupportMessage @relation(...)
+  senderId    String?        // null for clinic
+  senderName  String
+  content     String         @db.Text
+  isFromAdmin Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+  
+  @@index([messageId])
+  @@map("support_replies")
+}
+```
+
+### **Enums**
+
+```prisma
 enum SupportMessageStatus {
   NEW
   READ
   CLOSED
+}
+
+enum MessagePriority {  // ✨ NEW
+  LOW
+  NORMAL
+  HIGH
+  URGENT
 }
 ```
 
@@ -765,110 +381,88 @@ enum SupportMessageStatus {
 
 ## ✅ Best Practices
 
-### **For Smart Clinic Integration**
+### **For Smart Clinic**
 
-1. **Polling Frequency**:
-   ```typescript
-   // Call controls every 5-10 minutes
-   setInterval(async () => {
-     const controls = await fetchControls(clinicId);
-     applyControls(controls);
-   }, 5 * 60 * 1000); // 5 minutes
-   ```
+1. **Create descriptive subjects**:
+```typescript
+{
+  subject: "X-Ray module activation issue",  // ✅ Good
+  subject: "Help needed",                     // ❌ Bad
+}
+```
 
-2. **Error Handling**:
-   ```typescript
-   try {
-     const controls = await fetch(`${API_URL}/api/clinics/${clinicId}/controls`);
-     if (controls.locked) {
-       logoutAllUsers();
-       showLockedScreen(controls.lockReason);
-     }
-   } catch (error) {
-     // Use cached controls
-     // Log error
-     // Retry with exponential backoff
-   }
-   ```
+2. **Set appropriate priority**:
+- `URGENT`: System down, data loss
+- `HIGH`: Feature not working
+- `NORMAL`: Questions, how-to
+- `LOW`: Feature requests
 
-3. **Feature Flags**:
-   ```typescript
-   if (!controls.features.orthodontics) {
-     hideOrthodonticsModule();
-   }
-   ```
-
-4. **Limits Enforcement**:
-   ```typescript
-   if (storageUsed > controls.storageLimitMB * 1024 * 1024) {
-     throw new Error('Storage limit exceeded');
-   }
-   
-   if (activeUsers >= controls.usersLimit) {
-     throw new Error('User limit reached');
-   }
-   ```
-
-### **For SourcePlus Admin**
-
-1. **Gradual Changes**:
-   - Don't reduce limits drastically
-   - Warn clinics before locking
-
-2. **Support Messages**:
-   - Check daily for new messages
-   - Respond promptly
-   - Close resolved messages
-
-3. **Audit Review**:
-   - Review audit logs regularly
-   -Monitor control changes
+3. **Monitor conversation**:
+```typescript
+// Poll for replies every 30 seconds
+setInterval(async () => {
+  const conversation = await api.getConversation(messageId);
+  if (conversation.replies.length > lastKnownCount) {
+    notifyUser("New reply from support!");
+  }
+}, 30000);
+```
 
 ---
 
-## 🧪 Testing
+### **For SourcePlus Admin**
 
-### **Complete Test Flow**
-```bash
-# 1. Get clinic controls (public)
-curl "http://localhost:3001/api/clinics/test-id/controls"
+1. **Assign messages**:
+- Assign URGENT messages immediately
+- Distribute workload among team
 
-# 2. Get usage stats (admin)
-curl "http://localhost:3001/api/clinics/test-id/usage" \
-  -H "Authorization: Bearer <token>"
+2. **Reply promptly**:
+- URGENT: < 1 hour
+- HIGH: < 4 hours
+- NORMAL: < 24 hours
+- LOW: < 72 hours
 
-# 3. Update controls (admin)
-curl -X PUT "http://localhost:3001/api/clinics/test-id/controls" \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{"storageLimitMB": 2048}'
+3. **Close conversations**:
+- Always ask "Is there anything else?" before closing
+- Closed conversations can be reopened by clinic replies
 
-# 4. Send support message (public)
-curl -X POST "http://localhost:3001/api/support/messages" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "clinicId": "test-id",
-    "clinicName": "Test Clinic",
-    "message": "Test support message"
-  }'
+---
 
-# 5. Get support messages (admin)
-curl "http://localhost:3001/support/messages" \
-  -H "Authorization: Bearer <token>"
+## 📊 Workflow Example
 
-# 6. View message (admin - auto-read)
-curl "http://localhost:3001/support/messages/<msg-id>" \
-  -H "Authorization: Bearer <token>"
+### **Complete Support Flow**
 
-# 7. Close message (admin)
-curl -X PATCH "http://localhost:3001/support/messages/<msg-id>" \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{"status": "CLOSED"}'
-
-# 8. Delete message (admin)
-curl -X DELETE "http://localhost:3001/support/messages/<msg-id>" \
-  -H "Authorization: Bearer <token>"
+```
+1. Clinic sends message
+   POST /api/support/messages
+   {
+     "subject": "Can't activate AI features",
+     "message": "We upgraded but AI is still disabled",
+     "priority": "HIGH"
+   }
+   
+2. Admin sees NEW message (purple badge)
+   GET /support/messages?status=NEW
+   
+3. Admin opens conversation
+   GET /support/messages/:id
+   → Auto-marks as READ
+   
+4. Admin assigns to specialist
+   PATCH /support/messages/:id/assign
+   { "assignedTo": "ai-specialist-uuid" }
+   
+5. Specialist replies
+   POST /support/messages/:id/replies
+   { "content": "I see the issue. Let me guide you..." }
+   
+6. Clinic replies back
+   POST /api/support/messages/:id/replies
+   { "content": "Thanks! That helped." }
+   
+7. Specialist closes
+   PATCH /support/messages/:id/status
+   { "status": "CLOSED" }
 ```
 
 ---
@@ -877,48 +471,51 @@ curl -X DELETE "http://localhost:3001/support/messages/<msg-id>" \
 
 | Endpoint | Method | Auth | Purpose |
 |----------|--------|------|---------|
-| `/api/clinics/:id/controls` | GET | ❌ No | Get clinic controls |
-| `/api/clinics/:id/controls` | PUT | ✅ Admin | Update controls |
-| `/api/clinics/:id/usage` | GET | ✅ Admin | Get usage stats |
-| `/api/support/messages` | POST | ❌ No | Send support message |
-| `/support/messages` | GET | ✅ Admin | List messages |
-| `/support/messages/:id` | GET | ✅ Admin | View message (auto-read) |
-| `/support/messages/:id` | PATCH | ✅ Admin | Update status |
-| `/support/messages/:id` | DELETE | ✅ Admin | Delete message |
+| `/api/support/messages` | POST | ❌ No | Create conversation |
+| `/api/support/messages/:id/replies` | POST | ❌ No | Clinic reply |
+| `/api/support/messages/:id/conversation` | GET | ❌ No | View conversation |
+| `/support/messages` | GET | ✅ Admin | List all |
+| `/support/messages/:id` | GET | ✅ Admin | View details |
+| `/support/messages/:id/replies` | POST | ✅ Admin | Admin reply |
+| `/support/messages/:id/status` | PATCH | ✅ Admin | Update status |
+| `/support/messages/:id/assign` | PATCH | ✅ Admin | Assign |
+| `/support/messages/:id/priority` | PATCH | ✅ Admin | Update priority |
+| `/support/messages/:id` | DELETE | ✅ Admin | Delete |
 
 ---
 
-## 🔒 Security Checklist
+## 🔄 Migration Guide (v3 → v4)
 
-- ✅ HTTPS in production
-- ✅ JWT validation
-- ✅ Role-based access control
-- ✅ Input validation (Zod schemas)
-- ✅ SQL injection prevention (Prisma ORM)
-- ✅ Rate limiting (recommended)
-- ✅ Audit logging
-- ✅ CORS configuration
-- ✅ Sensitive data encryption
+### **Breaking Changes**:
 
----
+1. **Added required field**: `subject`
+2. **Changed endpoint**: `/support/messages/:id` → `/support/messages/:id/status` for status updates
+3. **New endpoints**: See table above
 
-## 📈 API Versioning
+### **Migration Steps**:
 
-**Current**: v3.1
+```bash
+# 1. Run Prisma migration
+cd server
+npx prisma migrate dev --name support_conversations
 
-**Changelog**:
-- **v3.1** (2025-12-21): Updated documentation with actual implementation
-- **v3.0** (2025-12-21): Added Support Messages API, Usage API
-- **v2.0** (2025-12-20): Added Controls API
-- **v1.0** (2025-12-15): Initial release
+# 2. Update API client
+# - Add subject field to createMessage
+# - Update updateStatus endpoint
+# - Add new methods (addReply, assign, etc.)
 
----
-
-**API Version**: 3.1  
-**Maintained by**: SourcePlus Development Team  
-**Last Updated**: 2025-12-21  
-**License**: Proprietary
+# 3. Update UI
+# - Add subject input field
+# - Implement conversation view
+# - Add priority selector
+```
 
 ---
 
-**🎉 Happy Integrating!**
+**API Version**: 4.0  
+**Created**: 2025-12-21  
+**Status**: ✅ **Production Ready**
+
+---
+
+**🎉 Happy Chatting!**

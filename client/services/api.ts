@@ -383,8 +383,8 @@ export const api = {
     }>(`/api/clinics/${id}/usage`);
   },
 
-  // -- Support Messages --
-  getSupportMessages(params?: { status?: string; clinicId?: string; search?: string }) {
+  // -- Support Messages (Conversations) --
+  getSupportMessages(params?: { status?: string; clinicId?: string; search?: string; priority?: string }) {
     const query = new URLSearchParams(params as any).toString();
     return doRequest<{
       messages: Array<{
@@ -392,38 +392,90 @@ export const api = {
         clinicId: string;
         clinicName: string;
         accountCode?: string;
+        subject: string;
         message: string;
         source: string;
         status: 'NEW' | 'READ' | 'CLOSED';
+        priority: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+        assignedTo?: string;
+        assignedUser?: { id: string; name: string; email: string };
         readAt?: string;
         closedAt?: string;
         createdAt: string;
         updatedAt: string;
+        replies?: Array<{
+          id: string;
+          messageId: string;
+          senderId?: string;
+          senderName: string;
+          content: string;
+          isFromAdmin: boolean;
+          createdAt: string;
+        }>;
+        _count?: { replies: number };
       }>;
       unreadCount: number;
     }>(`/support/messages${query ? `?${query}` : ''}`);
   },
+
   getSupportMessage(id: string) {
     return doRequest<{
       id: string;
       clinicId: string;
       clinicName: string;
       accountCode?: string;
+      subject: string;
       message: string;
       source: string;
       status: 'NEW' | 'READ' | 'CLOSED';
+      priority: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+      assignedTo?: string;
+      assignedUser?: { id: string; name: string; email: string };
       readAt?: string;
       closedAt?: string;
       createdAt: string;
       updatedAt: string;
+      replies: Array<{
+        id: string;
+        messageId: string;
+        senderId?: string;
+        senderName: string;
+        content: string;
+        isFromAdmin: boolean;
+        createdAt: string;
+      }>;
+      _count?: { replies: number };
     }>(`/support/messages/${id}`);
   },
+
+  addSupportReply(messageId: string, content: string) {
+    return doRequest(`/support/messages/${messageId}/replies`, {
+      method: 'POST',
+      body: JSON.stringify({ content })
+    });
+  },
+
   updateSupportMessageStatus(id: string, status: 'NEW' | 'READ' | 'CLOSED') {
-    return doRequest(`/support/messages/${id}`, {
+    return doRequest(`/support/messages/${id}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status })
     });
   },
+
+  assignSupportMessage(id: string, assignedTo: string | null) {
+    return doRequest(`/support/messages/${id}/assign`, {
+      method: 'PATCH',
+      body: JSON.stringify({ assignedTo })
+    });
+  },
+
+  updateSupportPriority(id: string, priority: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT') {
+    return doRequest(`/support/messages/${id}/priority`, {
+      method: 'PATCH',
+      body: JSON.stringify({ priority })
+    });
+  },
+
   deleteSupportMessage(id: string) {
     return doRequest(`/support/messages/${id}`, {
       method: 'DELETE'
