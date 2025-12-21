@@ -15,7 +15,9 @@ import {
     ArrowLeft,
     Search,
     Filter,
-    Users
+    Users,
+    Trash,
+    RefreshCw
 } from 'lucide-react';
 
 interface SupportMessage {
@@ -148,15 +150,23 @@ const SupportMessages: React.FC = () => {
             setSelectedMessage(fullMessage);
         } catch (error) {
             console.error('Failed to load message:', error);
+            alert('Failed to load message details');
         }
     };
 
     const handleSendReply = async () => {
-        if (!selectedMessage || !replyContent.trim()) return;
+        if (!selectedMessage || !replyContent.trim()) {
+            alert('Please enter a reply message');
+            return;
+        }
 
         try {
             setSending(true);
+            console.log('📤 Sending reply to message:', selectedMessage.id);
+
             await api.addSupportReply(selectedMessage.id, replyContent);
+
+            console.log('✅ Reply sent successfully');
             setReplyContent('');
 
             // Reload conversation
@@ -164,11 +174,41 @@ const SupportMessages: React.FC = () => {
             setSelectedMessage(updated);
 
             // Reload messages list
-            loadMessages();
-        } catch (error) {
-            console.error('Failed to send reply:', error);
+            await loadMessages();
+
+            console.log('✅ Messages list refreshed');
+        } catch (error: any) {
+            console.error('❌ Failed to send reply:', error);
+            alert(`Failed to send reply: ${error.response?.data?.message || error.message}`);
         } finally {
             setSending(false);
+        }
+    };
+
+    const handleDeleteMessage = async (messageId: string) => {
+        if (!confirm('Are you sure you want to delete this message? This action cannot be undone.')) {
+            return;
+        }
+
+        try {
+            console.log('🗑️ Deleting message:', messageId);
+
+            await api.deleteSupportMessage(messageId);
+
+            console.log('✅ Message deleted successfully');
+
+            // Close modal if this message is selected
+            if (selectedMessage?.id === messageId) {
+                setSelectedMessage(null);
+            }
+
+            // Reload messages list
+            await loadMessages();
+
+            alert('Message deleted successfully');
+        } catch (error: any) {
+            console.error('❌ Failed to delete message:', error);
+            alert(`Failed to delete message: ${error.response?.data?.message || error.message}`);
         }
     };
 
@@ -176,12 +216,18 @@ const SupportMessages: React.FC = () => {
         if (!selectedMessage) return;
 
         try {
+            console.log(`🔄 Updating status to ${status} for message:`, selectedMessage.id);
+
             await api.updateSupportMessageStatus(selectedMessage.id, status);
+
+            console.log('✅ Status updated successfully');
+
             const updated = await api.getSupportMessage(selectedMessage.id);
             setSelectedMessage(updated);
-            loadMessages();
-        } catch (error) {
-            console.error('Failed to update status:', error);
+            await loadMessages();
+        } catch (error: any) {
+            console.error('❌ Failed to update status:', error);
+            alert(`Failed to update status: ${error.response?.data?.message || error.message}`);
         }
     };
 
@@ -395,7 +441,7 @@ const SupportMessages: React.FC = () => {
                                             {selectedMessage.status !== 'CLOSED' && (
                                                 <button
                                                     onClick={() => handleUpdateStatus('CLOSED')}
-                                                    className="px-4 py-2 bg-slate-500 hover:bg-slate-600 text-white rounded-lg text-sm font-medium"
+                                                    className="px-4 py-2 bg-slate-500 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-all"
                                                 >
                                                     Close
                                                 </button>
@@ -403,11 +449,20 @@ const SupportMessages: React.FC = () => {
                                             {selectedMessage.status === 'CLOSED' && (
                                                 <button
                                                     onClick={() => handleUpdateStatus('READ')}
-                                                    className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium"
+                                                    className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium transition-all"
                                                 >
                                                     Reopen
                                                 </button>
                                             )}
+                                            {/* Delete Button */}
+                                            <button
+                                                onClick={() => handleDeleteMessage(selectedMessage.id)}
+                                                className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-sm font-medium transition-all flex items-center gap-1"
+                                                title="Delete Message"
+                                            >
+                                                <Trash size={16} />
+                                                Delete
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
