@@ -375,6 +375,13 @@ export const api = {
       body: JSON.stringify(payload)
     });
   },
+  getClinicUsage(id: string) {
+    return doRequest<{
+      activeUsersCount: number;
+      storageUsedMB: number;
+      lastUpdated: string;
+    }>(`/api/clinics/${id}/usage`);
+  },
 
   // -- Messages --
   getConversations() {

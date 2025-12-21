@@ -700,10 +700,10 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                                                     </button>
                                                     <button
                                                         onClick={() => setControlsModal(clinic)}
-                                                        className="p-2 text-purple-500 hover:bg-purple-500/10 rounded-lg transition-colors border border-purple-500/20"
-                                                        title="Manage Controls"
+                                                        className="group relative p-2 text-purple-500 hover:bg-purple-500/10 rounded-lg transition-all duration-200 border border-purple-500/20 hover:border-purple-500/40 hover:shadow-lg hover:shadow-purple-500/20"
+                                                        title={t('clinics.manageControls') || 'Control Dashboard'}
                                                     >
-                                                        <Settings size={18} />
+                                                        <Settings size={18} className="group-hover:rotate-90 transition-transform duration-300" />
                                                     </button>
                                                     {clinic.status === RegistrationStatus.PENDING && (
                                                         <>

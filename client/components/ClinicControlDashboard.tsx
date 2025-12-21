@@ -82,23 +82,22 @@ const ClinicControlDashboard: React.FC<ClinicControlDashboardProps> = ({ clinic,
     const loadData = async () => {
         try {
             setLoading(true);
-            const [controlsData, auditData] = await Promise.all([
+            const [controlsData, usageData, auditData] = await Promise.all([
                 api.getClinicControls(clinic.id),
+                api.getClinicUsage(clinic.id).catch(() => ({ activeUsersCount: 0, storageUsedMB: 0, lastUpdated: new Date().toISOString() })),
                 api.getAuditLogs().catch(() => [])
             ]);
 
             setControls(controlsData);
+            setUsage({
+                storageUsedMB: usageData.storageUsedMB,
+                activeUsersCount: usageData.activeUsersCount
+            });
 
             const clinicLogs = (auditData as AuditEntry[])
                 .filter(log => log.details.includes(clinic.name) || log.details.includes(clinic.id))
                 .slice(0, 10);
             setAuditLogs(clinicLogs);
-
-            // Mock usage - replace with real API
-            setUsage({
-                storageUsedMB: Math.floor(Math.random() * controlsData.storageLimitMB * 0.7),
-                activeUsersCount: Math.floor(Math.random() * controlsData.usersLimit)
-            });
         } catch (error) {
             console.error('Failed to load data:', error);
         } finally {

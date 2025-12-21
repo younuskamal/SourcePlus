@@ -133,7 +133,8 @@ export const translations = {
         reactivate: "Reactivate",
         "force-logout": "Force Logout",
         delete: "Delete"
-      }
+      },
+      manageControls: "Control Dashboard"
     },
     clinicDashboard: {
       title: "Clinic Control",
@@ -541,7 +542,8 @@ export const translations = {
         reactivate: "إعادة تفعيل",
         "force-logout": "تسجيل خروج إجباري",
         delete: "حذف نهائي"
-      }
+      },
+      manageControls: "لوحة التحكم"
     },
     clinicDashboard: {
       title: "لوحة تحكم العيادات",

@@ -557,4 +557,37 @@ export default async function clinicRoutes(app: FastifyInstance) {
 
         return reply.send({ success: true });
     });
+
+    // Get Clinic Usage Statistics
+    app.get('/api/clinics/:id/usage', { preHandler: [app.authenticate, app.authorize([Role.admin])] }, async (request, reply) => {
+        const { id } = request.params as { id: string };
+
+        const clinic = await app.prisma.clinic.findUnique({
+            where: { id },
+            include: {
+                users: {
+                    where: {
+                        status: { not: 'inactive' }
+                    }
+                }
+            }
+        });
+
+        if (!clinic) {
+            return reply.code(404).send({ message: 'Clinic not found' });
+        }
+
+        // Calculate active users (excluding inactive)
+        const activeUsersCount = clinic.users.length;
+
+        // TODO: Calculate storage from actual database
+        // For now, return 0 until storage tracking is implemented
+        const storageUsedMB = 0;
+
+        return reply.send({
+            activeUsersCount,
+            storageUsedMB,
+            lastUpdated: new Date().toISOString()
+        });
+    });
 }
