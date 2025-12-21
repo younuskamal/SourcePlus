@@ -36,10 +36,10 @@ export default async function supportMessagesRoutes(app: FastifyInstance) {
     // ========================================
 
     /**
-     * POST /api/support/messages
+     * POST /support/messages
      * Create a new support message/conversation
      */
-    app.post('/api/support/messages', async (request, reply) => {
+    app.post('/support/messages', async (request, reply) => {
         const data = createMessageSchema.parse(request.body);
 
         const message = await app.prisma.supportMessage.create({
@@ -68,7 +68,7 @@ export default async function supportMessagesRoutes(app: FastifyInstance) {
      * POST /api/support/messages/:id/replies
      * Add a reply from clinic (public)
      */
-    app.post('/api/support/messages/:id/replies', async (request, reply) => {
+    app.post('/support/messages/:id/replies', async (request, reply) => {
         const { id } = request.params as { id: string };
         const { content } = addReplySchema.parse(request.body);
 
@@ -113,7 +113,7 @@ export default async function supportMessagesRoutes(app: FastifyInstance) {
      * GET /api/support/messages/:id/conversation
      * Get full conversation (public - for clinic to view their messages)
      */
-    app.get('/api/support/messages/:id/conversation', async (request, reply) => {
+    app.get('/support/messages/:id/conversation', async (request, reply) => {
         const { id } = request.params as { id: string };
 
         const message = await app.prisma.supportMessage.findUnique({

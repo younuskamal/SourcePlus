@@ -12,7 +12,7 @@ import auditRoutes from './modules/audit/routes.js';
 import analyticsRoutes from './modules/analytics/routes.js';
 import backupRoutes from './modules/backup/routes.js';
 import clientRoutes from './modules/client/routes.js';
-import supportRoutes from './modules/support/routes.js';
+// import supportRoutes from './modules/support/routes.js'; // Legacy - disabled
 import clinicRoutes from './modules/clinics/routes.js';
 import subscriptionRoutes from './modules/subscription/routes.js';
 import messagesRoutes from './modules/messages/routes.js';
@@ -39,8 +39,8 @@ export const registerRoutes = (app: FastifyInstance) => {
   app.register(clientRoutes, { prefix: '/api/pos' });
   app.register(clinicRoutes, { prefix: '/api/clinics' });
   app.register(subscriptionRoutes, { prefix: '/api/subscription' });
-  app.register(supportRoutes, { prefix: '/api/support' });
+  // app.register(supportRoutes, { prefix: '/api/support' }); // Disabled: Conflicts with new support/messages.ts
   app.register(messagesRoutes, { prefix: '/api/messages' });
-  app.register(supportMessagesRoutes); // No prefix - routes defined in the module
+  app.register(supportMessagesRoutes, { prefix: '/api' }); // Prefix added to avoid conflicts
   app.register(trafficRoutes, { prefix: '/traffic' });
 };
