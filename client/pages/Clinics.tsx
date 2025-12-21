@@ -48,9 +48,10 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
 
             console.log('🔍 Loading clinics data...');
 
+
             const [clinicsData, plansData] = await Promise.all([
                 api.getClinics(),
-                api.getSubscriptionPlans()
+                api.getPlans() // Fixed: was getSubscriptionPlans
             ]);
 
             // Validate response
