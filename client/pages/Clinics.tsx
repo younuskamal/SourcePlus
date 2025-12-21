@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { Clinic, RegistrationStatus, SubscriptionPlan, ClinicSubscriptionStatus } from '../types';
-import ClinicControlDashboard from '../components/ClinicControlDashboard';
 import {
     StatCard,
     ClinicFilters,
@@ -20,6 +20,8 @@ interface ClinicsProps {
 type ActionType = 'approve' | 'reject' | 'suspend' | 'reactivate' | 'delete';
 
 const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
+    const navigate = useNavigate();
+
     // State
     const [clinics, setClinics] = useState<Clinic[]>([]);
     const [subscriptions, setSubscriptions] = useState<Record<string, ClinicSubscriptionStatus>>({});
@@ -31,7 +33,6 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
     );
     const [processing, setProcessing] = useState<string | null>(null);
     const [selectedClinic, setSelectedClinic] = useState<Clinic | null>(null);
-    const [controlsModal, setControlsModal] = useState<Clinic | null>(null);
     const [confirmAction, setConfirmAction] = useState<{ type: ActionType; clinic: Clinic } | null>(null);
     const [rejectReason, setRejectReason] = useState('');
     const [error, setError] = useState<string | null>(null);
@@ -78,7 +79,7 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                             const status = await api.getSubscriptionStatus(clinic.id);
                             return [clinic.id, status] as const;
                         } catch (err) {
-                            console.warn(`⚠️ Failed to load subscription for clinic ${clinic.id}:`, err);
+                            console.warn(`⚠️ Failed to load subscription for clinic ${clinic.id}: `, err);
                             return null;
                         }
                     })
@@ -95,7 +96,7 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
             let errorMessage = 'Failed to load clinics data';
 
             if (error.response) {
-                errorMessage = error.response.data?.message || `Server error: ${error.response.status}`;
+                errorMessage = error.response.data?.message || `Server error: ${error.response.status} `;
             } else if (error.message) {
                 errorMessage = error.message;
             }
@@ -140,7 +141,7 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
         try {
             setProcessing(clinic.id);
 
-            console.log(`🔄 Executing ${type} action for clinic:`, clinic.name);
+            console.log(`🔄 Executing ${type} action for clinic: `, clinic.name);
 
             switch (type) {
                 case 'approve':
@@ -167,8 +168,8 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
             await loadData(); // Reload data
 
         } catch (error: any) {
-            console.error(`❌ Failed to ${type} clinic:`, error);
-            alert(`Failed to ${type} clinic: ${error.response?.data?.message || error.message}`);
+            console.error(`❌ Failed to ${type} clinic: `, error);
+            alert(`Failed to ${type} clinic: ${error.response?.data?.message || error.message} `);
         } finally {
             setProcessing(null);
         }
@@ -272,7 +273,7 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                                 subscription={subscriptions[clinic.id]}
                                 onSelect={setSelectedClinic}
                                 onAction={(type) => setConfirmAction({ type, clinic })}
-                                onControls={() => setControlsModal(clinic)}
+                                onControls={() => navigate(`/clinic-control/${clinic.id}`)}
                                 processing={processing === clinic.id}
                                 viewMode={viewMode}
                             />
@@ -287,14 +288,6 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                     clinic={selectedClinic}
                     subscription={subscriptions[selectedClinic.id]}
                     onClose={() => setSelectedClinic(null)}
-                />
-            )}
-
-            {controlsModal && (
-                <ClinicControlDashboard
-                    clinic={controlsModal}
-                    onClose={() => setControlsModal(null)}
-                    onUpdate={loadData}
                 />
             )}
 

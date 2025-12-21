@@ -299,6 +299,9 @@ export const api = {
     const q = status ? `?status=${status}` : '';
     return doRequest<Clinic[]>(`/api/clinics/requests${q}`);
   },
+  getClinic(id: string) {
+    return doRequest<Clinic>(`/api/clinics/${id}`);
+  },
   approveClinic(id: string, payload?: { planId?: string; durationMonths?: number }) {
     return doRequest<Clinic>(`/api/clinics/${id}/approve`, {
       method: 'POST',
