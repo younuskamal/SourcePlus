@@ -16,6 +16,7 @@ import supportRoutes from './modules/support/routes.js';
 import clinicRoutes from './modules/clinics/routes.js';
 import subscriptionRoutes from './modules/subscription/routes.js';
 import messagesRoutes from './modules/messages/routes.js';
+import supportMessagesRoutes from './modules/support/messages.js';
 
 import { trafficRoutes } from './modules/traffic/traffic.routes.js';
 
@@ -40,5 +41,6 @@ export const registerRoutes = (app: FastifyInstance) => {
   app.register(subscriptionRoutes, { prefix: '/api/subscription' });
   app.register(supportRoutes, { prefix: '/api/support' });
   app.register(messagesRoutes, { prefix: '/api/messages' });
+  app.register(supportMessagesRoutes); // No prefix - routes defined in the module
   app.register(trafficRoutes, { prefix: '/traffic' });
 };

@@ -383,6 +383,53 @@ export const api = {
     }>(`/api/clinics/${id}/usage`);
   },
 
+  // -- Support Messages --
+  getSupportMessages(params?: { status?: string; clinicId?: string; search?: string }) {
+    const query = new URLSearchParams(params as any).toString();
+    return doRequest<{
+      messages: Array<{
+        id: string;
+        clinicId: string;
+        clinicName: string;
+        accountCode?: string;
+        message: string;
+        source: string;
+        status: 'NEW' | 'READ' | 'CLOSED';
+        readAt?: string;
+        closedAt?: string;
+        createdAt: string;
+        updatedAt: string;
+      }>;
+      unreadCount: number;
+    }>(`/support/messages${query ? `?${query}` : ''}`);
+  },
+  getSupportMessage(id: string) {
+    return doRequest<{
+      id: string;
+      clinicId: string;
+      clinicName: string;
+      accountCode?: string;
+      message: string;
+      source: string;
+      status: 'NEW' | 'READ' | 'CLOSED';
+      readAt?: string;
+      closedAt?: string;
+      createdAt: string;
+      updatedAt: string;
+    }>(`/support/messages/${id}`);
+  },
+  updateSupportMessageStatus(id: string, status: 'NEW' | 'READ' | 'CLOSED') {
+    return doRequest(`/support/messages/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status })
+    });
+  },
+  deleteSupportMessage(id: string) {
+    return doRequest(`/support/messages/${id}`, {
+      method: 'DELETE'
+    });
+  },
+
   // -- Messages --
   getConversations() {
     return doRequest<any[]>('/api/messages/conversations');

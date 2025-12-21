@@ -381,7 +381,24 @@ model ClinicMessage {
   @@index([createdAt])
 }
 
+model SupportMessage {
+  id           String               @id @default(uuid())
+  clinicId     String
+  clinicName   String
+  accountCode  String?
+  message      String               @db.Text
+  source       String               @default("SMART_CLINIC")
+  status       SupportMessageStatus @default(NEW)
+  readAt       DateTime?
+  closedAt     DateTime?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
 
+  @@index([clinicId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("support_messages")
+}
 
 enum ProductType {
   POS
@@ -393,4 +410,10 @@ enum RegistrationStatus {
   APPROVED
   REJECTED
   SUSPENDED
+}
+
+enum SupportMessageStatus {
+  NEW
+  READ
+  CLOSED
 }

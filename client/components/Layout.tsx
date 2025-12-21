@@ -19,7 +19,8 @@ import {
   Monitor,
   PieChart,
   ServerCog,
-  Stethoscope
+  Stethoscope,
+  MessageSquare
 } from 'lucide-react';
 import { useTranslation } from '../hooks/useTranslation';
 import { User } from '../types';
@@ -66,6 +67,7 @@ const Layout: React.FC<LayoutProps> = ({
     { id: 'clinic-dashboard', label: 'Clinic Dashboard', icon: LayoutDashboard, allowedRoles: ['admin'] },
     { id: 'clinics', label: t('nav.clinics'), icon: Stethoscope, allowedRoles: ['admin', 'developer'] },
     { id: 'manage-clinics', label: t('nav.manageClinics'), icon: LayoutDashboard, allowedRoles: ['admin'] },
+    { id: 'support-messages', label: t('nav.supportMessages'), icon: MessageSquare, allowedRoles: ['admin'] },
     { id: 'clinic-messages', label: 'Messages', icon: Bell, allowedRoles: ['admin', 'developer'] },
     { id: 'api', label: t('nav.apiDocs'), icon: Code2, allowedRoles: ['admin', 'developer'] },
   ];

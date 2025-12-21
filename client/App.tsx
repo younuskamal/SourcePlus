@@ -16,6 +16,7 @@ import Login from './pages/Login';
 import Clinics from './pages/Clinics';
 import ClinicMessages from './pages/ClinicMessages';
 import ClinicDashboard from './pages/ClinicDashboard';
+import SupportMessages from './pages/SupportMessages';
 import { useTranslation } from './hooks/useTranslation';
 import { User } from './types';
 import { api } from './services/api';
@@ -168,7 +169,7 @@ function AppContent() {
       }
     }
 
-    if (['clinic-dashboard', 'clinics', 'manage-clinics', 'clinic-messages'].includes(currentPage) && user.role !== 'admin') {
+    if (['clinic-dashboard', 'clinics', 'manage-clinics', 'clinic-messages', 'support-messages'].includes(currentPage) && user.role !== 'admin') {
       return <div className="p-8 text-center text-slate-500 dark:text-slate-400">Access Restricted</div>;
     }
 
@@ -180,6 +181,8 @@ function AppContent() {
       case 'financials': return <Financials currentLang={i18n.language} />;
       case 'updates': return <Updates currentLang={i18n.language} />;
       case 'notifications': return <Notifications currentLang={i18n.language} />;
+      case 'updates': return <Updates currentLang={i18n.language} />;
+      case 'notifications': return <Notifications currentLang={i18n.language} />;
       case 'support': return <Support currentLang={i18n.language} />;
       case 'currencies': return <Currencies currentLang={i18n.language} />;
       case 'config': return <Settings currentLang={i18n.language} onThemeChange={updateThemeColors} />;
@@ -189,12 +192,12 @@ function AppContent() {
       case 'clinics': return <Clinics viewMode="requests" />;
       case 'manage-clinics': return <Clinics viewMode="manage" />;
       case 'clinic-messages': return <ClinicMessages />;
+      case 'support-messages': return <SupportMessages />;
       default: return product === 'CLINIC'
         ? <ClinicDashboard setPage={setPage} />
         : <Dashboard currentLang={i18n.language} setPage={setPage} />;
     }
   };
-
   return (
     <AutoRefreshProvider tick={refreshTick} requestRefresh={requestRefresh}>
       <Layout
