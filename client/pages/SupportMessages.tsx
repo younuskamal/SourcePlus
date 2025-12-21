@@ -58,6 +58,7 @@ const SupportMessages: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState<'ALL' | 'NEW' | 'READ' | 'CLOSED'>('ALL');
     const [filterPriority, setFilterPriority] = useState<'ALL' | 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT'>('ALL');
+    const [error, setError] = useState<string | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -77,6 +78,8 @@ const SupportMessages: React.FC = () => {
     const loadMessages = async () => {
         try {
             setLoading(true);
+            setError(null); // Clear previous errors
+
             const params: any = {};
             if (filterStatus !== 'ALL') params.status = filterStatus;
             if (filterPriority !== 'ALL') params.priority = filterPriority;
@@ -92,9 +95,48 @@ const SupportMessages: React.FC = () => {
                 messages: response.messages
             });
 
-            setMessages(response.messages || []);
-        } catch (error) {
-            console.error('❌ Failed to load messages:', error);
+            // Validate response structure
+            if (!response || typeof response !== 'object') {
+                throw new Error('❌ Invalid response format from server');
+            }
+
+            if (!Array.isArray(response.messages)) {
+                console.error('⚠️ Messages is not an array:', response);
+                throw new Error('❌ Messages data is corrupted');
+            }
+
+            setMessages(response.messages);
+
+            // Log success
+            if (response.messages.length > 0) {
+                console.log(`✅ Successfully loaded ${response.messages.length} messages`);
+            } else {
+                console.log('ℹ️ No messages found (database might be empty)');
+            }
+
+        } catch (error: any) {
+            console.error('❌ Failed to load support messages:', error);
+
+            // Determine error message
+            let errorMessage = 'Failed to load support messages';
+
+            if (error.response) {
+                // HTTP error
+                errorMessage = error.response.data?.message || `Server error: ${error.response.status}`;
+            } else if (error.message) {
+                // JS error
+                errorMessage = error.message;
+            }
+
+            setError(errorMessage);
+            setMessages([]); // Clear messages on error
+
+            console.error('📊 Error details:', {
+                message: errorMessage,
+                response: error.response,
+                stack: error.stack
+            });
+
         } finally {
             setLoading(false);
         }
@@ -231,6 +273,29 @@ const SupportMessages: React.FC = () => {
                         {loading ? (
                             <div className="flex justify-center items-center h-64">
                                 <Loader2 className="animate-spin text-purple-500" size={48} />
+                            </div>
+                        ) : error ? (
+                            <div className="bg-rose-50 dark:bg-rose-900/20 border-2 border-rose-200 dark:border-rose-800 rounded-2xl p-6">
+                                <div className="flex items-start gap-4">
+                                    <div className="flex-shrink-0">
+                                        <AlertCircle className="text-rose-600 dark:text-rose-400" size={32} />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="text-lg font-bold text-rose-900 dark:text-rose-200 mb-2">
+                                            ⚠️ Error Loading Messages
+                                        </h3>
+                                        <p className="text-rose-700 dark:text-rose-300 mb-4">
+                                            {error}
+                                        </p>
+                                        <button
+                                            onClick={loadMessages}
+                                            className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-medium transition-all flex items-center gap-2"
+                                        >
+                                            <RefreshCw size={16} />
+                                            Retry
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         ) : messages.length === 0 ? (
                             <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-2xl">

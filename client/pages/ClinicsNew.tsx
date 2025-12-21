@@ -5,8 +5,8 @@ import { useTranslation } from '../hooks/useTranslation';
 import ClinicControlDashboard from '../components/ClinicControlDashboard';
 import {
     Building2, Search, Loader2, CheckCircle2, XCircle, Clock,
-    Mail, Phone, MapPin, Calendar, Settings, Eye,
-    AlertCircle, Crown, TrendingUp,
+    Mail, Phone, MapPin, Calendar, Settings, Eye, Lock, Unlock,
+    AlertCircle, Crown, TrendingUp, Users, HardDrive, Zap,
     RefreshCw, Ban, PlayCircle, Trash2, Filter, X
 } from 'lucide-react';
 
@@ -43,7 +43,7 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
     const loadData = async () => {
         try {
             setLoading(true);
-            setError(null);
+            setError(null); // Clear previous errors
 
             console.log('🔍 Loading clinics data...');
 
@@ -88,6 +88,7 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
         } catch (error: any) {
             console.error('❌ Failed to load clinics data:', error);
 
+            // Determine user-friendly error message
             let errorMessage = 'Failed to load clinics data';
 
             if (error.response) {
@@ -97,7 +98,7 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
             }
 
             setError(errorMessage);
-            setClinics([]);
+            setClinics([]); // Clear clinics on error
             setPlans([]);
 
             console.error('📊 Error details:', {

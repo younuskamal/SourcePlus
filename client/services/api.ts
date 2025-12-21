@@ -383,6 +383,7 @@ export const api = {
     }>(`/api/clinics/${id}/usage`);
   },
 
+
   // -- Support Messages (Conversations) --
   getSupportMessages(params?: { status?: string; clinicId?: string; search?: string; priority?: string }) {
     const query = new URLSearchParams(params as any).toString();
@@ -415,8 +416,9 @@ export const api = {
         _count?: { replies: number };
       }>;
       unreadCount: number;
-    }>(`/support/messages${query ? `?${query}` : ''}`);
+    }>(`/api/support/messages${query ? `?${query}` : ''}`);
   },
+
 
   getSupportMessage(id: string) {
     return doRequest<{
@@ -445,39 +447,39 @@ export const api = {
         createdAt: string;
       }>;
       _count?: { replies: number };
-    }>(`/support/messages/${id}`);
+    }>(`/api/support/messages/${id}`);
   },
 
   addSupportReply(messageId: string, content: string) {
-    return doRequest(`/support/messages/${messageId}/replies`, {
+    return doRequest(`/api/support/messages/${messageId}/replies`, {
       method: 'POST',
       body: JSON.stringify({ content })
     });
   },
 
   updateSupportMessageStatus(id: string, status: 'NEW' | 'READ' | 'CLOSED') {
-    return doRequest(`/support/messages/${id}/status`, {
+    return doRequest(`/api/support/messages/${id}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status })
     });
   },
 
   assignSupportMessage(id: string, assignedTo: string | null) {
-    return doRequest(`/support/messages/${id}/assign`, {
+    return doRequest(`/api/support/messages/${id}/assign`, {
       method: 'PATCH',
       body: JSON.stringify({ assignedTo })
     });
   },
 
   updateSupportPriority(id: string, priority: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT') {
-    return doRequest(`/support/messages/${id}/priority`, {
+    return doRequest(`/api/support/messages/${id}/priority`, {
       method: 'PATCH',
       body: JSON.stringify({ priority })
     });
   },
 
   deleteSupportMessage(id: string) {
-    return doRequest(`/support/messages/${id}`, {
+    return doRequest(`/api/support/messages/${id}`, {
       method: 'DELETE'
     });
   },
