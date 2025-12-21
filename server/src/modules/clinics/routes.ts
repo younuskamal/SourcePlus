@@ -558,7 +558,7 @@ export default async function clinicRoutes(app: FastifyInstance) {
     });
 
     // Get Clinic Usage Statistics
-    app.get('/api/clinics/:id/usage', { preHandler: [app.authenticate, app.authorize([Role.admin])] }, async (request, reply) => {
+    app.get('/:id/usage', { preHandler: [app.authenticate, app.authorize([Role.admin])] }, async (request, reply) => {
         const { id } = request.params as { id: string };
 
         const clinic = await app.prisma.clinic.findUnique({
@@ -592,9 +592,25 @@ export default async function clinicRoutes(app: FastifyInstance) {
         const totalStorageBytes = fileUploads.reduce((sum, file) => sum + (file.size || 0), 0);
         const storageUsedMB = Math.round((totalStorageBytes / (1024 * 1024)) * 100) / 100; // Convert to MB with 2 decimals
 
+        const storageLimitMB = controls?.storageLimitMB ?? 0;
+        const usersLimit = controls?.usersLimit ?? 0;
+        const storagePercentage = storageLimitMB
+            ? Math.min((storageUsedMB / storageLimitMB) * 100, 100)
+            : 0;
+        const usersPercentage = usersLimit
+            ? Math.min((activeUsersCount / usersLimit) * 100, 100)
+            : 0;
+
         const usageData = {
             activeUsersCount,
             storageUsedMB,
+            storageLimitMB,
+            usersLimit,
+            storagePercentage,
+            usersPercentage,
+            filesCount: fileUploads.length,
+            locked: controls?.locked ?? false,
+            lockReason: controls?.lockReason || null,
             lastUpdated: new Date().toISOString()
         };
 
@@ -603,14 +619,14 @@ export default async function clinicRoutes(app: FastifyInstance) {
             clinicId: id,
             clinicName: clinic.name,
             storageUsedMB,
-            storageLimitMB: controls?.storageLimitMB || 0,
-            storagePercentage: controls?.storageLimitMB ? Math.round((storageUsedMB / controls.storageLimitMB) * 100) : 0,
+            storageLimitMB,
+            storagePercentage: Math.round(storagePercentage),
             activeUsersCount,
-            usersLimit: controls?.usersLimit || 0,
-            usersPercentage: controls?.usersLimit ? Math.round((activeUsersCount / controls.usersLimit) * 100) : 0,
-            locked: controls?.locked || false,
-            lockReason: controls?.lockReason,
-            totalFilesCount: fileUploads.length
+            usersLimit,
+            usersPercentage: Math.round(usersPercentage),
+            locked: usageData.locked,
+            lockReason: usageData.lockReason,
+            totalFilesCount: usageData.filesCount
         }, 'CONTROL_PANEL_REAL_DATA');
 
         return reply.send(usageData);

@@ -26,20 +26,29 @@ import {
 interface ControlsData {
     storageLimitMB: number;
     usersLimit: number;
-    features: {
-        patients: boolean;
-        appointments: boolean;
-        orthodontics: boolean;
-        xray: boolean;
-        ai: boolean;
-    };
+    features: FeatureToggles;
     locked: boolean;
     lockReason: string | null;
 }
 
+interface FeatureToggles {
+    patients: boolean;
+    appointments: boolean;
+    orthodontics: boolean;
+    xray: boolean;
+    ai: boolean;
+}
+
 interface UsageData {
     storageUsedMB: number;
+    storageLimitMB: number;
+    storagePercentage: number;
     activeUsersCount: number;
+    usersLimit: number;
+    usersPercentage: number;
+    filesCount: number;
+    locked: boolean;
+    lockReason: string | null;
     lastUpdated: string;
 }
 
@@ -60,9 +69,9 @@ const ClinicControlPanel: React.FC = () => {
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
     // Form state
-    const [storageLimitMB, setStorageLimitMB] = useState(1024);
-    const [usersLimit, setUsersLimit] = useState(3);
-    const [features, setFeatures] = useState({
+    const [storageLimitInput, setStorageLimitInput] = useState(1024);
+    const [usersLimitInput, setUsersLimitInput] = useState(3);
+    const [features, setFeatures] = useState<FeatureToggles>({
         patients: true,
         appointments: true,
         orthodontics: false,
@@ -99,8 +108,8 @@ const ClinicControlPanel: React.FC = () => {
             setUsage(usageData);
 
             // Update form state
-            setStorageLimitMB(controlsData.storageLimitMB);
-            setUsersLimit(controlsData.usersLimit);
+            setStorageLimitInput(controlsData.storageLimitMB);
+            setUsersLimitInput(controlsData.usersLimit);
             setFeatures(controlsData.features);
             setLockReason(controlsData.lockReason || '');
         } catch (error: any) {
@@ -122,8 +131,8 @@ const ClinicControlPanel: React.FC = () => {
         try {
             setSaving(true);
             await api.updateClinicControls(id, {
-                storageLimitMB,
-                usersLimit,
+                storageLimitMB: storageLimitInput,
+                usersLimit: usersLimitInput,
                 features
             });
 
@@ -166,10 +175,10 @@ const ClinicControlPanel: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900 flex items-center justify-center">
-                <div className="text-center">
-                    <Loader2 size={64} className="animate-spin text-purple-600 mx-auto mb-4" />
-                    <p className="text-slate-600 dark:text-slate-300 text-lg">Loading clinic data...</p>
+            <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex items-center justify-center">
+                <div className="text-center text-slate-600 dark:text-slate-300">
+                    <Loader2 size={48} className="animate-spin mx-auto mb-4" />
+                    <p className="text-lg font-medium">Loading clinic data…</p>
                 </div>
             </div>
         );
@@ -177,13 +186,14 @@ const ClinicControlPanel: React.FC = () => {
 
     if (!clinic || !controls || !usage) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900 flex items-center justify-center">
-                <div className="text-center">
-                    <AlertTriangle size={64} className="text-rose-500 mx-auto mb-4" />
-                    <p className="text-slate-900 dark:text-white text-xl font-bold mb-2">Clinic not found</p>
+            <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex items-center justify-center">
+                <div className="text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-lg">
+                    <AlertTriangle size={48} className="text-amber-500 mx-auto mb-4" />
+                    <p className="text-slate-900 dark:text-white text-xl font-bold mb-3">Clinic data not available</p>
+                    <p className="text-slate-600 dark:text-slate-400 mb-6">Try refreshing or select another clinic.</p>
                     <button
                         onClick={() => navigate('/manage-clinics')}
-                        className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-medium transition-all"
+                        className="px-6 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-medium transition-colors"
                     >
                         Back to Clinics
                     </button>
@@ -192,8 +202,10 @@ const ClinicControlPanel: React.FC = () => {
         );
     }
 
-    const storagePercentage = Math.min((usage.storageUsedMB / storageLimitMB) * 100, 100);
-    const usersPercentage = Math.min((usage.activeUsersCount / usersLimit) * 100, 100);
+    const storageLimit = usage.storageLimitMB || controls.storageLimitMB || storageLimitInput;
+    const usersLimit = usage.usersLimit || controls.usersLimit || usersLimitInput;
+    const storagePercentage = storageLimit ? Math.min((usage.storageUsedMB / storageLimit) * 100, 100) : 0;
+    const usersPercentage = usersLimit ? Math.min((usage.activeUsersCount / usersLimit) * 100, 100) : 0;
 
     const tabs = [
         { id: 'overview' as TabType, label: 'Overview', icon: Eye },
@@ -202,8 +214,21 @@ const ClinicControlPanel: React.FC = () => {
         { id: 'security' as TabType, label: 'Security', icon: Shield }
     ];
 
+    const featureLabels: Record<keyof FeatureToggles, string> = {
+        patients: 'Patients',
+        appointments: 'Appointments',
+        orthodontics: 'Orthodontics',
+        xray: 'X-Ray',
+        ai: 'AI Assistant'
+    };
+
+    const formatStatus = (value: string) => value
+        .replace(/_/g, ' ')
+        .toLowerCase()
+        .replace(/\b\w/g, (char) => char.toUpperCase());
+
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900">
+        <div className="min-h-screen bg-slate-100 dark:bg-slate-950">
             <div className="max-w-7xl mx-auto p-6">
                 {/* Message Toast */}
                 {message && (
@@ -215,61 +240,106 @@ const ClinicControlPanel: React.FC = () => {
                 )}
 
                 {/* Header */}
-                <div className="mb-6">
+                <div className="mb-6 space-y-4">
                     <button
                         onClick={() => navigate('/manage-clinics')}
-                        className="mb-4 flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
+                        className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
                     >
-                        <ArrowLeft size={20} />
-                        <span className="font-medium">Back to Clinics</span>
+                        <ArrowLeft size={18} />
+                        Back to Clinics
                     </button>
 
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg">
-                                <Settings size={32} />
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+                            <div className="flex flex-wrap items-start justify-between gap-4">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-14 h-14 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500">
+                                        <Settings size={24} />
+                                    </div>
+                                    <div>
+                                        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">{clinic.name}</h1>
+                                        <p className="text-sm text-slate-500">Control panel with verified usage metrics</p>
+                                    </div>
+                                </div>
+                                <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border ${usage.locked
+                                        ? 'border-rose-200 text-rose-700 bg-rose-50 dark:border-rose-800 dark:text-rose-300 dark:bg-rose-950/30'
+                                        : 'border-emerald-200 text-emerald-700 bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 dark:bg-emerald-950/30'
+                                    }`}>
+                                    {usage.locked ? <Lock size={16} /> : <Unlock size={16} />}
+                                    {usage.locked ? 'Locked' : 'Active'}
+                                </div>
                             </div>
-                            <div>
-                                <h1 className="text-4xl font-bold text-slate-900 dark:text-white">
-                                    {clinic.name}
-                                </h1>
-                                <p className="text-slate-600 dark:text-slate-300 mt-1">
-                                    Clinic Control Panel - Full Management Access
-                                </p>
+
+                            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                                <div className="flex justify-between rounded-xl border border-slate-100 dark:border-slate-800 px-4 py-3">
+                                    <span className="text-slate-500">Clinic ID</span>
+                                    <span className="font-mono text-slate-900 dark:text-white">{clinic.id.slice(0, 8)}…</span>
+                                </div>
+                                <div className="flex justify-between rounded-xl border border-slate-100 dark:border-slate-800 px-4 py-3">
+                                    <span className="text-slate-500">Doctor</span>
+                                    <span className="text-slate-900 dark:text-white">{clinic.doctorName || '—'}</span>
+                                </div>
+                                <div className="flex justify-between rounded-xl border border-slate-100 dark:border-slate-800 px-4 py-3">
+                                    <span className="text-slate-500">Email</span>
+                                    <span className="text-slate-900 dark:text-white">{clinic.email}</span>
+                                </div>
+                                <div className="flex justify-between rounded-xl border border-slate-100 dark:border-slate-800 px-4 py-3">
+                                    <span className="text-slate-500">System Version</span>
+                                    <span className="text-slate-900 dark:text-white">{clinic.systemVersion || 'Not provided'}</span>
+                                </div>
                             </div>
                         </div>
 
-                        <div className={`px-6 py-3 rounded-xl font-bold text-lg ${controls.locked
-                                ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400'
-                                : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
-                            }`}>
-                            {controls.locked ? (
-                                <span className="flex items-center gap-2">
-                                    <Lock size={20} />
-                                    LOCKED
-                                </span>
-                            ) : (
-                                <span className="flex items-center gap-2">
-                                    <Unlock size={20} />
-                                    ACTIVE
-                                </span>
-                            )}
+                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+                            <div className="flex items-center justify-between mb-4">
+                                <div>
+                                    <p className="text-xs uppercase tracking-wider text-slate-500">Live Usage Snapshot</p>
+                                    <p className="text-sm text-slate-900 dark:text-white font-semibold">Real numbers from Smart Clinic</p>
+                                </div>
+                                <div className="text-right text-xs text-slate-500">
+                                    <p>Updated</p>
+                                    <p className="font-medium">{new Date(usage.lastUpdated).toLocaleString()}</p>
+                                </div>
+                            </div>
+                            <dl className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
+                                <div className="flex items-center justify-between">
+                                    <dt>Storage</dt>
+                                    <dd className="font-semibold text-slate-900 dark:text-white">
+                                        {usage.storageUsedMB.toFixed(2)} MB / {storageLimit} MB
+                                    </dd>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <dt>Active Users</dt>
+                                    <dd className="font-semibold text-slate-900 dark:text-white">
+                                        {usage.activeUsersCount} / {usersLimit}
+                                    </dd>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <dt>Files Stored</dt>
+                                    <dd className="font-semibold text-slate-900 dark:text-white">{usage.filesCount}</dd>
+                                </div>
+                                {usage.lockReason && (
+                                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-rose-500">
+                                        {usage.lockReason}
+                                    </div>
+                                )}
+                            </dl>
                         </div>
                     </div>
                 </div>
 
                 {/* Tabs */}
-                <div className="mb-6 bg-white dark:bg-slate-800 rounded-2xl p-2 shadow-sm border border-slate-200 dark:border-slate-700">
-                    <div className="flex gap-2">
+                <div className="mb-6 bg-white dark:bg-slate-900 rounded-2xl p-3 border border-slate-200 dark:border-slate-800">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                         {tabs.map((tab) => {
                             const Icon = tab.icon;
                             return (
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
-                                    className={`flex-1 px-6 py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${activeTab === tab.id
-                                            ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
-                                            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                                    className={`flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold border transition-colors ${activeTab === tab.id
+                                            ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-slate-900 dark:border-white'
+                                            : 'text-slate-500 dark:text-slate-400 border-transparent hover:border-slate-200 dark:hover:border-slate-700'
                                         }`}
                                 >
                                     <Icon size={20} />
@@ -285,109 +355,122 @@ const ClinicControlPanel: React.FC = () => {
                     {/* Overview Tab */}
                     {activeTab === 'overview' && (
                         <div className="space-y-6">
-                            {/* Stats Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                {/* Storage Card */}
-                                <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg border border-slate-200 dark:border-slate-700">
-                                    <div className="flex items-center gap-3 mb-4">
-                                        <div className="p-3 rounded-xl bg-blue-500 text-white">
-                                            <HardDrive size={24} />
-                                        </div>
-                                        <h3 className="text-xl font-bold text-slate-900 dark:text-white">Storage</h3>
-                                    </div>
-                                    <div className="space-y-3">
-                                        <div className="flex justifybetween items-end">
-                                            <div>
-                                                <p className="text-3xl font-bold text-slate-900 dark:text-white">
-                                                    {usage.storageUsedMB.toFixed(2)}
-                                                </p>
-                                                <p className="text-sm text-slate-500">of {storageLimitMB} MB</p>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                                                <HardDrive size={20} className="text-slate-600 dark:text-slate-300" />
                                             </div>
-                                            <p className="text-2xl font-bold text-blue-600">{storagePercentage.toFixed(1)}%</p>
+                                            <div>
+                                                <p className="text-xs uppercase tracking-wide text-slate-500">Storage</p>
+                                                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Storage</h3>
+                                            </div>
                                         </div>
-                                        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3">
-                                            <div
-                                                className={`h-full rounded-full transition-all ${storagePercentage > 90 ? 'bg-rose-500' :
-                                                        storagePercentage > 70 ? 'bg-amber-500' : 'bg-blue-500'
-                                                    }`}
-                                                style={{ width: `${storagePercentage}%` }}
-                                            />
-                                        </div>
+                                        <span className="text-sm font-semibold text-slate-500">{storagePercentage.toFixed(1)}%</span>
+                                    </div>
+                                    <p className="text-3xl font-bold text-slate-900 dark:text-white">{usage.storageUsedMB.toFixed(2)} MB</p>
+                                    <p className="text-sm text-slate-500">of {storageLimit} MB total</p>
+                                    <div className="mt-4 h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+                                        <div
+                                            className={`h-full rounded-full transition-all ${storagePercentage > 90 ? 'bg-rose-500' :
+                                                    storagePercentage > 70 ? 'bg-amber-500' : 'bg-slate-900 dark:bg-white'
+                                                }`}
+                                            style={{ width: `${storagePercentage}%` }}
+                                        />
+                                    </div>
+                                    <div className="mt-4 flex items-center justify-between text-xs text-slate-500">
+                                        <span>Files stored</span>
+                                        <span className="font-semibold text-slate-900 dark:text-white">{usage.filesCount}</span>
                                     </div>
                                 </div>
 
-                                {/* Users Card */}
-                                <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg border border-slate-200 dark:border-slate-700">
-                                    <div className="flex items-center gap-3 mb-4">
-                                        <div className="p-3 rounded-xl bg-emerald-500 text-white">
-                                            <UsersIcon size={24} />
-                                        </div>
-                                        <h3 className="text-xl font-bold text-slate-900 dark:text-white">Active Users</h3>
-                                    </div>
-                                    <div className="space-y-3">
-                                        <div className="flex justify-between items-end">
-                                            <div>
-                                                <p className="text-3xl font-bold text-slate-900 dark:text-white">
-                                                    {usage.activeUsersCount}
-                                                </p>
-                                                <p className="text-sm text-slate-500">of {usersLimit} users</p>
+                                <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                                                <UsersIcon size={20} className="text-slate-600 dark:text-slate-300" />
                                             </div>
-                                            <p className="text-2xl font-bold text-emerald-600">{usersPercentage.toFixed(1)}%</p>
+                                            <div>
+                                                <p className="text-xs uppercase tracking-wide text-slate-500">Users</p>
+                                                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Active Users</h3>
+                                            </div>
                                         </div>
-                                        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3">
-                                            <div
-                                                className={`h-full rounded-full transition-all ${usersPercentage >= 100 ? 'bg-rose-500' :
-                                                        usersPercentage > 80 ? 'bg-amber-500' : 'bg-emerald-500'
-                                                    }`}
-                                                style={{ width: `${usersPercentage}%` }}
-                                            />
-                                        </div>
+                                        <span className="text-sm font-semibold text-slate-500">{usersPercentage.toFixed(1)}%</span>
+                                    </div>
+                                    <p className="text-3xl font-bold text-slate-900 dark:text-white">{usage.activeUsersCount}</p>
+                                    <p className="text-sm text-slate-500">of {usersLimit} allowed users</p>
+                                    <div className="mt-4 h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+                                        <div
+                                            className={`h-full rounded-full transition-all ${usersPercentage >= 100 ? 'bg-rose-500' :
+                                                    usersPercentage > 80 ? 'bg-amber-500' : 'bg-emerald-500'
+                                                }`}
+                                            style={{ width: `${usersPercentage}%` }}
+                                        />
+                                    </div>
+                                    <div className="mt-4 flex items-center justify-between text-xs text-slate-500">
+                                        <span>Available seats</span>
+                                        <span className="font-semibold text-slate-900 dark:text-white">{Math.max(usersLimit - usage.activeUsersCount, 0)}</span>
                                     </div>
                                 </div>
 
-                                {/* Status Card */}
-                                <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg border border-slate-200 dark:border-slate-700">
+                                <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
                                     <div className="flex items-center gap-3 mb-4">
-                                        <div className={`p-3 rounded-xl ${controls.locked ? 'bg-rose-500' : 'bg-emerald-500'} text-white`}>
-                                            {controls.locked ? <Lock size={24} /> : <Unlock size={24} />}
+                                        <div className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                                            {usage.locked ? <Lock size={20} className="text-rose-500" /> : <Unlock size={20} className="text-emerald-500" />}
                                         </div>
-                                        <h3 className="text-xl font-bold text-slate-900 dark:text-white">System Status</h3>
-                                    </div>
-                                    <p className={`text-2xl font-bold mb-3 ${controls.locked ? 'text-rose-600' : 'text-emerald-600'}`}>
-                                        {controls.locked ? 'LOCKED' : 'ACTIVE'}
-                                    </p>
-                                    <div className="space-y-2">
-                                        <div className="flex items-center gap-2 text-sm text-slate-500">
-                                            <Clock size={14} />
-                                            <span>Data: {new Date(usage.lastUpdated).toLocaleString()}</span>
-                                        </div>
-                                        <div className="flex items-center gap-2 text-sm text-emerald-600 font-medium">
-                                            <CheckCircle size={14} />
-                                            <span>Real-time from Smart Clinic</span>
+                                        <div>
+                                            <p className="text-xs uppercase tracking-wide text-slate-500">Status</p>
+                                            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{usage.locked ? 'Access locked' : 'Access available'}</h3>
                                         </div>
                                     </div>
+                                    <ul className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
+                                        <li className="flex justify-between">
+                                            <span>Registration state</span>
+                                            <span className="font-semibold text-slate-900 dark:text-white">{formatStatus(clinic.status)}</span>
+                                        </li>
+                                        <li className="flex justify-between">
+                                            <span>Plan</span>
+                                            <span className="font-semibold text-slate-900 dark:text-white">{clinic.license?.plan?.name || 'Not assigned'}</span>
+                                        </li>
+                                        <li className="flex justify-between">
+                                            <span>License serial</span>
+                                            <span className="font-mono text-xs text-slate-500">{clinic.license?.serial?.slice(0, 10) || '—'}{clinic.license?.serial ? '…' : ''}</span>
+                                        </li>
+                                        <li className="flex justify-between">
+                                            <span>Last data sync</span>
+                                            <span className="text-slate-900 dark:text-white">{new Date(usage.lastUpdated).toLocaleString()}</span>
+                                        </li>
+                                    </ul>
+                                    <p className="mt-4 text-xs text-slate-500">Data source: live users + stored files counts</p>
                                 </div>
                             </div>
 
-                            {/* Features Overview */}
-                            <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg border border-slate-200 dark:border-slate-700">
-                                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                                    <Zap size={24} className="text-amber-500" />
-                                    Enabled Features
-                                </h3>
-                                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                                    {Object.entries(features).map(([key, enabled]) => (
-                                        <div
-                                            key={key}
-                                            className={`p-4 rounded-xl text-center font-medium transition-all ${enabled
-                                                    ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
-                                                    : 'bg-slate-100 dark:bg-slate-700 text-slate-400'
-                                                }`}
-                                        >
-                                            <div className="capitalize text-lg">{key}</div>
-                                            <div className="text-sm mt-1">{enabled ? '✓ Enabled' : '✗ Disabled'}</div>
-                                        </div>
-                                    ))}
+                            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-2">
+                                        <Zap size={18} className="text-amber-500" />
+                                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Enabled Features</h3>
+                                    </div>
+                                    <span className="text-xs text-slate-500">Reflects saved controls</span>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                                    {Object.entries(features).map(([key, enabled]) => {
+                                        const typedKey = key as keyof FeatureToggles;
+                                        return (
+                                            <div
+                                                key={key}
+                                                className="rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 flex items-center justify-between text-sm"
+                                            >
+                                                <span className="font-medium text-slate-900 dark:text-white">{featureLabels[typedKey]}</span>
+                                                <span className={`inline-flex items-center gap-1 text-xs font-semibold ${enabled ? 'text-emerald-600' : 'text-slate-400'
+                                                    }`}>
+                                                    {enabled ? <CheckCircle size={14} /> : <XCircle size={14} />}
+                                                    {enabled ? 'Enabled' : 'Disabled'}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         </div>
@@ -395,7 +478,7 @@ const ClinicControlPanel: React.FC = () => {
 
                     {/* Limits Tab */}
                     {activeTab === 'limits' && (
-                        <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-lg border border-slate-200 dark:border-slate-700">
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm">
                             <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">Resource Limits & Quotas</h2>
 
                             <div className="space-y-8">
@@ -407,11 +490,11 @@ const ClinicControlPanel: React.FC = () => {
                                     <div className="flex items-center gap-4">
                                         <input
                                             type="number"
-                                            value={storageLimitMB}
-                                            onChange={(e) => setStorageLimitMB(parseInt(e.target.value) || 0)}
+                                            value={storageLimitInput}
+                                            onChange={(e) => setStorageLimitInput(parseInt(e.target.value) || 0)}
                                             min="100"
                                             step="100"
-                                            className="flex-1 px-6 py-4 text-lg border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
+                                            className="flex-1 px-6 py-4 text-lg border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-slate-900 dark:focus:ring-white focus:border-transparent dark:bg-slate-800 dark:text-white"
                                         />
                                         <div className="text-sm text-slate-500 dark:text-slate-400">
                                             <div className="font-semibold">Current Usage:</div>
@@ -429,10 +512,10 @@ const ClinicControlPanel: React.FC = () => {
                                     <div className="flex items-center gap-4">
                                         <input
                                             type="number"
-                                            value={usersLimit}
-                                            onChange={(e) => setUsersLimit(parseInt(e.target.value) || 0)}
+                                            value={usersLimitInput}
+                                            onChange={(e) => setUsersLimitInput(parseInt(e.target.value) || 0)}
                                             min="1"
-                                            className="flex-1 px-6 py-4 text-lg border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
+                                            className="flex-1 px-6 py-4 text-lg border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-slate-900 dark:focus:ring-white focus:border-transparent dark:bg-slate-800 dark:text-white"
                                         />
                                         <div className="text-sm text-slate-500 dark:text-slate-400">
                                             <div className="font-semibold">Active Users:</div>
@@ -447,7 +530,7 @@ const ClinicControlPanel: React.FC = () => {
                                     <button
                                         onClick={handleSaveControls}
                                         disabled={saving}
-                                        className="px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl font-semibold transition-all flex items-center gap-3 shadow-lg disabled:opacity-50"
+                                        className="px-8 py-4 bg-slate-900 text-white dark:bg-white dark:text-slate-900 rounded-xl font-semibold transition-all flex items-center gap-3 shadow-sm disabled:opacity-50"
                                     >
                                         {saving ? (
                                             <>
@@ -468,7 +551,7 @@ const ClinicControlPanel: React.FC = () => {
 
                     {/* Features Tab */}
                     {activeTab === 'features' && (
-                        <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-lg border border-slate-200 dark:border-slate-700">
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm">
                             <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">Feature Management</h2>
 
                             <div className="space-y-6">
@@ -507,7 +590,7 @@ const ClinicControlPanel: React.FC = () => {
                                     <button
                                         onClick={handleSaveControls}
                                         disabled={saving}
-                                        className="px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl font-semibold transition-all flex items-center gap-3 shadow-lg disabled:opacity-50"
+                                        className="px-8 py-4 bg-slate-900 text-white dark:bg-white dark:text-slate-900 rounded-xl font-semibold transition-all flex items-center gap-3 shadow-sm disabled:opacity-50"
                                     >
                                         {saving ? (
                                             <>
@@ -528,7 +611,7 @@ const ClinicControlPanel: React.FC = () => {
 
                     {/* Security Tab */}
                     {activeTab === 'security' && (
-                        <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-lg border border-slate-200 dark:border-slate-700">
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm">
                             <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">Security & Access Control</h2>
 
                             <div className="space-y-6">
@@ -563,9 +646,9 @@ const ClinicControlPanel: React.FC = () => {
                                 <div className="flex justify-center">
                                     <button
                                         onClick={() => setShowLockConfirm(true)}
-                                        className={`px-8 py-4 rounded-xl font-semibold text-lg transition-all flex items-center gap-3 shadow-lg ${controls.locked
-                                                ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
-                                                : 'bg-rose-500 hover:bg-rose-600 text-white'
+                                        className={`px-8 py-4 rounded-xl font-semibold text-lg transition-all flex items-center gap-3 shadow-sm text-white ${controls.locked
+                                                ? 'bg-emerald-600 hover:bg-emerald-700'
+                                                : 'bg-rose-600 hover:bg-rose-700'
                                             }`}
                                     >
                                         {controls.locked ? (

@@ -382,6 +382,13 @@ export const api = {
     return doRequest<{
       activeUsersCount: number;
       storageUsedMB: number;
+      storageLimitMB: number;
+      usersLimit: number;
+      storagePercentage: number;
+      usersPercentage: number;
+      filesCount: number;
+      locked: boolean;
+      lockReason: string | null;
       lastUpdated: string;
     }>(`/api/clinics/${id}/usage`);
   },
