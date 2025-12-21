@@ -244,6 +244,7 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                     setStatusFilter={setStatusFilter}
                     totalCount={clinics.length}
                     filteredCount={filteredClinics.length}
+                    hideStatusFilter={viewMode === 'requests'} // Hide in Requests, show in Manage
                 />
 
                 {/* Content */}

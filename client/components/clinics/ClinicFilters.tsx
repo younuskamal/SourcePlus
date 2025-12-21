@@ -9,6 +9,7 @@ interface ClinicFiltersProps {
     setStatusFilter: (value: RegistrationStatus | 'ALL') => void;
     totalCount: number;
     filteredCount: number;
+    hideStatusFilter?: boolean; // Hide status filter (for Requests page)
 }
 
 const ClinicFilters: React.FC<ClinicFiltersProps> = ({
@@ -17,7 +18,8 @@ const ClinicFilters: React.FC<ClinicFiltersProps> = ({
     statusFilter,
     setStatusFilter,
     totalCount,
-    filteredCount
+    filteredCount,
+    hideStatusFilter = false
 }) => {
     return (
         <div className="mb-6 bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm border border-slate-200 dark:border-slate-700">
@@ -36,28 +38,35 @@ const ClinicFilters: React.FC<ClinicFiltersProps> = ({
                     </div>
                 </div>
 
+
                 {/* Status Filter */}
-                <div className="flex items-center gap-2">
-                    <Filter size={20} className="text-slate-400" />
-                    <select
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value as any)}
-                        className="px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-slate-700 dark:text-white transition-all cursor-pointer"
-                    >
-                        <option value="ALL">All Status</option>
-                        <option value={RegistrationStatus.PENDING}>Pending</option>
-                        <option value={RegistrationStatus.APPROVED}>Approved</option>
-                        <option value={RegistrationStatus.SUSPENDED}>Suspended</option>
-                        <option value={RegistrationStatus.REJECTED}>Rejected</option>
-                    </select>
-                </div>
+                {!hideStatusFilter && (
+                    <div className="flex items-center gap-2">
+                        <Filter size={20} className="text-slate-400" />
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value as any)}
+                            className="px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-slate-700 dark:text-white transition-all cursor-pointer"
+                        >
+                            <option value="ALL">All Status</option>
+                            <option value={RegistrationStatus.PENDING}>Pending</option>
+                            <option value={RegistrationStatus.APPROVED}>Approved</option>
+                            <option value={RegistrationStatus.SUSPENDED}>Suspended</option>
+                            <option value={RegistrationStatus.REJECTED}>Rejected</option>
+                        </select>
+                    </div>
+                )}
+
+
 
                 {/* Clear Filters */}
-                {(search || statusFilter !== 'ALL') && (
+                {(search || (!hideStatusFilter && statusFilter !== 'ALL')) && (
                     <button
                         onClick={() => {
                             setSearch('');
-                            setStatusFilter('ALL');
+                            if (!hideStatusFilter) {
+                                setStatusFilter('ALL');
+                            }
                         }}
                         className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all flex items-center gap-2"
                     >
