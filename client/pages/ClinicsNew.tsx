@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../services/api';
-import { Clinic, RegistrationStatus, SubscriptionPlan, ClinicSubscriptionStatus } from '../types';
+import { Clinic, RegistrationStatus, ClinicSubscriptionStatus } from '../types';
 import { useTranslation } from '../hooks/useTranslation';
 import ClinicControlDashboard from '../components/ClinicControlDashboard';
 import {
     Building2, Search, Loader2, CheckCircle2, XCircle, Clock,
-    Mail, Phone, MapPin, Calendar, Settings, Eye, Lock, Unlock,
-    AlertCircle, Crown, TrendingUp, Users, HardDrive, Zap,
-    RefreshCw, Ban, PlayCircle, Trash2, Filter, X
+    Mail, Phone, MapPin, Calendar, Settings,
+    AlertCircle, RefreshCw, Ban, PlayCircle, Trash2, Filter, X
 } from 'lucide-react';
 
 interface ClinicsProps {
@@ -22,18 +21,18 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
     // State
     const [clinics, setClinics] = useState<Clinic[]>([]);
     const [subscriptions, setSubscriptions] = useState<Record<string, ClinicSubscriptionStatus>>({});
-    const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<RegistrationStatus | 'ALL'>(
         viewMode === 'requests' ? RegistrationStatus.PENDING : 'ALL'
     );
     const [processing, setProcessing] = useState<string | null>(null);
-    const [selectedClinic, setSelectedClinic] = useState<Clinic | null>(null);
+    const [activeClinicId, setActiveClinicId] = useState<string | null>(null);
     const [controlsModal, setControlsModal] = useState<Clinic | null>(null);
     const [confirmAction, setConfirmAction] = useState<{ type: ActionType; clinic: Clinic } | null>(null);
     const [rejectReason, setRejectReason] = useState('');
     const [error, setError] = useState<string | null>(null);
+    const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
     // Fetch data
     useEffect(() => {
@@ -47,24 +46,15 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
 
             console.log('🔍 Loading clinics data...');
 
-            const [clinicsData, plansData] = await Promise.all([
-                api.getClinics(),
-                api.getSubscriptionPlans()
-            ]);
+            const clinicsData = await api.getClinics();
 
             // Validate response
             if (!Array.isArray(clinicsData)) {
                 throw new Error('❌ Clinics data is not in correct format');
             }
-
-            if (!Array.isArray(plansData)) {
-                throw new Error('❌ Plans data is not in correct format');
-            }
-
-            console.log(`✅ Loaded ${clinicsData.length} clinics and ${plansData.length} plans`);
+            console.log(`✅ Loaded ${clinicsData.length} clinics`);
 
             setClinics(clinicsData);
-            setPlans(plansData);
 
             // Fetch subscriptions
             console.log('🔍 Loading subscription statuses...');
@@ -84,6 +74,7 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
             setSubscriptions(subscriptionsMap);
 
             console.log(`✅ Loaded ${Object.keys(subscriptionsMap).length} subscription statuses`);
+            setLastUpdated(new Date().toISOString());
 
         } catch (error: any) {
             console.error('❌ Failed to load clinics data:', error);
@@ -99,7 +90,6 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
 
             setError(errorMessage);
             setClinics([]); // Clear clinics on error
-            setPlans([]);
 
             console.error('📊 Error details:', {
                 message: errorMessage,
@@ -126,6 +116,16 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
             return matchesSearch && matchesStatus;
         });
     }, [clinics, search, statusFilter]);
+
+    useEffect(() => {
+        if (filteredClinics.length === 0) {
+            setActiveClinicId(null);
+            return;
+        }
+        if (!activeClinicId || !filteredClinics.some(c => c.id === activeClinicId)) {
+            setActiveClinicId(filteredClinics[0].id);
+        }
+    }, [filteredClinics, activeClinicId]);
 
     // Actions
     const handleAction = async (type: ActionType, clinic: Clinic) => {
@@ -176,30 +176,35 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
         };
     }, [clinics]);
 
+    const activeClinic = activeClinicId
+        ? filteredClinics.find(c => c.id === activeClinicId) || null
+        : filteredClinics[0] || null;
+    const activeSubscription = activeClinic ? subscriptions[activeClinic.id] : undefined;
+
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-screen">
-                <Loader2 className="animate-spin text-purple-600" size={48} />
+            <div className="flex items-center justify-center min-h-screen bg-slate-100 dark:bg-slate-950">
+                <Loader2 className="animate-spin text-slate-500 dark:text-slate-300" size={40} />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900">
-            <div className="max-w-[1800px] mx-auto p-6">
+        <div className="min-h-screen bg-slate-100 dark:bg-slate-950">
+            <div className="max-w-7xl mx-auto p-6 space-y-6">
 
                 {/* Header */}
-                <div className="mb-6">
-                    <div className="flex items-center justify-between mb-4">
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                            <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg">
-                                <Building2 size={32} />
+                            <div className="w-14 h-14 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center shadow-sm">
+                                <Building2 size={24} />
                             </div>
                             <div>
-                                <h1 className="text-4xl font-bold text-slate-900 dark:text-white">
+                                <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
                                     {viewMode === 'requests' ? 'Clinic Requests' : 'Clinics Management'}
                                 </h1>
-                                <p className="text-slate-600 dark:text-slate-300 mt-1">
+                                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                                     {viewMode === 'requests'
                                         ? 'Review and approve clinic registration requests'
                                         : 'Manage all registered clinics and their subscriptions'
@@ -211,7 +216,7 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                         <button
                             onClick={loadData}
                             disabled={loading}
-                            className="px-4 py-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all flex items-center gap-2 shadow-sm"
+                            className="px-4 py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-2 text-sm font-medium"
                         >
                             <RefreshCw className={loading ? 'animate-spin' : ''} size={20} />
                             <span className="font-medium">Refresh</span>
@@ -224,13 +229,13 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                             title="Total Clinics"
                             value={stats.total}
                             icon={Building2}
-                            color="blue"
+                            color="slate"
                         />
                         <StatCard
                             title="Approved"
                             value={stats.approved}
                             icon={CheckCircle2}
-                            color="green"
+                            color="emerald"
                         />
                         <StatCard
                             title="Pending"
@@ -242,24 +247,24 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                             title="Suspended"
                             value={stats.suspended}
                             icon={Ban}
-                            color="red"
+                            color="rose"
                         />
                     </div>
                 </div>
 
                 {/* Filters */}
-                <div className="mb-6 bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm border border-slate-200 dark:border-slate-700">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800">
                     <div className="flex flex-wrap gap-3">
                         {/* Search */}
                         <div className="flex-1 min-w-[300px]">
                             <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                 <input
                                     type="text"
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
                                     placeholder="Search by name, email, phone, or address..."
-                                    className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-purple-500 dark:bg-slate-700 dark:text-white"
+                                    className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-900 dark:focus:ring-white"
                                 />
                             </div>
                         </div>
@@ -270,7 +275,7 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                             <select
                                 value={statusFilter}
                                 onChange={(e) => setStatusFilter(e.target.value as any)}
-                                className="px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-purple-500 dark:bg-slate-700 dark:text-white"
+                                className="px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-900 dark:focus:ring-white"
                             >
                                 <option value="ALL">All Status</option>
                                 <option value={RegistrationStatus.PENDING}>Pending</option>
@@ -287,7 +292,7 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                                     setSearch('');
                                     setStatusFilter('ALL');
                                 }}
-                                className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all flex items-center gap-2"
+                                className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center gap-2 text-sm font-medium"
                             >
                                 <X size={16} />
                                 <span>Clear</span>
@@ -296,36 +301,35 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                     </div>
 
                     {/* Results Count */}
-                    <div className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-                        Showing <span className="font-semibold text-purple-600">{filteredClinics.length}</span> of {clinics.length} clinics
+                    <div className="mt-3 text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        Showing <span className="font-semibold text-slate-900 dark:text-white">{filteredClinics.length}</span> of {clinics.length} clinics
                     </div>
                 </div>
 
                 {/* Clinics Grid */}
                 {error ? (
-                    <div className="bg-rose-50 dark:bg-rose-900/20 border-2 border-rose-200 dark:border-rose-800 rounded-2xl p-8">
+                    <div className="bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-2xl p-8">
                         <div className="flex items-start gap-4">
                             <div className="flex-shrink-0">
-                                <AlertCircle className="text-rose-600 dark:text-rose-400" size={48} />
+                                <AlertCircle className="text-rose-500" size={32} />
                             </div>
                             <div className="flex-1">
-                                <h3 className="text-2xl font-bold text-rose-900 dark:text-rose-200 mb-2">
-                                    ⚠️ Error Loading Clinics
+                                <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">
+                                    Unable to load clinics
                                 </h3>
-                                <p className="text-rose-700 dark:text-rose-300 mb-6 text-lg">
+                                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
                                     {error}
                                 </p>
                                 <div className="flex gap-3">
                                     <button
                                         onClick={loadData}
-                                        className="px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-medium transition-all flex items-center gap-2 shadow-sm"
+                                        className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors"
                                     >
-                                        <RefreshCw size={20} />
                                         Retry
                                     </button>
                                     <button
                                         onClick={() => window.location.reload()}
-                                        className="px-6 py-3 bg-slate-600 hover:bg-slate-700 text-white rounded-xl font-medium transition-all flex items-center gap-2 shadow-sm"
+                                        className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                                     >
                                         Refresh Page
                                     </button>
@@ -334,12 +338,12 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                         </div>
                     </div>
                 ) : filteredClinics.length === 0 ? (
-                    <div className="text-center py-16 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
-                        <Building2 className="mx-auto text-slate-300 dark:text-slate-600 mb-4" size={64} />
-                        <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">
+                    <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+                        <Building2 className="mx-auto text-slate-300 dark:text-slate-600 mb-4" size={48} />
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
                             No clinics found
                         </h3>
-                        <p className="text-slate-600 dark:text-slate-400">
+                        <p className="text-sm text-slate-500 dark:text-slate-400">
                             {search || statusFilter !== 'ALL'
                                 ? 'Try adjusting your filters'
                                 : 'No clinics have been registered yet'
@@ -347,32 +351,57 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                         </p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 gap-4">
-                        {filteredClinics.map((clinic) => (
-                            <ClinicCard
-                                key={clinic.id}
-                                clinic={clinic}
-                                subscription={subscriptions[clinic.id]}
-                                onSelect={setSelectedClinic}
-                                onAction={(type) => setConfirmAction({ type, clinic })}
-                                onControls={() => setControlsModal(clinic)}
-                                processing={processing === clinic.id}
-                                viewMode={viewMode}
-                            />
-                        ))}
+                    <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 px-5 py-4">
+                                <div>
+                                    <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                                        {viewMode === 'requests' ? 'Incoming Requests' : 'Active Clinics'}
+                                    </p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                                        Showing {filteredClinics.length} of {clinics.length} synced from backend
+                                    </p>
+                                </div>
+                                <div className="text-xs text-slate-500 dark:text-slate-400">
+                                    Last synced:{' '}
+                                    {lastUpdated ? new Date(lastUpdated).toLocaleString() : 'Loading...'}
+                                </div>
+                            </div>
+                            <div className="max-h-[70vh] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+                                {filteredClinics.map((clinic) => (
+                                    <ClinicListRow
+                                        key={clinic.id}
+                                        clinic={clinic}
+                                        subscription={subscriptions[clinic.id]}
+                                        isActive={activeClinic?.id === clinic.id}
+                                        onSelect={() => setActiveClinicId(clinic.id)}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            {activeClinic ? (
+                                <ClinicDetailPanel
+                                    clinic={activeClinic}
+                                    subscription={activeSubscription}
+                                    viewMode={viewMode}
+                                    lastUpdated={lastUpdated}
+                                    onOpenControls={() => setControlsModal(activeClinic)}
+                                    onTriggerAction={(type) => setConfirmAction({ type, clinic: activeClinic })}
+                                    isProcessing={processing === activeClinic.id}
+                                />
+                            ) : (
+                                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 text-center text-slate-500 dark:text-slate-400">
+                                    Select a clinic from the list to view full details
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
             </div>
 
             {/* Modals */}
-            {selectedClinic && (
-                <ClinicDetailsModal
-                    clinic={selectedClinic}
-                    subscription={subscriptions[selectedClinic.id]}
-                    onClose={() => setSelectedClinic(null)}
-                />
-            )}
-
             {controlsModal && (
                 <ClinicControlDashboard
                     clinic={controlsModal}
@@ -403,283 +432,224 @@ const StatCard: React.FC<{
     title: string;
     value: number;
     icon: React.ElementType;
-    color: 'blue' | 'green' | 'amber' | 'red';
+    color: 'slate' | 'emerald' | 'amber' | 'rose';
 }> = ({ title, value, icon: Icon, color }) => {
-    const colors = {
-        blue: 'from-blue-500 to-cyan-500',
-        green: 'from-emerald-500 to-teal-500',
-        amber: 'from-amber-500 to-orange-500',
-        red: 'from-rose-500 to-pink-500'
+    const palette = {
+        slate: 'text-slate-700 bg-slate-100 dark:bg-slate-800 dark:text-slate-200',
+        emerald: 'text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-300',
+        amber: 'text-amber-700 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-300',
+        rose: 'text-rose-700 bg-rose-50 dark:bg-rose-900/20 dark:text-rose-300'
     };
 
     return (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
             <div className="flex items-center justify-between">
                 <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">{title}</p>
+                    <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">{title}</p>
                     <p className="text-3xl font-bold text-slate-900 dark:text-white">{value}</p>
                 </div>
-                <div className={`p-4 rounded-xl bg-gradient-to-br ${colors[color]} text-white`}>
-                    <Icon size={24} />
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-lg font-semibold ${palette[color]}`}>
+                    <Icon size={20} />
                 </div>
             </div>
         </div>
     );
 };
 
-// Clinic Card Component
-const ClinicCard: React.FC<{
+const listStatusStyles: Record<RegistrationStatus, string> = {
+    [RegistrationStatus.APPROVED]: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300',
+    [RegistrationStatus.PENDING]: 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300',
+    [RegistrationStatus.SUSPENDED]: 'bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-300',
+    [RegistrationStatus.REJECTED]: 'bg-slate-100 text-slate-600 dark:bg-slate-800/70 dark:text-slate-200'
+};
+
+const ClinicListRow: React.FC<{
     clinic: Clinic;
     subscription?: ClinicSubscriptionStatus;
-    onSelect: (clinic: Clinic) => void;
-    onAction: (type: ActionType) => void;
-    onControls: () => void;
-    processing: boolean;
-    viewMode: 'requests' | 'manage';
-}> = ({ clinic, subscription, onSelect, onAction, onControls, processing, viewMode }) => {
-
-    const statusColors = {
-        [RegistrationStatus.APPROVED]: 'bg-emerald-500 text-white',
-        [RegistrationStatus.PENDING]: 'bg-amber-500 text-white',
-        [RegistrationStatus.SUSPENDED]: 'bg-rose-500 text-white',
-        [RegistrationStatus.REJECTED]: 'bg-slate-500 text-white'
-    };
-
-    const statusIcons = {
-        [RegistrationStatus.APPROVED]: CheckCircle2,
-        [RegistrationStatus.PENDING]: Clock,
-        [RegistrationStatus.SUSPENDED]: Ban,
-        [RegistrationStatus.REJECTED]: XCircle
-    };
-
-    const StatusIcon = statusIcons[clinic.status];
+    isActive: boolean;
+    onSelect: () => void;
+}> = ({ clinic, subscription, isActive, onSelect }) => {
+    const planName = subscription?.planName || clinic.license?.plan?.name || 'Unassigned';
+    const remaining = subscription?.remainingDays;
+    const location = clinic.address || 'Location not provided';
 
     return (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-md transition-all">
-            <div className="flex items-start justify-between gap-4">
-                {/* Left: Clinic Info */}
-                <div className="flex-1">
-                    <div className="flex items-start gap-4">
-                        {/* Logo/Icon */}
-                        <div className="flex-shrink-0">
-                            <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-2xl font-bold">
-                                {clinic.name.charAt(0).toUpperCase()}
-                            </div>
-                        </div>
-
-                        {/* Details */}
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-3 mb-2">
-                                <h3 className="text-xl font-bold text-slate-900 dark:text-white truncate">
-                                    {clinic.name}
-                                </h3>
-                                <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 ${statusColors[clinic.status]}`}>
-                                    <StatusIcon size={14} />
-                                    {clinic.status}
-                                </span>
-                            </div>
-
-                            {/* Info Grid */}
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
-                                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                                    <Mail size={16} className="text-slate-400" />
-                                    <span className="truncate">{clinic.email}</span>
-                                </div>
-
-                                {clinic.phone && (
-                                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                                        <Phone size={16} className="text-slate-400" />
-                                        <span>{clinic.phone}</span>
-                                    </div>
-                                )}
-
-                                {clinic.address && (
-                                    <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                                        <MapPin size={16} className="text-slate-400" />
-                                        <span className="truncate">{clinic.address}</span>
-                                    </div>
-                                )}
-
-                                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                                    <Calendar size={16} className="text-slate-400" />
-                                    <span>{new Date(clinic.createdAt).toLocaleDateString()}</span>
-                                </div>
-                            </div>
-
-                            {/* Subscription Info */}
-                            {subscription && clinic.status === RegistrationStatus.APPROVED && (
-                                <div className="mt-3 flex items-center gap-4 text-sm">
-                                    <div className="flex items-center gap-2">
-                                        <Crown size={16} className="text-amber-500" />
-                                        <span className="text-slate-600 dark:text-slate-300">
-                                            Plan: <span className="font-semibold text-slate-900 dark:text-white">{subscription.planName}</span>
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <TrendingUp size={16} className={subscription.isActive ? "text-emerald-500" : "text-rose-500"} />
-                                        <span className={subscription.isActive ? "text-emerald-600 font-semibold" : "text-rose-600 font-semibold"}>
-                                            {subscription.isActive ? 'Active' : 'Inactive'}
-                                        </span>
-                                    </div>
-                                    {subscription.expiresAt && (
-                                        <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                                            Expires: {new Date(subscription.expiresAt).toLocaleDateString()}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
+        <button
+            onClick={onSelect}
+            className={`w-full text-left px-5 py-4 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500 ${
+                isActive ? 'bg-slate-50 dark:bg-slate-800/40' : 'hover:bg-slate-50 dark:hover:bg-slate-800/30'
+            }`}
+        >
+            <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                    <p className="font-semibold text-slate-900 dark:text-white truncate">{clinic.name}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{clinic.email}</p>
                 </div>
-
-                {/* Right: Actions */}
-                <div className="flex items-center gap-2">
-                    {/* View Details */}
-                    <button
-                        onClick={() => onSelect(clinic)}
-                        className="p-2 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all"
-                        title="View Details"
-                    >
-                        <Eye size={18} />
-                    </button>
-
-                    {/* Controls (for approved clinics) */}
-                    {clinic.status === RegistrationStatus.APPROVED && (
-                        <button
-                            onClick={onControls}
-                            className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30 hover:bg-purple-200 dark:hover:bg-purple-900/50 text-purple-600 dark:text-purple-400 transition-all"
-                            title="Manage Controls"
-                        >
-                            <Settings size={18} />
-                        </button>
-                    )}
-
-                    {/* Status-specific actions */}
-                    {viewMode === 'requests' && clinic.status === RegistrationStatus.PENDING && (
-                        <>
-                            <button
-                                onClick={() => onAction('approve')}
-                                disabled={processing}
-                                className="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-medium transition-all disabled:opacity-50 flex items-center gap-2"
-                            >
-                                {processing ? <Loader2 className="animate-spin" size={16} /> : <CheckCircle2 size={16} />}
-                                Approve
-                            </button>
-                            <button
-                                onClick={() => onAction('reject')}
-                                disabled={processing}
-                                className="px-4 py-2 rounded-lg bg-rose-500 hover:bg-rose-600 text-white font-medium transition-all disabled:opacity-50 flex items-center gap-2"
-                            >
-                                {processing ? <Loader2 className="animate-spin" size={16} /> : <XCircle size={16} />}
-                                Reject
-                            </button>
-                        </>
-                    )}
-
-                    {viewMode === 'manage' && clinic.status === RegistrationStatus.APPROVED && (
-                        <button
-                            onClick={() => onAction('suspend')}
-                            disabled={processing}
-                            className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-medium transition-all disabled:opacity-50 flex items-center gap-2"
-                        >
-                            {processing ? <Loader2 className="animate-spin" size={16} /> : <Ban size={16} />}
-                            Suspend
-                        </button>
-                    )}
-
-                    {viewMode === 'manage' && clinic.status === RegistrationStatus.SUSPENDED && (
-                        <button
-                            onClick={() => onAction('reactivate')}
-                            disabled={processing}
-                            className="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-medium transition-all disabled:opacity-50 flex items-center gap-2"
-                        >
-                            {processing ? <Loader2 className="animate-spin" size={16} /> : <PlayCircle size={16} />}
-                            Reactivate
-                        </button>
-                    )}
-
-                    {/* Delete (danger zone) */}
-                    {viewMode === 'manage' && (
-                        <button
-                            onClick={() => onAction('delete')}
-                            disabled={processing}
-                            className="p-2 rounded-lg bg-rose-100 dark:bg-rose-900/30 hover:bg-rose-200 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 transition-all disabled:opacity-50"
-                            title="Delete Clinic"
-                        >
-                            <Trash2 size={18} />
-                        </button>
-                    )}
-                </div>
+                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${listStatusStyles[clinic.status]}`}>
+                    {clinic.status}
+                </span>
             </div>
-        </div>
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                <span>Plan: <span className="text-slate-900 dark:text-white font-medium">{planName}</span></span>
+                <span>Created: {new Date(clinic.createdAt).toLocaleDateString()}</span>
+                <span>{location}</span>
+                {typeof remaining === 'number' && <span>Remaining: {remaining} days</span>}
+            </div>
+        </button>
     );
 };
 
-// Clinic Details Modal
-const ClinicDetailsModal: React.FC<{
+const ClinicDetailPanel: React.FC<{
     clinic: Clinic;
     subscription?: ClinicSubscriptionStatus;
-    onClose: () => void;
-}> = ({ clinic, subscription, onClose }) => {
+    viewMode: ClinicsProps['viewMode'];
+    lastUpdated: string | null;
+    onOpenControls: () => void;
+    onTriggerAction: (type: ActionType) => void;
+    isProcessing: boolean;
+}> = ({ clinic, subscription, viewMode, lastUpdated, onOpenControls, onTriggerAction, isProcessing }) => {
+    const userCount = clinic.users?.length ?? 0;
+    const planName = subscription?.planName || clinic.license?.plan?.name || 'Unassigned';
+    const licenseSerial = subscription?.license?.serial || clinic.license?.serial;
+    const expireDate = subscription?.license?.expireDate || clinic.license?.expireDate;
+    const subscriptionStatus = subscription ? (subscription.isActive ? 'Active' : 'Inactive') : 'No subscription';
+    const planDuration = subscription?.license?.plan?.durationMonths ?? clinic.license?.plan?.durationMonths;
+
+    const summaryStats = [
+        { label: 'Active users', value: String(userCount) },
+        { label: 'Plan term', value: planDuration ? `${planDuration} months` : 'Not assigned' },
+        { label: 'Force logout', value: subscription?.forceLogout ? 'Enabled' : 'Normal' }
+    ];
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
-            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-                {/* Header */}
-                <div className="sticky top-0 bg-gradient-to-r from-purple-500 to-pink-500 p-6 rounded-t-2xl">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white text-2xl font-bold">
-                                {clinic.name.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                                <h2 className="text-2xl font-bold text-white">{clinic.name}</h2>
-                                <p className="text-white/80">Clinic Details</p>
-                            </div>
-                        </div>
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-6 space-y-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                    <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">Clinic Overview</p>
+                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{clinic.name}</h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                        Doctor: <span className="font-medium text-slate-900 dark:text-white">{clinic.doctorName || 'Not provided'}</span>
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Synced {lastUpdated ? new Date(lastUpdated).toLocaleString() : '...'}
+                    </p>
+                </div>
+                <button
+                    onClick={onOpenControls}
+                    className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-2"
+                >
+                    <Settings size={16} />
+                    Control Panel
+                </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {summaryStats.map((stat) => (
+                    <DetailStat key={stat.label} label={stat.label} value={stat.value} />
+                ))}
+            </div>
+
+            <DetailSection title="Contact Information">
+                <DetailRow label="Email" value={clinic.email} />
+                <DetailRow label="Phone" value={clinic.phone || 'No phone provided'} />
+                <DetailRow label="Address" value={clinic.address || 'No address provided'} />
+                <DetailRow label="Registered" value={new Date(clinic.createdAt).toLocaleString()} />
+            </DetailSection>
+
+            <DetailSection title="Subscription & License">
+                <DetailRow label="Plan" value={planName} />
+                <DetailRow label="Status" value={subscriptionStatus} />
+                {typeof subscription?.remainingDays === 'number' && (
+                    <DetailRow label="Remaining days" value={`${subscription.remainingDays} days`} />
+                )}
+                <DetailRow label="License Serial" value={licenseSerial || 'Not issued'} mono />
+                <DetailRow label="Expires" value={expireDate ? new Date(expireDate).toLocaleDateString() : 'Not scheduled'} />
+            </DetailSection>
+
+            <DetailSection title="System">
+                <DetailRow label="System Version" value={clinic.systemVersion || 'Not provided'} />
+                <DetailRow label="Last Updated" value={new Date(clinic.updatedAt).toLocaleString()} />
+            </DetailSection>
+
+            <div className="space-y-3">
+                <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Actions</p>
+                {viewMode === 'requests' && clinic.status === RegistrationStatus.PENDING && (
+                    <div className="flex flex-wrap gap-3">
                         <button
-                            onClick={onClose}
-                            className="p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-all"
+                            onClick={() => onTriggerAction('approve')}
+                            disabled={isProcessing}
+                            className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-500 disabled:opacity-50"
                         >
-                            <X size={24} />
+                            Approve
+                        </button>
+                        <button
+                            onClick={() => onTriggerAction('reject')}
+                            disabled={isProcessing}
+                            className="px-4 py-2 rounded-lg bg-rose-600 text-white text-sm font-semibold hover:bg-rose-500 disabled:opacity-50"
+                        >
+                            Reject
                         </button>
                     </div>
-                </div>
-
-                {/* Content */}
-                <div className="p-6 space-y-6">
-                    {/* Basic Info */}
-                    <Section title="Basic Information">
-                        <InfoRow label="Clinic Name" value={clinic.name} />
-                        <InfoRow label="Email" value={clinic.email} icon={Mail} />
-                        <InfoRow label="Phone" value={clinic.phone || '-'} icon={Phone} />
-                        <InfoRow label="Address" value={clinic.address || '-'} icon={MapPin} />
-                        <InfoRow label="Status" value={clinic.status} badge />
-                        <InfoRow label="Registered" value={new Date(clinic.createdAt).toLocaleString()} icon={Calendar} />
-                    </Section>
-
-                    {/* Subscription Info */}
-                    {subscription && (
-                        <Section title="Subscription Details">
-                            <InfoRow label="Plan" value={subscription.planName} icon={Crown} />
-                            <InfoRow label="Status" value={subscription.isActive ? 'Active' : 'Inactive'} badge />
-                            {subscription.expiresAt && (
-                                <InfoRow label="Expires" value={new Date(subscription.expiresAt).toLocaleString()} />
-                            )}
-                        </Section>
-                    )}
-
-                    {/* IDs Section */}
-                    <Section title="System IDs">
-                        <InfoRow label="Clinic ID" value={clinic.id} mono />
-                        {clinic.licenseSerial && (
-                            <InfoRow label="License Serial" value={clinic.licenseSerial} mono />
+                )}
+                {viewMode === 'manage' && (
+                    <div className="flex flex-wrap gap-3">
+                        {clinic.status === RegistrationStatus.APPROVED && (
+                            <button
+                                onClick={() => onTriggerAction('suspend')}
+                                disabled={isProcessing}
+                                className="px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-semibold hover:bg-amber-500 disabled:opacity-50"
+                            >
+                                Suspend
+                            </button>
                         )}
-                    </Section>
-                </div>
+                        {clinic.status === RegistrationStatus.SUSPENDED && (
+                            <button
+                                onClick={() => onTriggerAction('reactivate')}
+                                disabled={isProcessing}
+                                className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-500 disabled:opacity-50"
+                            >
+                                Reactivate
+                            </button>
+                        )}
+                        <button
+                            onClick={() => onTriggerAction('delete')}
+                            disabled={isProcessing}
+                            className="px-4 py-2 rounded-lg bg-rose-600 text-white text-sm font-semibold hover:bg-rose-500 disabled:opacity-50"
+                        >
+                            Delete
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );
 };
+
+const DetailSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+    <div>
+        <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">{title}</p>
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-200 dark:divide-slate-800">
+            {children}
+        </div>
+    </div>
+);
+
+const DetailRow: React.FC<{ label: string; value: React.ReactNode; mono?: boolean }> = ({ label, value, mono }) => (
+    <div className="flex items-center justify-between px-4 py-3 text-sm">
+        <span className="text-slate-500 dark:text-slate-400">{label}</span>
+        <span className={`text-slate-900 dark:text-white font-medium text-right ml-6 ${mono ? 'font-mono text-xs' : ''}`}>
+            {value ?? '—'}
+        </span>
+    </div>
+);
+
+const DetailStat: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+    <div className="rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+        <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</p>
+        <p className="text-xl font-semibold text-slate-900 dark:text-white mt-1">{value}</p>
+    </div>
+);
+
 
 // Confirm Action Modal
 const ConfirmActionModal: React.FC<{
@@ -691,21 +661,37 @@ const ConfirmActionModal: React.FC<{
     processing: boolean;
 }> = ({ action, rejectReason, setRejectReason, onConfirm, onCancel, processing }) => {
     const actionConfig = {
-        approve: { title: 'Approve Clinic', color: 'emerald', icon: CheckCircle2 },
-        reject: { title: 'Reject Clinic', color: 'rose', icon: XCircle },
-        suspend: { title: 'Suspend Clinic', color: 'amber', icon: Ban },
-        reactivate: { title: 'Reactivate Clinic', color: 'emerald', icon: PlayCircle },
-        delete: { title: 'Delete Clinic', color: 'rose', icon: Trash2 }
+        approve: { title: 'Approve Clinic', accent: 'emerald', icon: CheckCircle2 },
+        reject: { title: 'Reject Clinic', accent: 'rose', icon: XCircle },
+        suspend: { title: 'Suspend Clinic', accent: 'amber', icon: Ban },
+        reactivate: { title: 'Reactivate Clinic', accent: 'emerald', icon: PlayCircle },
+        delete: { title: 'Delete Clinic', accent: 'rose', icon: Trash2 }
+    } as const;
+
+    const accentStyles = {
+        emerald: {
+            pill: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-300',
+            button: 'bg-emerald-600 hover:bg-emerald-500'
+        },
+        rose: {
+            pill: 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-300',
+            button: 'bg-rose-600 hover:bg-rose-500'
+        },
+        amber: {
+            pill: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-300',
+            button: 'bg-amber-600 hover:bg-amber-500'
+        }
     };
 
     const config = actionConfig[action.type];
+    const palette = accentStyles[config.accent];
     const Icon = config.icon;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-6">
                 <div className="flex items-center gap-4 mb-4">
-                    <div className={`p-3 rounded-xl bg-${config.color}-100 dark:bg-${config.color}-900/30 text-${config.color}-600`}>
+                    <div className={`p-3 rounded-xl ${palette.pill}`}>
                         <Icon size={24} />
                     </div>
                     <h3 className="text-xl font-bold text-slate-900 dark:text-white">{config.title}</h3>
@@ -741,7 +727,7 @@ const ConfirmActionModal: React.FC<{
                     <button
                         onClick={onConfirm}
                         disabled={processing}
-                        className={`flex-1 px-4 py-2 rounded-lg bg-${config.color}-500 hover:bg-${config.color}-600 text-white font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2`}
+                        className={`flex-1 px-4 py-2 rounded-lg ${palette.button} text-white font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2`}
                     >
                         {processing ? <Loader2 className="animate-spin" size={16} /> : <Icon size={16} />}
                         {processing ? 'Processing...' : config.title.split(' ')[0]}
@@ -751,39 +737,5 @@ const ConfirmActionModal: React.FC<{
         </div>
     );
 };
-
-// Helper Components
-const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-    <div>
-        <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-3">{title}</h3>
-        <div className="space-y-2">
-            {children}
-        </div>
-    </div>
-);
-
-const InfoRow: React.FC<{
-    label: string;
-    value: string;
-    icon?: React.ElementType;
-    badge?: boolean;
-    mono?: boolean;
-}> = ({ label, value, icon: Icon, badge, mono }) => (
-    <div className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-700 last:border-0">
-        <span className="text-sm font-medium text-slate-600 dark:text-slate-400 flex items-center gap-2">
-            {Icon && <Icon size={16} />}
-            {label}
-        </span>
-        {badge ? (
-            <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
-                {value}
-            </span>
-        ) : (
-            <span className={`text-sm text-slate-900 dark:text-white ${mono ? 'font-mono text-xs' : ''}`}>
-                {value}
-            </span>
-        )}
-    </div>
-);
 
 export default Clinics;
