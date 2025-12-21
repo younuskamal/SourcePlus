@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { Role } from '@prisma/client';
+import { Role, SupportMessageStatus } from '@prisma/client';
 import { logAudit } from '../../utils/audit.js';
 
 const supportMessageSchema = z.object({
@@ -24,10 +24,12 @@ export default async function supportRoutes(app: FastifyInstance) {
 
         const message = await app.prisma.supportMessage.create({
             data: {
-                name: data.name,
-                serial: data.serial || null,
+                clinicId: 'legacy-support', // For backwards compatibility with old POS messages
+                clinicName: data.name,
+                accountCode: data.serial || undefined,
                 message: data.message,
-                status: 'pending'
+                source: 'LEGACY_POS',
+                status: SupportMessageStatus.NEW
             }
         });
 
@@ -44,11 +46,17 @@ export default async function supportRoutes(app: FastifyInstance) {
     // Update message status
     app.patch('/messages/:id', { preHandler: [app.authorize([Role.admin, Role.developer])] }, async (request, reply) => {
         const { id } = request.params as { id: string };
-        const { status } = z.object({ status: z.enum(['pending', 'resolved', 'closed']) }).parse(request.body);
+        const { status } = z.object({
+            status: z.enum(['NEW', 'READ', 'CLOSED'])
+        }).parse(request.body);
 
         const message = await app.prisma.supportMessage.update({
             where: { id },
-            data: { status }
+            data: {
+                status: status as SupportMessageStatus,
+                ...(status === 'READ' && { readAt: new Date() }),
+                ...(status === 'CLOSED' && { closedAt: new Date() })
+            }
         });
 
         await logAudit(app, {

@@ -535,7 +535,6 @@ export default async function clinicRoutes(app: FastifyInstance) {
 
         await app.prisma.$transaction(async (tx) => {
             if (userIds.length) {
-                await tx.messageReply.deleteMany({ where: { userId: { in: userIds } } });
                 await tx.session.deleteMany({ where: { userId: { in: userIds } } });
                 await tx.clinicMessage.deleteMany({ where: { senderId: { in: userIds } } });
             }
@@ -563,22 +562,20 @@ export default async function clinicRoutes(app: FastifyInstance) {
         const { id } = request.params as { id: string };
 
         const clinic = await app.prisma.clinic.findUnique({
-            where: { id },
-            include: {
-                users: {
-                    where: {
-                        status: { not: 'inactive' }
-                    }
-                }
-            }
+            where: { id }
         });
 
         if (!clinic) {
             return reply.code(404).send({ message: 'Clinic not found' });
         }
 
-        // Calculate active users (excluding inactive)
-        const activeUsersCount = clinic.users.length;
+        // Calculate active users count from database
+        const activeUsersCount = await app.prisma.user.count({
+            where: {
+                clinicId: id,
+                status: { not: 'SUSPENDED' }
+            }
+        });
 
         // TODO: Calculate storage from actual database
         // For now, return 0 until storage tracking is implemented
