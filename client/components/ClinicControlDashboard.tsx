@@ -141,11 +141,22 @@ const ClinicControlDashboard: React.FC<ClinicControlDashboardProps> = ({ clinic,
             return;
         }
 
+        const storageLimitValue = Number(storageLimitMB);
+        const usersLimitValue = Number(usersLimit);
+        if (!Number.isFinite(storageLimitValue) || storageLimitValue <= 0) {
+            showMessage('error', 'Storage limit must be a positive number');
+            return;
+        }
+        if (!Number.isFinite(usersLimitValue) || usersLimitValue <= 0) {
+            showMessage('error', 'Users limit must be a positive number');
+            return;
+        }
+
         try {
             setSaving(true);
             await api.updateClinicControls(clinic.id, {
-                storageLimitMB,
-                usersLimit,
+                storageLimitMB: storageLimitValue,
+                usersLimit: usersLimitValue,
                 patientsLimit: patientsLimitValue,
                 features
             });

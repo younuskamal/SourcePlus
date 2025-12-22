@@ -147,11 +147,22 @@ const ClinicControlPanel: React.FC = () => {
             return;
         }
 
+        const storageLimitValue = Number(storageLimitInput);
+        const usersLimitValue = Number(usersLimitInput);
+        if (!Number.isFinite(storageLimitValue) || storageLimitValue <= 0) {
+            showMessage('error', 'Storage limit must be a positive number');
+            return;
+        }
+        if (!Number.isFinite(usersLimitValue) || usersLimitValue <= 0) {
+            showMessage('error', 'Users limit must be a positive number');
+            return;
+        }
+
         try {
             setSaving(true);
             await api.updateClinicControls(id, {
-                storageLimitMB: storageLimitInput,
-                usersLimit: usersLimitInput,
+                storageLimitMB: storageLimitValue,
+                usersLimit: usersLimitValue,
                 patientsLimit: patientsLimitValue,
                 features
             });
@@ -239,7 +250,94 @@ const ClinicControlPanel: React.FC = () => {
         ? Math.min((usersUsed / usersLimit) * 100, 100)
         : null;
     const filesStored = usage?.filesCount ?? null;
+    const patientsPercentage = patientsUsed !== null && patientsLimit !== null
+        ? Math.min((patientsUsed / patientsLimit) * 100, 100)
+        : null;
     const lastSyncDisplay = usage?.lastSyncAt ? new Date(usage.lastSyncAt).toLocaleString() : null;
+    const metricIconStyles: Record<string, { bg: string; icon: string }> = {
+        storage: { bg: 'bg-slate-100 dark:bg-slate-800', icon: 'text-slate-600 dark:text-slate-300' },
+        users: { bg: 'bg-slate-100 dark:bg-slate-800', icon: 'text-slate-600 dark:text-slate-300' },
+        patients: { bg: 'bg-slate-100 dark:bg-slate-800', icon: 'text-slate-600 dark:text-slate-300' }
+    };
+    const getBarColor = (metricId: string, percentage: number) => {
+        if (metricId === 'users') {
+            if (percentage >= 100) return 'bg-rose-500';
+            if (percentage > 80) return 'bg-amber-500';
+            return 'bg-emerald-500';
+        }
+        if (metricId === 'storage') {
+            if (percentage > 90) return 'bg-rose-500';
+            if (percentage > 70) return 'bg-amber-500';
+            return 'bg-slate-900 dark:bg-white';
+        }
+        if (metricId === 'patients') {
+            if (percentage >= 100) return 'bg-rose-500';
+            if (percentage > 75) return 'bg-amber-500';
+            return 'bg-indigo-500';
+        }
+        return 'bg-slate-900';
+    };
+    const overviewMetrics = [
+        {
+            id: 'storage',
+            title: 'Storage',
+            value: storageUsed !== null ? `${storageUsed.toFixed(2)} MB` : 'Not reported yet',
+            limit: storageLimit ? `${storageLimit} MB total` : 'No limit configured',
+            percentage: storagePercentage,
+            footerLabel: 'Files stored',
+            footerValue: filesStored !== null ? filesStored.toLocaleString() : '—',
+            icon: HardDrive,
+            accent: 'storage'
+        },
+        {
+            id: 'users',
+            title: 'Active Users',
+            value: usersUsed !== null ? usersUsed.toLocaleString() : 'Not reported yet',
+            limit: usersLimit ? `of ${usersLimit} users` : 'No limit configured',
+            percentage: usersPercentage,
+            footerLabel: 'Available seats',
+            footerValue: availableSeats !== null ? availableSeats.toLocaleString() : '—',
+            icon: UsersIcon,
+            accent: 'users'
+        },
+        {
+            id: 'patients',
+            title: 'Patients',
+            value: patientsUsed !== null
+                ? `${patientsUsed.toLocaleString()} / ${humanPatientsLimit}`
+                : humanPatientsLimit,
+            limit: patientsUsed !== null ? 'Reported from Smart Clinic' : (patientsLimit !== null ? 'Maximum enforced limit' : 'No limit enforced'),
+            percentage: patientsPercentage,
+            footerLabel: 'Limit source',
+            footerValue: patientsLimit !== null ? 'SourcePlus' : 'Unlimited',
+            icon: TrendingUp,
+            accent: 'patients'
+        }
+    ];
+    const snapshotRows = [
+        {
+            label: 'Storage',
+            value: storageUsed !== null && storageLimit
+                ? `${storageUsed.toFixed(2)} MB / ${storageLimit} MB`
+                : 'Usage not reported yet'
+        },
+        {
+            label: 'Active Users',
+            value: usersUsed !== null && usersLimit
+                ? `${usersUsed} / ${usersLimit}`
+                : 'Usage not reported yet'
+        },
+        {
+            label: 'Patients',
+            value: patientsUsed !== null
+                ? `${patientsUsed.toLocaleString()} / ${humanPatientsLimit}`
+                : 'Usage not reported yet'
+        },
+        {
+            label: 'Files Stored',
+            value: filesStored !== null ? filesStored.toLocaleString() : '—'
+        }
+    ];
 
     const tabs = [
         { id: 'overview' as TabType, label: 'Overview', icon: Eye },
@@ -343,36 +441,12 @@ const ClinicControlPanel: React.FC = () => {
                                 </div>
                             )}
                             <dl className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
-                                <div className="flex items-center justify-between">
-                                    <dt>Storage</dt>
-                                    <dd className="font-semibold text-slate-900 dark:text-white">
-                                        {storageUsed !== null && storageLimit
-                                            ? `${storageUsed.toFixed(2)} MB / ${storageLimit} MB`
-                                            : 'Usage not reported yet'}
-                                    </dd>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <dt>Active Users</dt>
-                                    <dd className="font-semibold text-slate-900 dark:text-white">
-                                        {usersUsed !== null && usersLimit
-                                            ? `${usersUsed} / ${usersLimit}`
-                                            : 'Usage not reported yet'}
-                                    </dd>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <dt>Patients</dt>
-                                    <dd className="font-semibold text-slate-900 dark:text-white">
-                                        {patientsUsed !== null
-                                            ? `${patientsUsed} / ${humanPatientsLimit}`
-                                            : 'Usage not reported yet'}
-                                    </dd>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <dt>Files Stored</dt>
-                                    <dd className="font-semibold text-slate-900 dark:text-white">
-                                        {filesStored !== null ? filesStored : '—'}
-                                    </dd>
-                                </div>
+                                {snapshotRows.map((row) => (
+                                    <div key={row.label} className="flex items-center justify-between">
+                                        <dt>{row.label}</dt>
+                                        <dd className="font-semibold text-slate-900 dark:text-white">{row.value}</dd>
+                                    </div>
+                                ))}
                                 {controls.lockReason && (
                                     <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-rose-500">
                                         {controls.lockReason}
@@ -410,111 +484,48 @@ const ClinicControlPanel: React.FC = () => {
                     {/* Overview Tab */}
                     {activeTab === 'overview' && (
                         <div className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                                                <HardDrive size={20} className="text-slate-600 dark:text-slate-300" />
-                                        </div>
-                                        <div>
-                                            <p className="text-xs uppercase tracking-wide text-slate-500">Storage</p>
-                                            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Storage</h3>
-                                        </div>
-                                    </div>
-                                    <span className="text-sm font-semibold text-slate-500">
-                                        {storagePercentage !== null ? `${storagePercentage.toFixed(1)}%` : '—'}
-                                    </span>
-                                </div>
-                                    <p className="text-3xl font-bold text-slate-900 dark:text-white">
-                                        {storageUsed !== null ? `${storageUsed.toFixed(2)} MB` : 'Not reported yet'}
-                                    </p>
-                                    <p className="text-sm text-slate-500">
-                                        {storageLimit ? `of ${storageLimit} MB total` : 'No limit configured'}
-                                    </p>
-                                    <div className="mt-4 h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-                                        {storagePercentage !== null ? (
-                                            <div
-                                                className={`h-full rounded-full transition-all ${storagePercentage > 90 ? 'bg-rose-500' :
-                                                        storagePercentage > 70 ? 'bg-amber-500' : 'bg-slate-900 dark:bg-white'
-                                                    }`}
-                                                style={{ width: `${storagePercentage}%` }}
-                                            />
-                                        ) : (
-                                            <div className="h-full rounded-full bg-slate-300/70 dark:bg-slate-700/70" style={{ width: '8%' }} />
-                                        )}
-                                    </div>
-                                    <div className="mt-4 flex items-center justify-between text-xs text-slate-500">
-                                        <span>Files stored</span>
-                                        <span className="font-semibold text-slate-900 dark:text-white">
-                                            {filesStored !== null ? filesStored : '—'}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                                                <UsersIcon size={20} className="text-slate-600 dark:text-slate-300" />
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {overviewMetrics.map((metric) => {
+                                    const Icon = metric.icon;
+                                    const iconStyle = metricIconStyles[metric.accent] || metricIconStyles.storage;
+                                    return (
+                                        <div key={metric.id} className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${iconStyle.bg}`}>
+                                                        <Icon size={20} className={iconStyle.icon} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs uppercase tracking-wide text-slate-500">{metric.title}</p>
+                                                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{metric.title}</h3>
+                                                    </div>
+                                                </div>
+                                                <span className="text-sm font-semibold text-slate-500">
+                                                    {metric.percentage !== null ? `${metric.percentage.toFixed(1)}%` : '—'}
+                                                </span>
                                             </div>
-                                        <div>
-                                            <p className="text-xs uppercase tracking-wide text-slate-500">Users</p>
-                                            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Active Users</h3>
+                                            <p className="text-3xl font-bold text-slate-900 dark:text-white">
+                                                {metric.value}
+                                            </p>
+                                            <p className="text-sm text-slate-500">{metric.limit}</p>
+                                            <div className="mt-4 h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+                                                {metric.percentage !== null ? (
+                                                    <div
+                                                        className={`h-full rounded-full transition-all ${getBarColor(metric.id, metric.percentage)}`}
+                                                        style={{ width: `${metric.percentage}%` }}
+                                                    />
+                                                ) : (
+                                                    <div className="h-full rounded-full bg-slate-300/70 dark:bg-slate-700/70" style={{ width: '8%' }} />
+                                                )}
+                                            </div>
+                                            <div className="mt-4 flex items-center justify-between text-xs text-slate-500">
+                                                <span>{metric.footerLabel}</span>
+                                                <span className="font-semibold text-slate-900 dark:text-white">{metric.footerValue}</span>
+                                            </div>
                                         </div>
-                                    </div>
-                                        <span className="text-sm font-semibold text-slate-500">
-                                            {usersPercentage !== null ? `${usersPercentage.toFixed(1)}%` : '—'}
-                                        </span>
-                                    </div>
-                                    <p className="text-3xl font-bold text-slate-900 dark:text-white">
-                                        {usersUsed !== null ? usersUsed : 'Not reported yet'}
-                                    </p>
-                                    <p className="text-sm text-slate-500">
-                                        {usersLimit ? `of ${usersLimit} allowed users` : 'No limit configured'}
-                                    </p>
-                                    <div className="mt-4 h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-                                        {usersPercentage !== null ? (
-                                            <div
-                                                className={`h-full rounded-full transition-all ${usersPercentage >= 100 ? 'bg-rose-500' :
-                                                        usersPercentage > 80 ? 'bg-amber-500' : 'bg-emerald-500'
-                                                    }`}
-                                                style={{ width: `${usersPercentage}%` }}
-                                            />
-                                        ) : (
-                                            <div className="h-full rounded-full bg-slate-300/70 dark:bg-slate-700/70" style={{ width: '8%' }} />
-                                        )}
-                                    </div>
-                                    <div className="mt-4 flex items-center justify-between text-xs text-slate-500">
-                                        <span>Available seats</span>
-                                        <span className="font-semibold text-slate-900 dark:text-white">
-                                            {availableSeats !== null ? availableSeats : '—'}
-                                        </span>
-                                </div>
+                                    );
+                                })}
                             </div>
-
-                                <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
-                                    <div className="flex items-center gap-3 mb-4">
-                                        <div className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                                            <TrendingUp size={20} className="text-slate-600 dark:text-slate-300" />
-                                        </div>
-                                        <div>
-                                            <p className="text-xs uppercase tracking-wide text-slate-500">Patients</p>
-                                            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Patient Limit</h3>
-                                        </div>
-                                    </div>
-                                    <p className="text-3xl font-bold text-slate-900 dark:text-white">
-                                        {patientsUsed !== null
-                                            ? `${patientsUsed.toLocaleString()} / ${humanPatientsLimit}`
-                                            : humanPatientsLimit}
-                                    </p>
-                                    <p className="text-sm text-slate-500">
-                                        {patientsUsed !== null
-                                            ? 'Patients reported / enforced limit'
-                                            : patientsLimit !== null ? 'Maximum patients allowed' : 'No limit enforced'}
-                                    </p>
-                                    <p className="mt-4 text-xs text-slate-500">SourcePlus enforced</p>
-                                </div>
 
                                 <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
                                     <div className="flex items-center gap-3 mb-4">
