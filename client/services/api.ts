@@ -383,16 +383,16 @@ export const api = {
   },
   getClinicUsage(id: string) {
     return doRequest<{
-      activeUsersCount: number;
       storageUsedMB: number;
       storageLimitMB: number;
+      usersUsed: number;
       usersLimit: number;
-      storagePercentage: number;
-      usersPercentage: number;
+      patientsUsed: number | null;
+      patientsLimit: number | null;
       filesCount: number;
       locked: boolean;
       lockReason: string | null;
-      lastUpdated: string;
+      lastSyncAt: string | null;
     }>(`/api/clinics/${id}/usage`);
   },
 

@@ -564,7 +564,8 @@ export default async function clinicRoutes(app: FastifyInstance) {
         const { id } = request.params as { id: string };
 
         const clinic = await app.prisma.clinic.findUnique({
-            where: { id }
+            where: { id },
+            include: { control: true }
         });
 
         if (!clinic) {
@@ -580,52 +581,43 @@ export default async function clinicRoutes(app: FastifyInstance) {
         });
 
         // Get clinic controls for limits
-        const controls = await app.prisma.clinicControl.findUnique({
-            where: { clinicId: id }
-        });
+        const controls = clinic.control;
 
-        // ✅ Calculate REAL storage from FileUpload table
-        const fileUploads = await app.prisma.fileUpload.findMany({
+        // Calculate REAL storage from FileUpload table using aggregate
+        const storageStats = await app.prisma.fileUpload.aggregate({
             where: { clinicId: id },
-            select: { size: true }
+            _sum: { size: true },
+            _count: { _all: true }
         });
 
-        // Sum up total storage in bytes, then convert to MB
-        const totalStorageBytes = fileUploads.reduce((sum, file) => sum + (file.size || 0), 0);
-        const storageUsedMB = Math.round((totalStorageBytes / (1024 * 1024)) * 100) / 100; // Convert to MB with 2 decimals
-
-        const storageLimitMB = controls?.storageLimitMB ?? 0;
-        const usersLimit = controls?.usersLimit ?? 0;
-        const storagePercentage = storageLimitMB
-            ? Math.min((storageUsedMB / storageLimitMB) * 100, 100)
+        const totalStorageBytes = storageStats._sum.size ?? 0;
+        const storageUsedMB = totalStorageBytes
+            ? Math.round((totalStorageBytes / (1024 * 1024)) * 100) / 100
             : 0;
-        const usersPercentage = usersLimit
-            ? Math.min((activeUsersCount / usersLimit) * 100, 100)
-            : 0;
+        const filesCount = storageStats._count._all ?? 0;
 
         const usageData = {
-            activeUsersCount,
             storageUsedMB,
-            storageLimitMB,
-            usersLimit,
-            storagePercentage,
-            usersPercentage,
-            filesCount: fileUploads.length,
+            storageLimitMB: controls?.storageLimitMB ?? 0,
+            usersUsed: activeUsersCount,
+            usersLimit: controls?.usersLimit ?? 0,
+            patientsUsed: null as number | null, // Smart Clinic is responsible for reporting this
+            patientsLimit: controls?.patientsLimit ?? null,
+            filesCount,
             locked: controls?.locked ?? false,
             lockReason: controls?.lockReason || null,
-            lastUpdated: new Date().toISOString()
+            lastSyncAt: clinic.updatedAt?.toISOString() ?? new Date().toISOString()
         };
 
         // Enhanced Logging for verification
         request.log.info({
             clinicId: id,
             clinicName: clinic.name,
-            storageUsedMB,
-            storageLimitMB,
-            storagePercentage: Math.round(storagePercentage),
-            activeUsersCount,
-            usersLimit,
-            usersPercentage: Math.round(usersPercentage),
+            storageUsedMB: usageData.storageUsedMB,
+            storageLimitMB: usageData.storageLimitMB,
+            usersUsed: usageData.usersUsed,
+            usersLimit: usageData.usersLimit,
+            patientsLimit: usageData.patientsLimit,
             locked: usageData.locked,
             lockReason: usageData.lockReason,
             totalFilesCount: usageData.filesCount

@@ -16,7 +16,8 @@ import {
     AlertCircle,
     CheckCircle,
     XCircle,
-    Info
+    Info,
+    TrendingUp
 } from 'lucide-react';
 
 interface ClinicInformationPanelProps {
@@ -24,12 +25,18 @@ interface ClinicInformationPanelProps {
     controls?: {
         storageLimitMB: number;
         usersLimit: number;
+        patientsLimit?: number | null;
         locked: boolean;
         lockReason: string | null;
     };
     usage?: {
-        storageUsedMB: number;
-        activeUsersCount: number;
+        storageUsedMB: number | null;
+        storageLimitMB?: number | null;
+        usersUsed: number | null;
+        usersLimit?: number | null;
+        patientsUsed?: number | null;
+        patientsLimit?: number | null;
+        lastSyncAt?: string | null;
     };
 }
 
@@ -93,6 +100,20 @@ const ClinicInformationPanel: React.FC<ClinicInformationPanelProps> = ({ clinic,
     const status = getSubscriptionStatus();
     const statusBadge = getStatusBadge(status);
     const remainingDays = calculateRemainingDays();
+    const storageLimitValue = usage?.storageLimitMB ?? controls?.storageLimitMB ?? null;
+    const storageUsed = usage?.storageUsedMB ?? null;
+    const usersLimitValue = usage?.usersLimit ?? controls?.usersLimit ?? null;
+    const usersUsed = usage?.usersUsed ?? null;
+    const patientsLimitValue = usage?.patientsLimit ?? controls?.patientsLimit ?? null;
+    const patientsUsed = usage?.patientsUsed ?? null;
+    const lastSyncDisplay = usage?.lastSyncAt ? new Date(usage.lastSyncAt).toLocaleString() : null;
+    const calcPercentage = (used: number | null | undefined, limit: number | null | undefined) => {
+        if (used === null || used === undefined || !limit) return null;
+        return Math.min((used / limit) * 100, 100);
+    };
+    const usersUsagePct = calcPercentage(usersUsed, usersLimitValue);
+    const storageUsagePct = calcPercentage(storageUsed, storageLimitValue);
+    const patientsUsagePct = calcPercentage(patientsUsed, patientsLimitValue);
 
     return (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-slate-200 dark:border-slate-700 overflow-hidden shadow-xl">
@@ -270,15 +291,26 @@ const ClinicInformationPanel: React.FC<ClinicInformationPanelProps> = ({ clinic,
                                     {t('dashboard.usersUsed')}
                                 </span>
                                 <span className="text-xs font-bold text-slate-900 dark:text-white">
-                                    {usage?.activeUsersCount || 0} / {controls?.usersLimit || 0}
+                                    {usersUsed !== null && usersLimitValue
+                                        ? `${usersUsed} / ${usersLimitValue}`
+                                        : t('dashboard.notAvailable')}
                                 </span>
                             </div>
                             <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-purple-500 transition-all"
-                                    style={{ width: `${Math.min(((usage?.activeUsersCount || 0) / (controls?.usersLimit || 1)) * 100, 100)}%` }}
-                                />
+                                {usersUsagePct !== null ? (
+                                    <div
+                                        className="h-full bg-purple-500 transition-all"
+                                        style={{ width: `${usersUsagePct}%` }}
+                                    />
+                                ) : (
+                                    <div className="h-full bg-slate-400/60 dark:bg-slate-600/60" style={{ width: '8%' }} />
+                                )}
                             </div>
+                            {usersUsagePct === null && (
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                                    Usage data not reported yet
+                                </p>
+                            )}
                         </div>
 
                         {/* Storage */}
@@ -289,15 +321,58 @@ const ClinicInformationPanel: React.FC<ClinicInformationPanelProps> = ({ clinic,
                                     {t('dashboard.storageUsed')}
                                 </span>
                                 <span className="text-xs font-bold text-slate-900 dark:text-white">
-                                    {usage?.storageUsedMB || 0} / {controls?.storageLimitMB || 0} MB
+                                    {storageUsed !== null && storageLimitValue
+                                        ? `${storageUsed} / ${storageLimitValue} MB`
+                                        : t('dashboard.notAvailable')}
                                 </span>
                             </div>
                             <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-cyan-500 transition-all"
-                                    style={{ width: `${Math.min(((usage?.storageUsedMB || 0) / (controls?.storageLimitMB || 1)) * 100, 100)}%` }}
-                                />
+                                {storageUsagePct !== null ? (
+                                    <div
+                                        className="h-full bg-cyan-500 transition-all"
+                                        style={{ width: `${storageUsagePct}%` }}
+                                    />
+                                ) : (
+                                    <div className="h-full bg-slate-400/60 dark:bg-slate-600/60" style={{ width: '8%' }} />
+                                )}
                             </div>
+                            {storageUsagePct === null && (
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                                    Usage data not reported yet
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Patients */}
+                        <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                                    <TrendingUp size={12} />
+                                    Patients
+                                </span>
+                                <span className="text-xs font-bold text-slate-900 dark:text-white">
+                                    {patientsUsed !== null && patientsLimitValue
+                                        ? `${patientsUsed.toLocaleString()} / ${patientsLimitValue.toLocaleString()}`
+                                        : patientsLimitValue !== null
+                                            ? patientsLimitValue.toLocaleString()
+                                            : 'Unlimited'}
+                                </span>
+                            </div>
+                            <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                {patientsUsagePct !== null ? (
+                                    <div
+                                        className="h-full bg-amber-500 transition-all"
+                                        style={{ width: `${patientsUsagePct}%` }}
+                                    />
+                                ) : (
+                                    <div className="h-full bg-slate-400/60 dark:bg-slate-600/60" style={{ width: '8%' }} />
+                                )}
+                            </div>
+                            {patientsUsagePct === null && (
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                                    Usage data not reported yet
+                                </p>
+                            )}
                         </div>
 
                         {/* Lock Status */}
@@ -322,7 +397,7 @@ const ClinicInformationPanel: React.FC<ClinicInformationPanelProps> = ({ clinic,
                         {/* Last Seen / Heartbeat */}
                         <InfoField
                             label={t('dashboard.lastSeen')}
-                            value={t('dashboard.notAvailable')}
+                            value={lastSyncDisplay || t('dashboard.notAvailable')}
                             icon={<Clock size={14} />}
                             small
                         />

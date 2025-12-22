@@ -229,15 +229,23 @@ const ClinicApiDocs: React.FC = () => {
                         description="جلب البيانات الحقيقية لاستخدام العيادة (requires admin authentication)"
                         headers="Authorization: Bearer <admin_token>"
                         response={`{
-  "activeUsersCount": 3,
   "storageUsedMB": 245,
-  "lastUpdated": "2025-12-21T12:00:00Z"
+  "storageLimitMB": 1024,
+  "usersUsed": 2,
+  "usersLimit": 3,
+  "patientsUsed": 320,
+  "patientsLimit": 500,
+  "filesCount": 1540,
+  "locked": false,
+  "lockReason": null,
+  "lastSyncAt": "2025-12-21T12:00:00Z"
 }`}
                         notes={[
-                            "activeUsersCount: عدد المستخدمين النشطين (status ≠ SUSPENDED)",
-                            "storageUsedMB: المساحة المستخدمة فعلياً (حالياً 0 - سيتم تنفيذه لاحقاً)",
-                            "استخدم هذه البيانات لعرض تحذيرات عند اقتراب الحدود",
-                            "قارن activeUsersCount مع usersLimit من controls"
+                            "usersUsed: عدد المستخدمين النشطين (status ≠ SUSPENDED)",
+                            "patientsUsed: قد تكون null إذا لم ترسل العيادة أرقام المرضى بعد (لا يتم التنبؤ بالقيم)",
+                            "storageUsedMB: المساحة المستخدمة فعلياً من ملفات العيادة",
+                            "lastSyncAt: آخر وقت أرسلت فيه العيادة البيانات. إذا كان null فهذا يعني أنه لم يتم التبليغ بعد.",
+                            "قارن usersUsed مع usersLimit، و patientsUsed مع patientsLimit لفرض الحدود"
                         ]}
                     />
 
@@ -249,7 +257,7 @@ const ClinicApiDocs: React.FC = () => {
                                     مثال لحساب النسبة المئوية:
                                 </p>
                                 <code className="block text-xs bg-amber-100 dark:bg-amber-900/30 p-2 rounded text-amber-900 dark:text-amber-100">
-                                    const percentage = (usage.activeUsersCount / controls.usersLimit) * 100;<br />
+                                    const percentage = (usage.usersUsed / controls.usersLimit) * 100;<br />
                                     if (percentage &gt;= 100) alert("وصلت للحد الأقصى!");
                                 </code>
                             </div>

@@ -43,14 +43,14 @@ interface FeatureToggles {
 interface UsageData {
     storageUsedMB: number;
     storageLimitMB: number;
-    storagePercentage: number;
-    activeUsersCount: number;
+    usersUsed: number;
     usersLimit: number;
-    usersPercentage: number;
+    patientsUsed: number | null;
+    patientsLimit: number | null;
     filesCount: number;
     locked: boolean;
     lockReason: string | null;
-    lastUpdated: string;
+    lastSyncAt: string | null;
 }
 
 type TabType = 'overview' | 'limits' | 'features' | 'security';
@@ -68,6 +68,7 @@ const ClinicControlPanel: React.FC = () => {
     const [showLockConfirm, setShowLockConfirm] = useState(false);
     const [lockReason, setLockReason] = useState('');
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    const [usageMessage, setUsageMessage] = useState<string | null>(null);
 
     // Form state
     const [storageLimitInput, setStorageLimitInput] = useState(1024);
@@ -92,18 +93,26 @@ const ClinicControlPanel: React.FC = () => {
 
         try {
             setLoading(true);
+            setUsageMessage(null);
 
-            console.log('🔍 Loading clinic data for:', id);
-
-            const [clinicData, controlsData, usageData] = await Promise.all([
+            const [clinicData, controlsData] = await Promise.all([
                 api.getClinic(id),
-                api.getClinicControls(id),
-                api.getClinicUsage(id)
+                api.getClinicControls(id)
             ]);
 
-            console.log('✅ Clinic:', clinicData);
-            console.log('✅ Controls:', controlsData);
-            console.log('✅ Usage:', usageData);
+            let usageData: UsageData | null = null;
+            try {
+                usageData = await api.getClinicUsage(id);
+                setUsageMessage(null);
+            } catch (usageError: any) {
+                if (usageError?.response?.status === 404) {
+                    setUsageMessage('Usage data has not been reported yet from this clinic.');
+                } else {
+                    console.error('Failed to load usage data:', usageError);
+                    setUsageMessage('Unable to load usage data right now.');
+                    showMessage('error', `Failed to load usage data: ${usageError.response?.data?.message || usageError.message}`);
+                }
+            }
 
             setClinic(clinicData);
             setControls(controlsData);
@@ -195,7 +204,7 @@ const ClinicControlPanel: React.FC = () => {
         );
     }
 
-    if (!clinic || !controls || !usage) {
+    if (!clinic || !controls) {
         return (
             <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex items-center justify-center">
                 <div className="text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-lg">
@@ -213,11 +222,24 @@ const ClinicControlPanel: React.FC = () => {
         );
     }
 
-    const storageLimit = usage.storageLimitMB || controls.storageLimitMB || storageLimitInput;
-    const usersLimit = usage.usersLimit || controls.usersLimit || usersLimitInput;
+    const storageLimit = usage?.storageLimitMB ?? controls.storageLimitMB ?? storageLimitInput;
+    const storageUsed = usage?.storageUsedMB ?? null;
+    const usersLimit = usage?.usersLimit ?? controls.usersLimit ?? usersLimitInput;
+    const usersUsed = usage?.usersUsed ?? null;
     const patientsLimit = controls.patientsLimit ?? null;
-    const storagePercentage = storageLimit ? Math.min((usage.storageUsedMB / storageLimit) * 100, 100) : 0;
-    const usersPercentage = usersLimit ? Math.min((usage.activeUsersCount / usersLimit) * 100, 100) : 0;
+    const patientsUsed = usage?.patientsUsed ?? null;
+    const humanPatientsLimit = patientsLimit !== null ? patientsLimit.toLocaleString() : 'Unlimited';
+    const availableSeats = usersUsed !== null && usersLimit
+        ? Math.max(usersLimit - usersUsed, 0)
+        : null;
+    const storagePercentage = storageUsed !== null && storageLimit
+        ? Math.min((storageUsed / storageLimit) * 100, 100)
+        : null;
+    const usersPercentage = usersUsed !== null && usersLimit
+        ? Math.min((usersUsed / usersLimit) * 100, 100)
+        : null;
+    const filesStored = usage?.filesCount ?? null;
+    const lastSyncDisplay = usage?.lastSyncAt ? new Date(usage.lastSyncAt).toLocaleString() : null;
 
     const tabs = [
         { id: 'overview' as TabType, label: 'Overview', icon: Eye },
@@ -273,12 +295,12 @@ const ClinicControlPanel: React.FC = () => {
                                         <p className="text-sm text-slate-500">Control panel with verified usage metrics</p>
                                     </div>
                                 </div>
-                                <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border ${usage.locked
+                                <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border ${controls.locked
                                         ? 'border-rose-200 text-rose-700 bg-rose-50 dark:border-rose-800 dark:text-rose-300 dark:bg-rose-950/30'
                                         : 'border-emerald-200 text-emerald-700 bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 dark:bg-emerald-950/30'
                                     }`}>
-                                    {usage.locked ? <Lock size={16} /> : <Unlock size={16} />}
-                                    {usage.locked ? 'Locked' : 'Active'}
+                                    {controls.locked ? <Lock size={16} /> : <Unlock size={16} />}
+                                    {controls.locked ? 'Locked' : 'Active'}
                                 </div>
                             </div>
 
@@ -309,30 +331,51 @@ const ClinicControlPanel: React.FC = () => {
                                     <p className="text-sm text-slate-900 dark:text-white font-semibold">Real numbers from Smart Clinic</p>
                                 </div>
                                 <div className="text-right text-xs text-slate-500">
-                                    <p>Updated</p>
-                                    <p className="font-medium">{new Date(usage.lastUpdated).toLocaleString()}</p>
+                                    <p>Last sync</p>
+                                    <p className="font-medium">
+                                        {lastSyncDisplay || 'Not reported yet'}
+                                    </p>
                                 </div>
                             </div>
+                            {usageMessage && (
+                                <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50/60 dark:border-amber-800 dark:bg-amber-900/20 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+                                    {usageMessage}
+                                </div>
+                            )}
                             <dl className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
                                 <div className="flex items-center justify-between">
                                     <dt>Storage</dt>
                                     <dd className="font-semibold text-slate-900 dark:text-white">
-                                        {usage.storageUsedMB.toFixed(2)} MB / {storageLimit} MB
+                                        {storageUsed !== null && storageLimit
+                                            ? `${storageUsed.toFixed(2)} MB / ${storageLimit} MB`
+                                            : 'Usage not reported yet'}
                                     </dd>
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <dt>Active Users</dt>
                                     <dd className="font-semibold text-slate-900 dark:text-white">
-                                        {usage.activeUsersCount} / {usersLimit}
+                                        {usersUsed !== null && usersLimit
+                                            ? `${usersUsed} / ${usersLimit}`
+                                            : 'Usage not reported yet'}
+                                    </dd>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <dt>Patients</dt>
+                                    <dd className="font-semibold text-slate-900 dark:text-white">
+                                        {patientsUsed !== null
+                                            ? `${patientsUsed} / ${humanPatientsLimit}`
+                                            : 'Usage not reported yet'}
                                     </dd>
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <dt>Files Stored</dt>
-                                    <dd className="font-semibold text-slate-900 dark:text-white">{usage.filesCount}</dd>
+                                    <dd className="font-semibold text-slate-900 dark:text-white">
+                                        {filesStored !== null ? filesStored : '—'}
+                                    </dd>
                                 </div>
-                                {usage.lockReason && (
+                                {controls.lockReason && (
                                     <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-rose-500">
-                                        {usage.lockReason}
+                                        {controls.lockReason}
                                     </div>
                                 )}
                             </dl>
@@ -373,27 +416,39 @@ const ClinicControlPanel: React.FC = () => {
                                         <div className="flex items-center gap-3">
                                             <div className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
                                                 <HardDrive size={20} className="text-slate-600 dark:text-slate-300" />
-                                            </div>
-                                            <div>
-                                                <p className="text-xs uppercase tracking-wide text-slate-500">Storage</p>
-                                                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Storage</h3>
-                                            </div>
                                         </div>
-                                        <span className="text-sm font-semibold text-slate-500">{storagePercentage.toFixed(1)}%</span>
+                                        <div>
+                                            <p className="text-xs uppercase tracking-wide text-slate-500">Storage</p>
+                                            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Storage</h3>
+                                        </div>
                                     </div>
-                                    <p className="text-3xl font-bold text-slate-900 dark:text-white">{usage.storageUsedMB.toFixed(2)} MB</p>
-                                    <p className="text-sm text-slate-500">of {storageLimit} MB total</p>
+                                    <span className="text-sm font-semibold text-slate-500">
+                                        {storagePercentage !== null ? `${storagePercentage.toFixed(1)}%` : '—'}
+                                    </span>
+                                </div>
+                                    <p className="text-3xl font-bold text-slate-900 dark:text-white">
+                                        {storageUsed !== null ? `${storageUsed.toFixed(2)} MB` : 'Not reported yet'}
+                                    </p>
+                                    <p className="text-sm text-slate-500">
+                                        {storageLimit ? `of ${storageLimit} MB total` : 'No limit configured'}
+                                    </p>
                                     <div className="mt-4 h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-                                        <div
-                                            className={`h-full rounded-full transition-all ${storagePercentage > 90 ? 'bg-rose-500' :
-                                                    storagePercentage > 70 ? 'bg-amber-500' : 'bg-slate-900 dark:bg-white'
-                                                }`}
-                                            style={{ width: `${storagePercentage}%` }}
-                                        />
+                                        {storagePercentage !== null ? (
+                                            <div
+                                                className={`h-full rounded-full transition-all ${storagePercentage > 90 ? 'bg-rose-500' :
+                                                        storagePercentage > 70 ? 'bg-amber-500' : 'bg-slate-900 dark:bg-white'
+                                                    }`}
+                                                style={{ width: `${storagePercentage}%` }}
+                                            />
+                                        ) : (
+                                            <div className="h-full rounded-full bg-slate-300/70 dark:bg-slate-700/70" style={{ width: '8%' }} />
+                                        )}
                                     </div>
                                     <div className="mt-4 flex items-center justify-between text-xs text-slate-500">
                                         <span>Files stored</span>
-                                        <span className="font-semibold text-slate-900 dark:text-white">{usage.filesCount}</span>
+                                        <span className="font-semibold text-slate-900 dark:text-white">
+                                            {filesStored !== null ? filesStored : '—'}
+                                        </span>
                                     </div>
                                 </div>
 
@@ -403,26 +458,38 @@ const ClinicControlPanel: React.FC = () => {
                                             <div className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
                                                 <UsersIcon size={20} className="text-slate-600 dark:text-slate-300" />
                                             </div>
-                                            <div>
-                                                <p className="text-xs uppercase tracking-wide text-slate-500">Users</p>
-                                                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Active Users</h3>
-                                            </div>
+                                        <div>
+                                            <p className="text-xs uppercase tracking-wide text-slate-500">Users</p>
+                                            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Active Users</h3>
                                         </div>
-                                        <span className="text-sm font-semibold text-slate-500">{usersPercentage.toFixed(1)}%</span>
                                     </div>
-                                    <p className="text-3xl font-bold text-slate-900 dark:text-white">{usage.activeUsersCount}</p>
-                                    <p className="text-sm text-slate-500">of {usersLimit} allowed users</p>
+                                        <span className="text-sm font-semibold text-slate-500">
+                                            {usersPercentage !== null ? `${usersPercentage.toFixed(1)}%` : '—'}
+                                        </span>
+                                    </div>
+                                    <p className="text-3xl font-bold text-slate-900 dark:text-white">
+                                        {usersUsed !== null ? usersUsed : 'Not reported yet'}
+                                    </p>
+                                    <p className="text-sm text-slate-500">
+                                        {usersLimit ? `of ${usersLimit} allowed users` : 'No limit configured'}
+                                    </p>
                                     <div className="mt-4 h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-                                        <div
-                                            className={`h-full rounded-full transition-all ${usersPercentage >= 100 ? 'bg-rose-500' :
-                                                    usersPercentage > 80 ? 'bg-amber-500' : 'bg-emerald-500'
-                                                }`}
-                                            style={{ width: `${usersPercentage}%` }}
-                                        />
+                                        {usersPercentage !== null ? (
+                                            <div
+                                                className={`h-full rounded-full transition-all ${usersPercentage >= 100 ? 'bg-rose-500' :
+                                                        usersPercentage > 80 ? 'bg-amber-500' : 'bg-emerald-500'
+                                                    }`}
+                                                style={{ width: `${usersPercentage}%` }}
+                                            />
+                                        ) : (
+                                            <div className="h-full rounded-full bg-slate-300/70 dark:bg-slate-700/70" style={{ width: '8%' }} />
+                                        )}
                                     </div>
                                     <div className="mt-4 flex items-center justify-between text-xs text-slate-500">
                                         <span>Available seats</span>
-                                        <span className="font-semibold text-slate-900 dark:text-white">{Math.max(usersLimit - usage.activeUsersCount, 0)}</span>
+                                        <span className="font-semibold text-slate-900 dark:text-white">
+                                            {availableSeats !== null ? availableSeats : '—'}
+                                        </span>
                                 </div>
                             </div>
 
@@ -437,10 +504,14 @@ const ClinicControlPanel: React.FC = () => {
                                         </div>
                                     </div>
                                     <p className="text-3xl font-bold text-slate-900 dark:text-white">
-                                        {patientsLimit !== null ? patientsLimit.toLocaleString() : 'Unlimited'}
+                                        {patientsUsed !== null
+                                            ? `${patientsUsed.toLocaleString()} / ${humanPatientsLimit}`
+                                            : humanPatientsLimit}
                                     </p>
                                     <p className="text-sm text-slate-500">
-                                        {patientsLimit !== null ? 'Maximum patients allowed' : 'No limit enforced'}
+                                        {patientsUsed !== null
+                                            ? 'Patients reported / enforced limit'
+                                            : patientsLimit !== null ? 'Maximum patients allowed' : 'No limit enforced'}
                                     </p>
                                     <p className="mt-4 text-xs text-slate-500">SourcePlus enforced</p>
                                 </div>
@@ -448,11 +519,11 @@ const ClinicControlPanel: React.FC = () => {
                                 <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
                                     <div className="flex items-center gap-3 mb-4">
                                         <div className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                                            {usage.locked ? <Lock size={20} className="text-rose-500" /> : <Unlock size={20} className="text-emerald-500" />}
+                                            {controls.locked ? <Lock size={20} className="text-rose-500" /> : <Unlock size={20} className="text-emerald-500" />}
                                         </div>
                                         <div>
                                             <p className="text-xs uppercase tracking-wide text-slate-500">Status</p>
-                                            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{usage.locked ? 'Access locked' : 'Access available'}</h3>
+                                            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{controls.locked ? 'Access locked' : 'Access available'}</h3>
                                         </div>
                                     </div>
                                     <ul className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
@@ -470,7 +541,7 @@ const ClinicControlPanel: React.FC = () => {
                                         </li>
                                         <li className="flex justify-between">
                                             <span>Last data sync</span>
-                                            <span className="text-slate-900 dark:text-white">{new Date(usage.lastUpdated).toLocaleString()}</span>
+                                            <span className="text-slate-900 dark:text-white">{lastSyncDisplay || 'Not reported yet'}</span>
                                         </li>
                                     </ul>
                                     <p className="mt-4 text-xs text-slate-500">Data source: live users + stored files counts</p>
@@ -529,7 +600,10 @@ const ClinicControlPanel: React.FC = () => {
                                         />
                                         <div className="text-sm text-slate-500 dark:text-slate-400">
                                             <div className="font-semibold">Current Usage:</div>
-                                            <div>{usage.storageUsedMB.toFixed(2)} MB ({storagePercentage.toFixed(1)}%)</div>
+                                            <div>
+                                                {storageUsed !== null ? `${storageUsed.toFixed(2)} MB` : 'Not reported yet'}
+                                                {storagePercentage !== null ? ` (${storagePercentage.toFixed(1)}%)` : ''}
+                                            </div>
                                         </div>
                                     </div>
                                     <p className="mt-2 text-sm text-slate-500">Maximum storage space allowed for this clinic</p>
@@ -550,7 +624,10 @@ const ClinicControlPanel: React.FC = () => {
                                         />
                                         <div className="text-sm text-slate-500 dark:text-slate-400">
                                             <div className="font-semibold">Active Users:</div>
-                                            <div>{usage.activeUsersCount} users ({usersPercentage.toFixed(1)}%)</div>
+                                            <div>
+                                                {usersUsed !== null ? `${usersUsed} users` : 'Not reported yet'}
+                                                {usersPercentage !== null ? ` (${usersPercentage.toFixed(1)}%)` : ''}
+                                            </div>
                                         </div>
                                     </div>
                                     <p className="mt-2 text-sm text-slate-500">Maximum number of active users allowed</p>

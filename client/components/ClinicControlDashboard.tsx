@@ -44,9 +44,16 @@ interface ControlsData {
 }
 
 interface UsageData {
-    storageUsedMB: number;
-    activeUsersCount: number;
-    lastUpdated: string;
+    storageUsedMB: number | null;
+    storageLimitMB: number | null;
+    usersUsed: number | null;
+    usersLimit: number | null;
+    patientsUsed: number | null;
+    patientsLimit: number | null;
+    filesCount: number | null;
+    locked: boolean;
+    lockReason: string | null;
+    lastSyncAt: string | null;
 }
 
 type TabType = 'overview' | 'limits' | 'features' | 'security';
@@ -61,6 +68,7 @@ const ClinicControlDashboard: React.FC<ClinicControlDashboardProps> = ({ clinic,
     const [showLockConfirm, setShowLockConfirm] = useState(false);
     const [lockReason, setLockReason] = useState('');
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    const [usageMessage, setUsageMessage] = useState<string | null>(null);
 
     // Form state
     const [storageLimitMB, setStorageLimitMB] = useState(1024);
@@ -81,18 +89,22 @@ const ClinicControlDashboard: React.FC<ClinicControlDashboardProps> = ({ clinic,
     const loadData = async () => {
         try {
             setLoading(true);
+            setUsageMessage(null);
 
-            console.log('🔍 Loading clinic controls and usage for:', clinic.id, clinic.name);
-
-            const [controlsData, usageData] = await Promise.all([
-                api.getClinicControls(clinic.id),
-                api.getClinicUsage(clinic.id)
-            ]);
-
-            console.log('✅ Clinic Controls Data:', controlsData);
-            console.log('✅ Clinic Usage Data:', usageData);
-            console.log('📊 Storage:', usageData.storageUsedMB, 'MB /', controlsData.storageLimitMB, 'MB');
-            console.log('👥 Users:', usageData.activeUsersCount, '/', controlsData.usersLimit);
+            const controlsData = await api.getClinicControls(clinic.id);
+            let usageData: UsageData | null = null;
+            try {
+                usageData = await api.getClinicUsage(clinic.id);
+                setUsageMessage(null);
+            } catch (usageError: any) {
+                if (usageError?.response?.status === 404) {
+                    setUsageMessage('Usage data has not been reported yet from this clinic.');
+                } else {
+                    console.error('Failed to load clinic usage:', usageError);
+                    setUsageMessage('Unable to load usage data right now.');
+                    showMessage('error', `Failed to load usage data: ${usageError.response?.data?.message || usageError.message}`);
+                }
+            }
 
             setControls(controlsData);
             setUsage(usageData);
@@ -195,8 +207,19 @@ const ClinicControlDashboard: React.FC<ClinicControlDashboardProps> = ({ clinic,
         );
     }
 
-    const storagePercentage = usage ? Math.min((usage.storageUsedMB / storageLimitMB) * 100, 100) : 0;
-    const usersPercentage = usage ? Math.min((usage.activeUsersCount / usersLimit) * 100, 100) : 0;
+    const storageLimitValue = usage?.storageLimitMB ?? controls.storageLimitMB ?? storageLimitMB;
+    const storageUsed = usage?.storageUsedMB ?? null;
+    const storagePercentage = storageUsed !== null && storageLimitValue
+        ? Math.min((storageUsed / storageLimitValue) * 100, 100)
+        : null;
+    const usersLimitValue = usage?.usersLimit ?? controls.usersLimit ?? usersLimit;
+    const usersUsed = usage?.usersUsed ?? null;
+    const usersPercentage = usersUsed !== null && usersLimitValue
+        ? Math.min((usersUsed / usersLimitValue) * 100, 100)
+        : null;
+    const patientsLimitValue = usage?.patientsLimit ?? controls.patientsLimit ?? null;
+    const patientsUsed = usage?.patientsUsed ?? null;
+    const lastSyncDisplay = usage?.lastSyncAt ? new Date(usage.lastSyncAt).toLocaleString() : null;
 
     return (
         <>
@@ -313,6 +336,11 @@ const ClinicControlDashboard: React.FC<ClinicControlDashboardProps> = ({ clinic,
                         {/* Overview Tab */}
                         {activeTab === 'overview' && (
                             <div className="space-y-6">
+                                {usageMessage && (
+                                    <div className="rounded-xl border border-amber-200 bg-amber-50/70 dark:border-amber-800 dark:bg-amber-900/20 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+                                        {usageMessage}
+                                    </div>
+                                )}
                                 {/* Stats Grid */}
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                     {/* Storage */}
@@ -326,16 +354,24 @@ const ClinicControlDashboard: React.FC<ClinicControlDashboardProps> = ({ clinic,
                                         <div className="space-y-2">
                                             <div className="flex justify-between text-sm">
                                                 <span className="text-slate-600 dark:text-slate-300">
-                                                    {usage?.storageUsedMB || 0} MB / {storageLimitMB} MB
+                                                    {storageUsed !== null && storageLimitValue
+                                                        ? `${storageUsed} MB / ${storageLimitValue} MB`
+                                                        : 'Usage not reported yet'}
                                                 </span>
-                                                <span className="font-bold text-blue-600">{storagePercentage.toFixed(1)}%</span>
+                                                <span className="font-bold text-blue-600">
+                                                    {storagePercentage !== null ? `${storagePercentage.toFixed(1)}%` : '—'}
+                                                </span>
                                             </div>
                                             <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
-                                                <div
-                                                    className={`h-full rounded-full transition-all ${storagePercentage > 90 ? 'bg-rose-500' : storagePercentage > 70 ? 'bg-amber-500' : 'bg-blue-500'
-                                                        }`}
-                                                    style={{ width: `${storagePercentage}%` }}
-                                                />
+                                                {storagePercentage !== null ? (
+                                                    <div
+                                                        className={`h-full rounded-full transition-all ${storagePercentage > 90 ? 'bg-rose-500' : storagePercentage > 70 ? 'bg-amber-500' : 'bg-blue-500'
+                                                            }`}
+                                                        style={{ width: `${storagePercentage}%` }}
+                                                    />
+                                                ) : (
+                                                    <div className="h-full rounded-full bg-slate-400/70 dark:bg-slate-600/70" style={{ width: '8%' }} />
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -351,16 +387,24 @@ const ClinicControlDashboard: React.FC<ClinicControlDashboardProps> = ({ clinic,
                                         <div className="space-y-2">
                                             <div className="flex justify-between text-sm">
                                                 <span className="text-slate-600 dark:text-slate-300">
-                                                    {usage?.activeUsersCount || 0} / {usersLimit}
+                                                    {usersUsed !== null && usersLimitValue
+                                                        ? `${usersUsed} / ${usersLimitValue}`
+                                                        : 'Usage not reported yet'}
                                                 </span>
-                                                <span className="font-bold text-emerald-600">{usersPercentage.toFixed(1)}%</span>
+                                                <span className="font-bold text-emerald-600">
+                                                    {usersPercentage !== null ? `${usersPercentage.toFixed(1)}%` : '—'}
+                                                </span>
                                             </div>
                                             <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
-                                                <div
-                                                    className={`h-full rounded-full transition-all ${usersPercentage >= 100 ? 'bg-rose-500' : usersPercentage > 80 ? 'bg-amber-500' : 'bg-emerald-500'
-                                                        }`}
-                                                    style={{ width: `${usersPercentage}%` }}
-                                                />
+                                                {usersPercentage !== null ? (
+                                                    <div
+                                                        className={`h-full rounded-full transition-all ${usersPercentage >= 100 ? 'bg-rose-500' : usersPercentage > 80 ? 'bg-amber-500' : 'bg-emerald-500'
+                                                            }`}
+                                                        style={{ width: `${usersPercentage}%` }}
+                                                    />
+                                                ) : (
+                                                    <div className="h-full rounded-full bg-slate-400/70 dark:bg-slate-600/70" style={{ width: '8%' }} />
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -374,9 +418,15 @@ const ClinicControlDashboard: React.FC<ClinicControlDashboardProps> = ({ clinic,
                                             <p className="font-semibold text-slate-700 dark:text-slate-200">Patients</p>
                                         </div>
                                         <p className="text-lg font-bold text-slate-900 dark:text-white">
-                                            {controls.patientsLimit !== null ? controls.patientsLimit.toLocaleString() : 'Unlimited'}
+                                            {patientsUsed !== null && patientsLimitValue !== null
+                                                ? `${patientsUsed.toLocaleString()} / ${patientsLimitValue.toLocaleString()}`
+                                                : patientsLimitValue !== null
+                                                    ? patientsLimitValue.toLocaleString()
+                                                    : 'Unlimited'}
                                         </p>
-                                        <p className="text-sm text-slate-600 dark:text-slate-300">Enforced limit</p>
+                                        <p className="text-sm text-slate-600 dark:text-slate-300">
+                                            {patientsUsed !== null ? 'Patients reported / enforced limit' : 'Enforced limit'}
+                                        </p>
                                     </div>
 
                                     {/* Status */}
@@ -390,11 +440,11 @@ const ClinicControlDashboard: React.FC<ClinicControlDashboardProps> = ({ clinic,
                                         <p className={`text-lg font-bold ${controls.locked ? 'text-rose-600' : 'text-emerald-600'}`}>
                                             {controls.locked ? 'LOCKED' : 'Active'}
                                         </p>
-                                        {usage?.lastUpdated && (
+                                        {lastSyncDisplay && (
                                             <div className="mt-2 space-y-1">
                                                 <p className="text-xs text-slate-500 flex items-center gap-1">
                                                     <Clock size={12} />
-                                                    Data: {new Date(usage.lastUpdated).toLocaleString()}
+                                                    Data: {lastSyncDisplay}
                                                 </p>
                                                 <p className="text-xs text-emerald-600 font-medium flex items-center gap-1">
                                                     <CheckCircle size={12} />
@@ -454,7 +504,8 @@ const ClinicControlDashboard: React.FC<ClinicControlDashboardProps> = ({ clinic,
                                         step="512"
                                     />
                                     <p className="text-sm text-slate-500 mt-1">
-                                        Currently using: {usage?.storageUsedMB || 0} MB ({storagePercentage.toFixed(1)}%)
+                                        Currently using: {storageUsed !== null ? `${storageUsed} MB` : 'Not reported yet'}
+                                        {storagePercentage !== null ? ` (${storagePercentage.toFixed(1)}%)` : ''}
                                     </p>
                                 </div>
 
@@ -472,7 +523,8 @@ const ClinicControlDashboard: React.FC<ClinicControlDashboardProps> = ({ clinic,
                                         step="1"
                                     />
                                     <p className="text-sm text-slate-500 mt-1">
-                                        Active users: {usage?.activeUsersCount || 0} ({usersPercentage.toFixed(1)}%)
+                                        Active users: {usersUsed !== null ? usersUsed : 'Not reported yet'}
+                                        {usersPercentage !== null ? ` (${usersPercentage.toFixed(1)}%)` : ''}
                                     </p>
                                 </div>
 
