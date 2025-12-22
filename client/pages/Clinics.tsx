@@ -190,8 +190,8 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
             <div className="clinic-bg-gradient flex flex-col items-center justify-center min-h-screen">
                 <div className="glass-modal p-8 text-center">
                     <Loader2 className="animate-spin text-purple-600 mx-auto mb-4" size={64} />
-                    <p className="text-slate-600 dark:text-slate-300 text-lg font-medium">Loading clinics...</p>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm mt-2">Please wait while we fetch the data</p>
+                    <p className="text-slate-600 dark:text-slate-300 text-lg font-medium">{t('common.loading')}</p>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm mt-2">{t('clinicDashboard.subtitle')}</p>
                 </div>
             </div>
         );
@@ -204,7 +204,7 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                 {/* Header with Integrated Switcher */}
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8 group">
                     <div className="animate-fadeIn">
-                        <h1 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.4em] mb-2 px-1">Infrastructure Hub</h1>
+                        <h1 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.4em] mb-2 px-1">{t('nav.clinicSystem')}</h1>
                         <div className="flex items-center gap-4">
                             <div className="relative">
                                 <div className="absolute inset-0 bg-purple-500/20 blur-xl rounded-full animate-pulse-soft" />
@@ -214,10 +214,10 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                             </div>
                             <div>
                                 <h1 className="text-4xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">
-                                    {viewMode === 'requests' ? 'Node Requests' : 'Node Cluster'}
+                                    {viewMode === 'requests' ? t('clinics.requestsTitle') : t('clinics.manageTitle')}
                                 </h1>
                                 <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 opacity-70">
-                                    {viewMode === 'requests' ? 'INCOMING REGISTRATION POOL' : 'ACTIVE NETWORK MANAGEMENT'}
+                                    {viewMode === 'requests' ? t('clinics.requestsSubtitle').toUpperCase() : t('clinics.manageSubtitle').toUpperCase()}
                                 </p>
                             </div>
                         </div>
@@ -237,10 +237,10 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     {[
-                        { title: "Total Nodes", value: stats.total, icon: Building2, color: "blue", sub: "Network Infrastructure" },
-                        { title: "Active Nodes", value: stats.approved, icon: CheckCircle2, color: "green", sub: "Operational Status" },
-                        { title: "Pending Verif", value: stats.pending, icon: Clock, color: "amber", sub: "Awaiting Validation" },
-                        { title: "Access Revoked", value: stats.suspended, icon: Ban, color: "red", sub: "Security Lockdown" }
+                        { title: t('clinicDashboard.total'), value: stats.total, icon: Building2, color: "blue", sub: t('nav.clinicSystem') },
+                        { title: t('clinicDashboard.approved'), value: stats.approved, icon: CheckCircle2, color: "green", sub: t('dashboard.active') },
+                        { title: t('clinicDashboard.pending'), value: stats.pending, icon: Clock, color: "amber", sub: t('clinics.statusPending') },
+                        { title: t('clinics.statusSuspended'), value: stats.suspended, icon: Ban, color: "red", sub: t('dashboard.security') }
                     ].map((stat, i) => (
                         <div key={i} className="animate-scaleUp" style={{ animationDelay: `${i * 100}ms` }}>
                             <StatCard

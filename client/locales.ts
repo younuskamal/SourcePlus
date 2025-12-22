@@ -407,7 +407,28 @@ export const translations = {
       never: "Never",
       yes: "Yes",
       no: "No",
-      notAvailable: "Not Available"
+      notAvailable: "Not Available",
+      healthScore: "Node Health Score",
+      healthExcellent: "Optimal Configuration",
+      healthGood: "Stable Environment",
+      healthWarning: "Resource Alert",
+      healthCritical: "Immediate Action Required",
+      forecasting: "Utilization Forecast",
+      storageForecast: "Storage capacity expected to reach limit in {{days}} days",
+      usersForecast: "License seat threshold estimated in {{days}} days",
+      activityFeed: "Live Security & Operations Feed",
+      activities: {
+        limitUpdate: "Resource limits updated by Admin",
+        featureToggle: "Feature set modification deployed",
+        securityLock: "Node access revoked due to security protocol",
+        securityUnlock: "Node access restored manually",
+        usageSync: "Live usage telemetry synced from node"
+      },
+      sparklineAlt: "Trend analysis data",
+      thresholdAlert: "CRITICAL THRESHOLD REACHED",
+      viewMetric: "Live Metric",
+      syncProtocol: "Sync Protocol",
+      dataNodeStatus: "Data Node Status"
     },
     supportMessages: {
       title: "Support Messages",
@@ -857,7 +878,28 @@ export const translations = {
       never: "أبداً",
       yes: "نعم",
       no: "لا",
-      notAvailable: "غير متوفر"
+      notAvailable: "غير متوفر",
+      healthScore: "مؤشر صحة النقطة",
+      healthExcellent: "تكوين مثالي",
+      healthGood: "بيئة مستقرة",
+      healthWarning: "تنبيه الموارد",
+      healthCritical: "إجراء فوري مطلوب",
+      forecasting: "توقعات الاستهلاك",
+      storageForecast: "من المتوقع وصول التخزين للحد الأقصى خلال {{days}} يوم",
+      usersForecast: "من المتوقع وصول حد المستخدمين خلال {{days}} يوم",
+      activityFeed: "سجل العمليات والأمن الحي",
+      activities: {
+        limitUpdate: "تم تحديث حدود الموارد من قبل المسؤول",
+        featureToggle: "تم تعديل حزمة الميزات المفعلة",
+        securityLock: "تم سحب الوصول للنقطة لدواعي أمنية",
+        securityUnlock: "تم استعادة الوصول للنقطة يدوياً",
+        usageSync: "تم مزامنة بيانات الاستهلاك من النقطة"
+      },
+      sparklineAlt: "بيانات تحليل الاتجاه",
+      thresholdAlert: "تم الوصول للحد الحرج",
+      viewMetric: "قياس مباشر",
+      syncProtocol: "بروتوكول التزامن",
+      dataNodeStatus: "حالة نقطة البيانات"
     },
     supportMessages: {
       title: "رسائل الدعم",

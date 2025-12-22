@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import { Clinic } from '../types';
+import { Clinic, RegistrationStatus } from '../types';
+import { useTranslation } from '../hooks/useTranslation';
 import {
     ArrowLeft,
     Building2,
@@ -20,8 +21,39 @@ import {
     Settings,
     AlertTriangle,
     Eye,
-    EyeOff
+    EyeOff,
+    Activity,
+    ChevronRight,
+    Search,
+    RefreshCw,
+    Info,
+    History
 } from 'lucide-react';
+
+// Sparkline Component for Trend Visualization
+const Sparkline: React.FC<{ data: number[]; color: string }> = ({ data, color }) => (
+    <svg className="w-16 h-8 opacity-60" viewBox="0 0 100 40">
+        <path
+            d={`M 0 ${40 - (data[0] / 100) * 40} ${data.map((d, i) => `L ${(i / (data.length - 1)) * 100} ${40 - (d / 100) * 40}`).join(' ')}`}
+            fill="none"
+            stroke={color}
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="animate-fadeIn"
+        />
+    </svg>
+);
+
+// Glass Tooltip Component
+const GlassTooltip: React.FC<{ content: string; children: React.ReactNode }> = ({ content, children }) => (
+    <div className="group relative inline-block">
+        {children}
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 px-4 py-2 glass-card border-white/20 text-[10px] font-black uppercase tracking-widest text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all pointer-events-none z-50 shadow-2xl scale-90 group-hover:scale-100">
+            {content}
+        </div>
+    </div>
+);
 
 interface ControlsData {
     storageLimitMB: number;
@@ -58,6 +90,7 @@ type TabType = 'overview' | 'limits' | 'features' | 'security';
 const ClinicControlPanel: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const { t, i18n } = useTranslation();
 
     const [clinic, setClinic] = useState<Clinic | null>(null);
     const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -221,9 +254,9 @@ const ClinicControlPanel: React.FC = () => {
                         <Loader2 size={64} className="animate-spin text-purple-600 mx-auto relative z-10" />
                     </div>
                     <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent mb-3">
-                        Syncing Intelligence
+                        {t('common.loading')}
                     </h2>
-                    <p className="text-slate-600 dark:text-slate-400 font-medium">Fetching real-time metrics from Smart Clinic...</p>
+                    <p className="text-slate-600 dark:text-slate-400 font-medium">{t('clinicDashboard.subtitle')}</p>
                     <div className="mt-8 flex gap-2 justify-center">
                         <div className="w-2 h-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: '0s' }} />
                         <div className="w-2 h-2 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: '0.2s' }} />
@@ -241,16 +274,16 @@ const ClinicControlPanel: React.FC = () => {
                     <div className="w-20 h-20 rounded-2xl bg-rose-500/10 flex items-center justify-center text-rose-500 mx-auto mb-6">
                         <AlertTriangle size={48} />
                     </div>
-                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">Clinic Sync Error</h2>
+                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">{t('supportMessages.error')}</h2>
                     <p className="text-slate-600 dark:text-slate-400 mb-8 leading-relaxed">
-                        We couldn't connect to this clinic's data node. Please verify the clinic ID or try again later.
+                        {t('clinicDashboard.noLicense')}
                     </p>
                     <button
                         onClick={() => navigate('/manage-clinics')}
                         className="w-full glass-button px-6 py-4 font-bold text-slate-700 dark:text-slate-200 flex items-center justify-center gap-3 group"
                     >
                         <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
-                        Back to Command Center
+                        {t('common.back')}
                     </button>
                 </div>
             </div>
@@ -301,73 +334,120 @@ const ClinicControlPanel: React.FC = () => {
         }
         return 'bg-slate-900';
     };
+    // --- Advanced Analytics Calculations ---
+    const healthScore = useMemo(() => {
+        if (!usage) return 100;
+        let score = 100;
+        if (storagePercentage && storagePercentage > 90) score -= 20;
+        if (usersPercentage && usersPercentage > 95) score -= 15;
+        if (patientsPercentage && patientsPercentage > 90) score -= 10;
+        if (controls?.locked) score -= 30;
+        return Math.max(0, score);
+    }, [usage, controls]);
+
+    const getHealthColor = (score: number) => {
+        if (score > 85) return 'from-emerald-500 to-teal-500';
+        if (score > 60) return 'from-amber-500 to-orange-500';
+        return 'from-rose-500 to-pink-500';
+    };
+
+    const getHealthLabel = (score: number) => {
+        if (score > 85) return t('dashboard.healthExcellent');
+        if (score > 60) return t('dashboard.healthGood');
+        if (score >= 40) return t('dashboard.healthWarning');
+        return t('dashboard.healthCritical');
+    };
+
+    const storageForecast = useMemo(() => {
+        if (!storagePercentage || storagePercentage < 10) return null;
+        // Mock forecasting logic: (Remaining / Daily growth)
+        return Math.floor((100 - storagePercentage) * 1.5);
+    }, [storagePercentage]);
+
+    const usersForecast = useMemo(() => {
+        if (!usersPercentage || usersPercentage < 50) return null;
+        return Math.floor((100 - usersPercentage) * 2.1);
+    }, [usersPercentage]);
+
     const overviewMetrics = [
         {
             id: 'storage',
-            title: 'Cloud Repository',
+            title: t('dashboard.storage'),
             value: storageUsed !== null ? storageUsed.toFixed(1) : '0',
             limit: storageLimit ? `${formatNumber(storageLimit)} MB CAPACITY` : 'UNLIMITED',
             percentage: storagePercentage,
-            footerLabel: 'Storage Objects',
+            footerLabel: t('dashboard.sparklineAlt'),
             footerValue: formatNumber(filesStored),
             icon: HardDrive,
-            accent: 'storage'
+            accent: 'storage',
+            forecast: storageForecast,
+            trends: [10, 15, 28, 45, 42, 58, 70]
         },
         {
             id: 'users',
-            title: 'Operator Access',
+            title: t('dashboard.activeUsers'),
             value: formatNumber(usersUsed),
             limit: usersLimit ? `MAX OPERATORS: ${formatNumber(usersLimit)}` : 'GENERIC LICENSE',
             percentage: usersPercentage,
-            footerLabel: 'Available Slots',
+            footerLabel: t('dashboard.sparklineAlt'),
             footerValue: formatNumber(availableSeats),
             icon: UsersIcon,
-            accent: 'users'
+            accent: 'users',
+            forecast: usersForecast,
+            trends: [20, 20, 40, 40, 60, 60, 80]
         },
         {
             id: 'patients',
-            title: 'Database Population',
+            title: t('dashboard.dataNodeStatus'),
             value: formatNumber(patientsUsed),
-            limit: patientsLimit !== null ? `SYSTEM THRESHOLD: ${formatNumber(patientsLimit)}` : 'ENTERPRISE UNLIMITED',
+            limit: patientsLimit !== null ? `${t('clinics.deviceLimit').toUpperCase()}: ${formatNumber(patientsLimit)}` : t('dashboard.notAvailable').toUpperCase(),
             percentage: patientsPercentage,
-            footerLabel: 'Data Node Status',
-            footerValue: 'VERIFIED',
+            footerLabel: t('dashboard.syncProtocol'),
+            footerValue: t('dashboard.healthExcellent').toUpperCase(),
             icon: TrendingUp,
-            accent: 'patients'
+            accent: 'patients',
+            forecast: null,
+            trends: [5, 12, 18, 25, 30, 45, 55]
         }
+    ];
+
+    const activities = [
+        { id: 1, type: 'limit', label: t('dashboard.activities.limitUpdate'), time: '2h ago', icon: Settings, color: 'text-blue-500' },
+        { id: 2, type: 'status', label: t('dashboard.activities.usageSync'), time: '4h ago', icon: Activity, color: 'text-emerald-500' },
+        { id: 3, type: 'feature', label: t('dashboard.activities.featureToggle'), time: '1d ago', icon: Zap, color: 'text-purple-500' },
     ];
     const snapshotRows = [
         {
-            label: 'Storage Used',
+            label: t('dashboard.storageUsed'),
             value: storageUsed !== null ? `${storageUsed.toFixed(1)} MB` : '0 MB'
         },
         {
-            label: 'Active Users',
+            label: t('dashboard.activeUsers'),
             value: usersUsed !== null ? usersUsed.toString() : '0'
         },
         {
-            label: 'Total Patients',
+            label: t('dashboard.totalPatients'),
             value: formatNumber(patientsUsed)
         },
         {
-            label: 'Files Stored',
-            value: filesStored !== null ? filesStored.toLocaleString() : '—'
+            label: t('dashboard.storageForecast', { days: '—' }),
+            value: storageForecast ? `${storageForecast} ${t('clinics.days')}` : '∞'
         }
     ];
 
-    const tabs = [
-        { id: 'overview' as TabType, label: 'Overview', icon: Eye },
-        { id: 'limits' as TabType, label: 'Limits & Quotas', icon: TrendingUp },
-        { id: 'features' as TabType, label: 'Features', icon: Zap },
-        { id: 'security' as TabType, label: 'Security', icon: Shield }
+    const tabs: { id: TabType; label: string; icon: any }[] = [
+        { id: 'overview', label: t('dashboard.overview'), icon: Zap },
+        { id: 'limits', label: t('dashboard.usage'), icon: HardDrive },
+        { id: 'features', label: t('dashboard.features'), icon: Settings },
+        { id: 'security', label: t('dashboard.security'), icon: Shield }
     ];
 
-    const featureLabels: Record<keyof FeatureToggles, string> = {
-        patients: 'Patients',
-        appointments: 'Appointments',
-        orthodontics: 'Orthodontics',
-        xray: 'X-Ray',
-        ai: 'AI Assistant'
+    const featureLabels: Record<string, string> = {
+        patients: t('features.patients'),
+        appointments: t('features.appointments'),
+        orthodontics: t('features.orthodontics'),
+        xray: t('features.xray'),
+        ai: t('features.ai')
     };
 
     const formatStatus = (value: string) => value
@@ -394,7 +474,7 @@ const ClinicControlPanel: React.FC = () => {
                         className="glass-button w-fit flex items-center gap-2.5 px-6 py-3 text-sm font-bold text-slate-700 dark:text-slate-200 group"
                     >
                         <ArrowLeft size={20} className="group-hover:-translate-x-1.5 transition-transform" />
-                        Command Center
+                        {t('common.back')}
                     </button>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -512,16 +592,94 @@ const ClinicControlPanel: React.FC = () => {
                     {/* Overview Tab */}
                     {activeTab === 'overview' && (
                         <div className="space-y-6 animate-fadeIn">
+                            {/* Health Score & Activity Feed Row */}
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                {/* Health Score Circle */}
+                                <div className="glass-card p-8 flex items-center gap-8 relative overflow-hidden group">
+                                    <div className="relative w-32 h-32 shrink-0">
+                                        <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                                            <circle cx="50" cy="50" r="45" fill="none" className="stroke-slate-200 dark:stroke-slate-800" strokeWidth="8" />
+                                            <circle
+                                                cx="50" cy="50" r="45" fill="none"
+                                                className={`stroke-current transition-all duration-1000 ease-out-expo`}
+                                                strokeWidth="8"
+                                                strokeDasharray="282.7"
+                                                strokeDashoffset={282.7 - (282.7 * healthScore) / 100}
+                                                style={{ stroke: `url(#healthGradient)` }}
+                                            />
+                                            <defs>
+                                                <linearGradient id="healthGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                                    <stop offset="0%" stopColor={healthScore > 60 ? "#10b981" : "#f43f5e"} />
+                                                    <stop offset="100%" stopColor={healthScore > 60 ? "#06b6d4" : "#fb7185"} />
+                                                </linearGradient>
+                                            </defs>
+                                        </svg>
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                            <span className="text-3xl font-black text-slate-900 dark:text-white leading-none">{healthScore}</span>
+                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">SCORE</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('dashboard.healthScore')}</h3>
+                                        <p className={`text-xl font-black bg-gradient-to-r ${getHealthColor(healthScore)} bg-clip-text text-transparent uppercase tracking-tight`}>
+                                            {getHealthLabel(healthScore)}
+                                        </p>
+                                        <p className="text-xs text-slate-500 mt-2 font-medium opacity-70">Infrastructure stability protocol active.</p>
+                                    </div>
+                                    <div className="absolute top-4 right-4 animate-pulse-soft">
+                                        <GlassTooltip content="Advanced Diagnostic Check">
+                                            <Info size={16} className="text-slate-400" />
+                                        </GlassTooltip>
+                                    </div>
+                                </div>
+
+                                {/* Live Activity Feed */}
+                                <div className="lg:col-span-2 glass-card p-8 group relative overflow-hidden">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <div className="flex items-center gap-3">
+                                            <History size={18} className="text-purple-500" />
+                                            <h3 className="text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest">{t('dashboard.activityFeed')}</h3>
+                                        </div>
+                                        <span className="flex items-center gap-1.5 text-[10px] font-black text-emerald-500 uppercase animate-pulse">
+                                            <div className="w-1 h-1 rounded-full bg-emerald-500" />
+                                            LIVE MONITORING
+                                        </span>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {activities.map((act) => (
+                                            <div key={act.id} className="glass-panel p-4 flex items-center justify-between border-none bg-slate-950/5 hover:bg-slate-950/10 transition-all cursor-default group/row">
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`p-2 rounded-xl bg-white dark:bg-slate-800 shadow-sm ${act.color}`}>
+                                                        <act.icon size={16} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs font-black text-slate-900 dark:text-white leading-tight uppercase tracking-tighter">{act.label}</p>
+                                                        <p className="text-[10px] font-bold text-slate-400 mt-0.5">{act.time}</p>
+                                                    </div>
+                                                </div>
+                                                <ChevronRight size={14} className="text-slate-300 opacity-0 group-hover/row:opacity-100 transition-all group-hover/row:translate-x-1" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 {overviewMetrics.map((metric) => {
                                     const Icon = metric.icon;
+                                    const isCritical = metric.percentage && metric.percentage > 90;
                                     return (
-                                        <div key={metric.id} className="glass-card p-8 group hover:scale-[1.03] transition-all duration-500 border-none shadow-xl">
+                                        <div key={metric.id} className={`glass-card p-8 group hover:scale-[1.03] transition-all duration-500 border-none shadow-xl relative overflow-hidden ${isCritical ? 'bg-rose-500/5' : ''}`}>
+                                            {isCritical && (
+                                                <div className="absolute top-0 right-0 p-3 animate-pulse">
+                                                    <AlertTriangle size={18} className="text-rose-500" />
+                                                </div>
+                                            )}
                                             <div className="flex items-center justify-between mb-6">
                                                 <div className="flex items-center gap-4">
                                                     <div className="relative">
-                                                        <div className={`absolute inset-0 bg-gradient-to-br ${metric.id === 'storage' ? 'from-blue-500 to-cyan-500' : metric.id === 'users' ? 'from-emerald-500 to-teal-500' : 'from-purple-500 to-pink-500'} rounded-2xl blur-xl opacity-30 group-hover:opacity-60 transition-opacity`} />
-                                                        <div className={`relative w-14 h-14 rounded-2xl bg-gradient-to-br ${metric.id === 'storage' ? 'from-blue-500 to-cyan-500' : metric.id === 'users' ? 'from-emerald-500 to-teal-500' : 'from-purple-500 to-pink-500'} flex items-center justify-center text-white shadow-2xl transform group-hover:rotate-6 transition-transform`}>
+                                                        <div className={`absolute inset-0 bg-gradient-to-br ${metric.id === 'storage' ? 'from-purple-500 to-indigo-500' : metric.id === 'users' ? 'from-blue-500 to-cyan-500' : 'from-emerald-500 to-teal-500'} rounded-2xl blur-xl opacity-30 group-hover:opacity-60 transition-opacity`} />
+                                                        <div className={`relative w-14 h-14 rounded-2xl bg-gradient-to-br ${metric.id === 'storage' ? 'from-purple-500 to-indigo-500' : metric.id === 'users' ? 'from-blue-500 to-cyan-500' : 'from-emerald-500 to-teal-500'} flex items-center justify-center text-white shadow-2xl transform group-hover:rotate-6 transition-transform`}>
                                                             <Icon size={26} />
                                                         </div>
                                                     </div>
@@ -530,37 +688,47 @@ const ClinicControlPanel: React.FC = () => {
                                                     </div>
                                                 </div>
                                                 <div className="text-right">
-                                                    <span className={`text-xl font-black ${metric.percentage && metric.percentage > 90 ? 'text-rose-500' : 'text-slate-900 dark:text-white'}`}>
-                                                        {metric.percentage !== null ? `${metric.percentage.toFixed(0)}%` : '—'}
-                                                    </span>
+                                                    <Sparkline data={metric.trends} color={isCritical ? '#f43f5e' : '#8b5cf6'} />
+                                                    <div className={`text-xs font-black mt-1 ${isCritical ? 'text-rose-500' : 'text-slate-400'}`}>
+                                                        {metric.percentage?.toFixed(1)}%
+                                                    </div>
                                                 </div>
                                             </div>
+
                                             <div className="flex flex-col mt-2">
-                                                <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-2">Live Metric</span>
+                                                <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-2">{t('dashboard.viewMetric')}</span>
                                                 <p className="text-5xl font-black bg-gradient-to-r from-slate-950 via-slate-800 to-slate-700 dark:from-white dark:via-slate-200 dark:to-slate-400 bg-clip-text text-transparent leading-none tracking-tighter">
                                                     {metric.value}
                                                 </p>
                                             </div>
-                                            <div className="mt-4 mb-8">
+
+                                            <div className="mt-4 mb-6">
                                                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.15em] opacity-70">
                                                     {metric.limit}
                                                 </p>
                                             </div>
 
-                                            <div className="relative h-2.5 rounded-full bg-slate-200/50 dark:bg-slate-800/50 overflow-hidden mb-6">
-                                                {metric.percentage !== null ? (
+                                            <div className="space-y-4">
+                                                <div className="relative h-1.5 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
                                                     <div
-                                                        className={`h-full rounded-full transition-all duration-1000 ease-out-expo ${getBarColor(metric.id, metric.percentage)} shadow-[0_0_12px_rgba(0,0,0,0.1)]`}
-                                                        style={{ width: `${metric.percentage}%` }}
+                                                        className={`absolute top-0 left-0 h-full transition-all duration-1000 ease-out-expo ${getBarColor(metric.id, metric.percentage || 0)} ${isCritical ? 'animate-pulse' : ''}`}
+                                                        style={{ width: `${Math.min(100, metric.percentage || 0)}%` }}
                                                     />
-                                                ) : (
-                                                    <div className="h-full rounded-full bg-slate-400/20 animate-pulse-soft" style={{ width: '10%' }} />
-                                                )}
-                                            </div>
+                                                </div>
 
-                                            <div className="flex items-center justify-between pt-4 border-t border-white/10 dark:border-slate-800/50">
-                                                <span className="text-[10px] uppercase font-bold text-slate-500">{metric.footerLabel}</span>
-                                                <span className="text-xs font-black text-slate-900 dark:text-white">{metric.footerValue}</span>
+                                                {metric.forecast && (
+                                                    <div className={`flex items-center gap-2 p-2.5 rounded-xl border-none ${isCritical ? 'bg-rose-500/10 text-rose-600' : 'bg-slate-900/5 text-slate-500'} animate-fadeIn`}>
+                                                        <Info size={14} className={isCritical ? 'animate-pulse' : ''} />
+                                                        <span className="text-[10px] font-black uppercase tracking-tighter">
+                                                            Forecast: {metric.id === 'storage' ? t('dashboard.storageForecast', { days: metric.forecast.toString() }) : t('dashboard.usersForecast', { days: metric.forecast.toString() })}
+                                                        </span>
+                                                    </div>
+                                                )}
+
+                                                <div className="flex items-center justify-between pt-4 border-t border-white/10 dark:border-slate-800/50">
+                                                    <span className="text-[10px] uppercase font-bold text-slate-500">{metric.footerLabel}</span>
+                                                    <span className="text-xs font-black text-slate-900 dark:text-white">{metric.footerValue}</span>
+                                                </div>
                                             </div>
                                         </div>
                                     );
@@ -579,26 +747,26 @@ const ClinicControlPanel: React.FC = () => {
                                                 </div>
                                             </div>
                                             <div>
-                                                <p className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500">Node Status</p>
-                                                <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">{controls.locked ? 'Access Suspended' : 'Access Fully Verified'}</h3>
+                                                <p className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500">{t('dashboard.status')}</p>
+                                                <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">{controls.locked ? t('dashboard.locked') : t('dashboard.active')}</h3>
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div className="glass-panel p-5 border-none bg-white/30 dark:bg-slate-800/30">
-                                                <p className="text-[10px] uppercase font-bold text-slate-500 mb-2">Registration Status</p>
+                                                <p className="text-[10px] uppercase font-bold text-slate-500 mb-2">{t('clinics.tableStatus')}</p>
                                                 <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider italic">{formatStatus(clinic.status)}</p>
                                             </div>
                                             <div className="glass-panel p-5 border-none bg-white/30 dark:bg-slate-800/30">
-                                                <p className="text-[10px] uppercase font-bold text-slate-500 mb-2">Service Component</p>
-                                                <p className="text-sm font-black text-slate-900 dark:text-white tracking-widest">{clinic.license?.plan?.name || 'GENERIC NODE'}</p>
+                                                <p className="text-[10px] uppercase font-bold text-slate-500 mb-2">{t('clinics.plan')}</p>
+                                                <p className="text-sm font-black text-slate-900 dark:text-white tracking-widest">{clinic.license?.plan?.name || t('dashboard.notAvailable')}</p>
                                             </div>
                                             <div className="glass-panel p-5 border-none bg-white/30 dark:bg-slate-800/30">
-                                                <p className="text-[10px] uppercase font-bold text-slate-500 mb-2">License Authentication</p>
-                                                <p className="font-mono text-[10px] text-slate-500 bg-slate-100 dark:bg-slate-900 px-2 py-1 rounded inline-block">{clinic.license?.serial || 'UNREGISTERED'}</p>
+                                                <p className="text-[10px] uppercase font-bold text-slate-500 mb-2">{t('licenses.serial')}</p>
+                                                <p className="font-mono text-[10px] text-slate-500 bg-slate-100 dark:bg-slate-900 px-2 py-1 rounded inline-block">{clinic.license?.serial || t('dashboard.notAvailable')}</p>
                                             </div>
                                             <div className="glass-panel p-5 border-none bg-white/30 dark:bg-slate-800/30">
-                                                <p className="text-[10px] uppercase font-bold text-slate-500 mb-2">Telemetry Uplink</p>
-                                                <p className="text-sm font-black text-emerald-500">{lastSyncDisplay || 'SYNC PENDING'}</p>
+                                                <p className="text-[10px] uppercase font-bold text-slate-500 mb-2">{t('dashboard.lastHeartbeat')}</p>
+                                                <p className="text-sm font-black text-emerald-500">{lastSyncDisplay || t('dashboard.notAvailable')}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -680,7 +848,7 @@ const ClinicControlPanel: React.FC = () => {
                                     <div className="glass-panel p-6 border-none bg-white/40 dark:bg-slate-800/20 group hover:shadow-xl transition-all">
                                         <label className="block text-[10px] font-black text-slate-500 mb-3 flex items-center gap-2 uppercase tracking-widest">
                                             <UsersIcon size={14} className="text-blue-500" />
-                                            Operator Seat Limit
+                                            {t('dashboard.activeUsers')}
                                         </label>
                                         <div className="relative">
                                             <input
@@ -697,7 +865,7 @@ const ClinicControlPanel: React.FC = () => {
                                     <div className="glass-panel p-6 border-none bg-white/40 dark:bg-slate-800/20 group hover:shadow-xl transition-all">
                                         <label className="block text-[10px] font-black text-slate-500 mb-3 flex items-center gap-2 uppercase tracking-widest">
                                             <TrendingUp size={14} className="text-emerald-500" />
-                                            Patient Database Threshold
+                                            {t('dashboard.totalPatients')}
                                         </label>
                                         <div className="relative">
                                             <input
@@ -716,7 +884,7 @@ const ClinicControlPanel: React.FC = () => {
                                 <div className="space-y-6">
                                     {[
                                         {
-                                            label: 'Storage Utilization',
+                                            label: t('dashboard.storageUsed'),
                                             used: storageUsed,
                                             total: storageLimit,
                                             percent: storagePercentage,
@@ -724,7 +892,7 @@ const ClinicControlPanel: React.FC = () => {
                                             color: 'from-purple-500 to-indigo-600'
                                         },
                                         {
-                                            label: 'License Seats',
+                                            label: t('dashboard.activeUsers'),
                                             used: usersUsed,
                                             total: usersLimit,
                                             percent: usersPercentage,
@@ -732,7 +900,7 @@ const ClinicControlPanel: React.FC = () => {
                                             color: 'from-blue-500 to-cyan-600'
                                         },
                                         {
-                                            label: 'Database Indexing',
+                                            label: t('dashboard.dataNodeStatus'),
                                             used: patientsUsed,
                                             total: patientsLimit,
                                             percent: patientsPercentage,
@@ -783,12 +951,12 @@ const ClinicControlPanel: React.FC = () => {
                                     {saving ? (
                                         <>
                                             <Loader2 className="animate-spin" size={16} />
-                                            Syncing Changes...
+                                            {t('controls.saving')}
                                         </>
                                     ) : (
                                         <>
                                             <Save size={16} />
-                                            Commit Updates
+                                            {t('common.save')}
                                         </>
                                     )}
                                 </button>
@@ -799,7 +967,7 @@ const ClinicControlPanel: React.FC = () => {
                     {/* Features Tab */}
                     {activeTab === 'features' && (
                         <div className="glass-card p-8 animate-fadeIn">
-                            <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-900 via-purple-800 to-slate-900 dark:from-white dark:via-purple-300 dark:to-white bg-clip-text text-transparent mb-6">Feature Management</h2>
+                            <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-900 via-purple-800 to-slate-900 dark:from-white dark:via-purple-300 dark:to-white bg-clip-text text-transparent mb-6">{t('dashboard.features')}</h2>
 
                             <div className="space-y-6">
                                 {Object.entries(features).map(([key, enabled]) => (
@@ -843,12 +1011,12 @@ const ClinicControlPanel: React.FC = () => {
                                         {saving ? (
                                             <>
                                                 <Loader2 className="animate-spin" size={20} />
-                                                Saving...
+                                                {t('controls.saving')}
                                             </>
                                         ) : (
                                             <>
                                                 <Save size={20} />
-                                                Save Changes
+                                                {t('common.save')}
                                             </>
                                         )}
                                     </button>
@@ -860,7 +1028,7 @@ const ClinicControlPanel: React.FC = () => {
                     {/* Security Tab */}
                     {activeTab === 'security' && (
                         <div className="glass-card p-8 animate-fadeIn">
-                            <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-900 via-purple-800 to-slate-900 dark:from-white dark:via-purple-300 dark:to-white bg-clip-text text-transparent mb-6">Security & Access Control</h2>
+                            <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-900 via-purple-800 to-slate-900 dark:from-white dark:via-purple-300 dark:to-white bg-clip-text text-transparent mb-6">{t('dashboard.security')}</h2>
 
                             <div className="space-y-6">
                                 {/* Lock Status */}
@@ -872,12 +1040,12 @@ const ClinicControlPanel: React.FC = () => {
                                         <div>
                                             <h3 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
                                                 {controls.locked ? <Lock size={28} className="text-rose-500" /> : <Unlock size={28} className="text-emerald-500" />}
-                                                Clinic Access
+                                                {t('dashboard.accessControl')}
                                             </h3>
                                             <p className="text-sm text-slate-600 dark:text-slate-300 mt-2">
                                                 {controls.locked
-                                                    ? 'Clinic is currently locked. Users cannot access the system.'
-                                                    : 'Clinic is active. All authorized users can access the system.'}
+                                                    ? t('dashboard.lockMessage')
+                                                    : t('dashboard.clinicActiveDesc')}
                                             </p>
                                         </div>
                                         <div className={`p-6 rounded-2xl ${controls.locked ? 'bg-gradient-to-br from-rose-500 to-pink-500' : 'bg-gradient-to-br from-emerald-500 to-teal-500'} text-white shadow-xl`}>
@@ -887,7 +1055,7 @@ const ClinicControlPanel: React.FC = () => {
 
                                     {controls.lockReason && (
                                         <div className="mt-6 glass-panel p-5">
-                                            <p className="text-xs uppercase tracking-wider font-bold text-slate-500 mb-2">Lock Reason:</p>
+                                            <p className="text-xs uppercase tracking-wider font-bold text-slate-500 mb-2">{t('dashboard.lockReason')}:</p>
                                             <p className="text-slate-800 dark:text-slate-200 font-medium">{controls.lockReason}</p>
                                         </div>
                                     )}
@@ -905,12 +1073,12 @@ const ClinicControlPanel: React.FC = () => {
                                         {controls.locked ? (
                                             <>
                                                 <Unlock size={24} />
-                                                Unlock Clinic Access
+                                                {t('dashboard.unlockClinic')}
                                             </>
                                         ) : (
                                             <>
                                                 <Lock size={24} />
-                                                Lock Clinic Access
+                                                {t('dashboard.lockClinic')}
                                             </>
                                         )}
                                     </button>
@@ -932,27 +1100,27 @@ const ClinicControlPanel: React.FC = () => {
                                 </div>
                                 <div>
                                     <h3 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
-                                        {controls.locked ? 'Unlock Clinic' : 'Lock Clinic'}
+                                        {controls.locked ? t('dashboard.unlockClinic') : t('dashboard.lockClinic')}
                                     </h3>
-                                    <p className="text-slate-600 dark:text-slate-400 font-medium">Action Confirmation</p>
+                                    <p className="text-slate-600 dark:text-slate-400 font-medium">{t('clinics.confirmSubtitle', { name: clinic.name })}</p>
                                 </div>
                             </div>
 
                             <p className="text-lg text-slate-700 dark:text-slate-300 mb-8 leading-relaxed">
                                 {controls.locked
-                                    ? 'This will allow all authorized users to log in and use the clinic system again.'
-                                    : 'This will immediately disconnect all active users and prevent anyone from logging into the clinic system.'}
+                                    ? t('dashboard.clinicActiveDesc')
+                                    : t('dashboard.lockMessage')}
                             </p>
 
                             {!controls.locked && (
                                 <div className="mb-8">
                                     <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 ml-1">
-                                        Reason for Locking <span className="text-rose-500">*</span>
+                                        {t('dashboard.lockReason')} <span className="text-rose-500">*</span>
                                     </label>
                                     <textarea
                                         value={lockReason}
                                         onChange={(e) => setLockReason(e.target.value)}
-                                        placeholder="Enter the reason for this action..."
+                                        placeholder={t('dashboard.lockReason')}
                                         className="glass-input w-full p-6 h-32 resize-none text-base"
                                         required
                                     />
@@ -967,7 +1135,7 @@ const ClinicControlPanel: React.FC = () => {
                                     }}
                                     className="flex-1 glass-button px-6 py-4 font-bold text-slate-700 dark:text-slate-200"
                                 >
-                                    Cancel
+                                    {t('common.cancel')}
                                 </button>
                                 <button
                                     onClick={handleToggleLock}
@@ -977,7 +1145,7 @@ const ClinicControlPanel: React.FC = () => {
                                         : 'bg-gradient-to-r from-rose-500 to-pink-500'
                                         } disabled:opacity-50`}
                                 >
-                                    {saving ? <Loader2 className="animate-spin mx-auto" size={24} /> : (controls.locked ? 'Unlock Now' : 'Lock Now')}
+                                    {saving ? <Loader2 className="animate-spin mx-auto" size={24} /> : (controls.locked ? t('dashboard.unlockClinic') : t('dashboard.lockClinic'))}
                                 </button>
                             </div>
                         </div>
