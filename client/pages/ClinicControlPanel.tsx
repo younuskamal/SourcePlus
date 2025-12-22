@@ -206,10 +206,21 @@ const ClinicControlPanel: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex items-center justify-center">
-                <div className="text-center text-slate-600 dark:text-slate-300">
-                    <Loader2 size={48} className="animate-spin mx-auto mb-4" />
-                    <p className="text-lg font-medium">Loading clinic data…</p>
+            <div className="clinic-bg-gradient min-h-screen flex items-center justify-center p-6">
+                <div className="glass-card p-12 text-center max-w-md w-full animate-scaleUp">
+                    <div className="relative mb-8">
+                        <div className="absolute inset-0 bg-purple-500 rounded-full blur-2xl opacity-20 animate-pulse" />
+                        <Loader2 size={64} className="animate-spin text-purple-600 mx-auto relative z-10" />
+                    </div>
+                    <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent mb-3">
+                        Syncing Intelligence
+                    </h2>
+                    <p className="text-slate-600 dark:text-slate-400 font-medium">Fetching real-time metrics from Smart Clinic...</p>
+                    <div className="mt-8 flex gap-2 justify-center">
+                        <div className="w-2 h-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: '0s' }} />
+                        <div className="w-2 h-2 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: '0.2s' }} />
+                        <div className="w-2 h-2 rounded-full bg-purple-600 animate-bounce" style={{ animationDelay: '0.4s' }} />
+                    </div>
                 </div>
             </div>
         );
@@ -217,16 +228,21 @@ const ClinicControlPanel: React.FC = () => {
 
     if (!clinic || !controls) {
         return (
-            <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex items-center justify-center">
-                <div className="text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-lg">
-                    <AlertTriangle size={48} className="text-amber-500 mx-auto mb-4" />
-                    <p className="text-slate-900 dark:text-white text-xl font-bold mb-3">Clinic data not available</p>
-                    <p className="text-slate-600 dark:text-slate-400 mb-6">Try refreshing or select another clinic.</p>
+            <div className="clinic-bg-gradient min-h-screen flex items-center justify-center p-6">
+                <div className="glass-card p-12 text-center max-w-md w-full border-rose-500/20 shadow-rose-500/10">
+                    <div className="w-20 h-20 rounded-2xl bg-rose-500/10 flex items-center justify-center text-rose-500 mx-auto mb-6">
+                        <AlertTriangle size={48} />
+                    </div>
+                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">Clinic Sync Error</h2>
+                    <p className="text-slate-600 dark:text-slate-400 mb-8 leading-relaxed">
+                        We couldn't connect to this clinic's data node. Please verify the clinic ID or try again later.
+                    </p>
                     <button
                         onClick={() => navigate('/manage-clinics')}
-                        className="px-6 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-medium transition-colors"
+                        className="w-full glass-button px-6 py-4 font-bold text-slate-700 dark:text-slate-200 flex items-center justify-center gap-3 group"
                     >
-                        Back to Clinics
+                        <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+                        Back to Command Center
                     </button>
                 </div>
             </div>
@@ -360,105 +376,117 @@ const ClinicControlPanel: React.FC = () => {
         .replace(/\b\w/g, (char) => char.toUpperCase());
 
     return (
-        <div className="min-h-screen bg-slate-100 dark:bg-slate-950">
-            <div className="max-w-7xl mx-auto p-6">
+        <div className="clinic-bg-gradient min-h-screen">
+            <div className="max-w-7xl mx-auto p-6 animate-fadeIn">
                 {/* Message Toast */}
                 {message && (
-                    <div className={`fixed top-4 right-4 z-50 px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 animate-slideDown ${message.type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'
-                        } text-white`}>
-                        {message.type === 'success' ? <CheckCircle size={24} /> : <XCircle size={24} />}
-                        <span className="font-medium">{message.text}</span>
+                    <div className={`fixed top-6 right-6 z-50 px-8 py-5 rounded-2xl shadow-2xl flex items-center gap-4 animate-scaleUp ${message.type === 'success' ? 'glass-gradient-emerald text-emerald-900 dark:text-emerald-100' : 'glass-gradient-rose text-rose-900 dark:text-rose-100'
+                        } border border-white/20 backdrop-blur-xl`}>
+                        {message.type === 'success' ? <CheckCircle size={28} className="text-emerald-600" /> : <XCircle size={28} className="text-rose-600" />}
+                        <span className="font-bold text-lg">{message.text}</span>
                     </div>
                 )}
 
-                {/* Header */}
-                <div className="mb-6 space-y-4">
+                {/* Header Section */}
+                <div className="mb-8 flex flex-col gap-6">
                     <button
                         onClick={() => navigate('/manage-clinics')}
-                        className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
+                        className="glass-button w-fit flex items-center gap-2.5 px-6 py-3 text-sm font-bold text-slate-700 dark:text-slate-200 group"
                     >
-                        <ArrowLeft size={18} />
-                        Back to Clinics
+                        <ArrowLeft size={20} className="group-hover:-translate-x-1.5 transition-transform" />
+                        Command Center
                     </button>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                        <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
-                            <div className="flex flex-wrap items-start justify-between gap-4">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-14 h-14 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500">
-                                        <Settings size={24} />
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="lg:col-span-2 glass-card p-8 relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/5 rounded-full blur-3xl -mr-32 -mt-32 transition-opacity group-hover:opacity-100 opacity-50" />
+                            <div className="relative z-10">
+                                <div className="flex flex-wrap items-start justify-between gap-6">
+                                    <div className="flex items-center gap-6">
+                                        <div className="relative">
+                                            <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl blur-xl opacity-40 group-hover:opacity-70 transition-opacity" />
+                                            <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white shadow-2xl">
+                                                <Building2 size={32} />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <h1 className="text-4xl font-extrabold bg-gradient-to-r from-slate-900 via-purple-800 to-slate-900 dark:from-white dark:via-purple-300 dark:to-white bg-clip-text text-transparent mb-1">{clinic.name}</h1>
+                                            <p className="text-slate-600 dark:text-slate-400 font-medium tracking-tight">Enterprise Clinic Management Dashboard</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">{clinic.name}</h1>
-                                        <p className="text-sm text-slate-500">Control panel with verified usage metrics</p>
+                                    <div className={`glass-badge flex items-center gap-3 px-6 py-3 text-sm font-black tracking-widest ${controls.locked
+                                        ? 'glass-gradient-rose text-rose-700 dark:text-rose-300'
+                                        : 'glass-gradient-emerald text-emerald-700 dark:text-emerald-300'
+                                        } ${controls.locked ? 'animate-pulse' : ''}`}>
+                                        {controls.locked ? <Lock size={18} /> : <Unlock size={18} />}
+                                        {controls.locked ? 'LOCKED' : 'ACTIVE'}
                                     </div>
                                 </div>
-                                <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border ${controls.locked
-                                        ? 'border-rose-200 text-rose-700 bg-rose-50 dark:border-rose-800 dark:text-rose-300 dark:bg-rose-950/30'
-                                        : 'border-emerald-200 text-emerald-700 bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 dark:bg-emerald-950/30'
-                                    }`}>
-                                    {controls.locked ? <Lock size={16} /> : <Unlock size={16} />}
-                                    {controls.locked ? 'Locked' : 'Active'}
-                                </div>
-                            </div>
 
-                            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                                <div className="flex justify-between rounded-xl border border-slate-100 dark:border-slate-800 px-4 py-3">
-                                    <span className="text-slate-500">Clinic ID</span>
-                                    <span className="font-mono text-slate-900 dark:text-white">{clinic.id.slice(0, 8)}…</span>
-                                </div>
-                                <div className="flex justify-between rounded-xl border border-slate-100 dark:border-slate-800 px-4 py-3">
-                                    <span className="text-slate-500">Doctor</span>
-                                    <span className="text-slate-900 dark:text-white">{clinic.doctorName || '—'}</span>
-                                </div>
-                                <div className="flex justify-between rounded-xl border border-slate-100 dark:border-slate-800 px-4 py-3">
-                                    <span className="text-slate-500">Email</span>
-                                    <span className="text-slate-900 dark:text-white">{clinic.email}</span>
-                                </div>
-                                <div className="flex justify-between rounded-xl border border-slate-100 dark:border-slate-800 px-4 py-3">
-                                    <span className="text-slate-500">System Version</span>
-                                    <span className="text-slate-900 dark:text-white">{clinic.systemVersion || 'Not provided'}</span>
+                                <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="glass-panel flex justify-between items-center px-6 py-4 hover:bg-white/40 dark:hover:bg-slate-800/40 transition-all border-none">
+                                        <span className="text-slate-500 font-bold text-xs uppercase tracking-widest">Clinic ID</span>
+                                        <span className="font-mono text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-xs">{clinic.id.slice(0, 8)}…</span>
+                                    </div>
+                                    <div className="glass-panel flex justify-between items-center px-6 py-4 hover:bg-white/40 dark:hover:bg-slate-800/40 transition-all border-none">
+                                        <span className="text-slate-500 font-bold text-xs uppercase tracking-widest">Principal</span>
+                                        <span className="text-slate-900 dark:text-white font-bold">{clinic.doctorName || '—'}</span>
+                                    </div>
+                                    <div className="glass-panel flex justify-between items-center px-6 py-4 hover:bg-white/40 dark:hover:bg-slate-800/40 transition-all border-none">
+                                        <span className="text-slate-500 font-bold text-xs uppercase tracking-widest">Digital Address</span>
+                                        <span className="text-slate-900 dark:text-white font-medium">{clinic.email}</span>
+                                    </div>
+                                    <div className="glass-panel flex justify-between items-center px-6 py-4 hover:bg-white/40 dark:hover:bg-slate-800/40 transition-all border-none">
+                                        <span className="text-slate-500 font-bold text-xs uppercase tracking-widest">Protocol Version</span>
+                                        <span className="text-slate-900 dark:text-white font-bold">{clinic.systemVersion || 'Not detected'}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
-                            <div className="flex items-center justify-between mb-4">
-                                <div>
-                                    <p className="text-xs uppercase tracking-wider text-slate-500">Live Usage Snapshot</p>
-                                    <p className="text-sm text-slate-900 dark:text-white font-semibold">Real numbers from Smart Clinic</p>
-                                </div>
-                                <div className="text-right text-xs text-slate-500">
-                                    <p>Last sync</p>
-                                    <p className="font-medium">
-                                        {lastSyncDisplay || 'Not reported yet'}
-                                    </p>
-                                </div>
-                            </div>
-                            {usageMessage && (
-                                <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50/60 dark:border-amber-800 dark:bg-amber-900/20 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
-                                    {usageMessage}
-                                </div>
-                            )}
-                            <dl className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
-                                {snapshotRows.map((row) => (
-                                    <div key={row.label} className="flex items-center justify-between">
-                                        <dt>{row.label}</dt>
-                                        <dd className="font-semibold text-slate-900 dark:text-white">{row.value}</dd>
+                        <div className="glass-card p-8 flex flex-col justify-between group overflow-hidden relative">
+                            <div className="absolute bottom-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl -mb-16 -mr-16 group-hover:opacity-100 opacity-50" />
+                            <div className="relative z-10 flex flex-col h-full">
+                                <div className="flex items-center justify-between mb-8">
+                                    <div>
+                                        <p className="text-[10px] uppercase font-black tracking-[0.3em] text-slate-500">Live Telemetry</p>
+                                        <p className="text-sm text-slate-900 dark:text-white font-black mt-1">Smart Clinic Node</p>
                                     </div>
-                                ))}
+                                    <div className="text-right">
+                                        <p className="text-[10px] uppercase font-bold text-slate-500 opacity-60">Sync state</p>
+                                        <p className="text-xs font-black text-emerald-500 flex items-center gap-1 justify-end">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                            STABLE
+                                        </p>
+                                    </div>
+                                </div>
+                                {usageMessage && (
+                                    <div className="mb-6 glass-panel border-amber-500/20 bg-amber-500/5 px-4 py-3 text-xs text-amber-700 dark:text-amber-300 flex items-center gap-3 animate-pulse">
+                                        <AlertTriangle size={18} className="shrink-0 text-amber-500" />
+                                        <span className="font-medium">{usageMessage}</span>
+                                    </div>
+                                )}
+                                <dl className="space-y-4 flex-1">
+                                    {snapshotRows.map((row) => (
+                                        <div key={row.label} className="flex items-center justify-between border-b border-white/10 dark:border-slate-800/50 pb-3 group/row">
+                                            <dt className="text-slate-500 font-medium text-xs uppercase tracking-wider group-hover/row:text-slate-400 transition-colors">{row.label}</dt>
+                                            <dd className="font-black text-slate-900 dark:text-white text-sm">{row.value}</dd>
+                                        </div>
+                                    ))}
+                                </dl>
                                 {controls.lockReason && (
-                                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-rose-500">
+                                    <div className="mt-4 pt-4 border-t border-rose-500/20 text-[10px] text-rose-500 flex items-center gap-2 font-bold uppercase tracking-widest animate-pulse">
+                                        <Lock size={12} />
                                         {controls.lockReason}
                                     </div>
                                 )}
-                            </dl>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Tabs */}
-                <div className="mb-6 bg-white dark:bg-slate-900 rounded-2xl p-3 border border-slate-200 dark:border-slate-800">
+                {/* Main Control Interface */}
+                <div className="mb-6 glass-card p-3 shadow-2xl relative z-20">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                         {tabs.map((tab) => {
                             const Icon = tab.icon;
@@ -466,12 +494,12 @@ const ClinicControlPanel: React.FC = () => {
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
-                                    className={`flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold border transition-colors ${activeTab === tab.id
-                                            ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-slate-900 dark:border-white'
-                                            : 'text-slate-500 dark:text-slate-400 border-transparent hover:border-slate-200 dark:hover:border-slate-700'
+                                    className={`relative flex items-center justify-center gap-3 rounded-xl px-4 py-4 text-sm font-black uppercase tracking-widest transition-all duration-300 ${activeTab === tab.id
+                                        ? 'glass-gradient-purple text-purple-700 dark:text-purple-300 shadow-xl scale-[1.02] transform'
+                                        : 'text-slate-500 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50'
                                         }`}
                                 >
-                                    <Icon size={20} />
+                                    <Icon size={20} className={activeTab === tab.id ? 'animate-pulse' : ''} />
                                     {tab.label}
                                 </button>
                             );
@@ -479,111 +507,129 @@ const ClinicControlPanel: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Content */}
+                {/* Tab Viewports */}
                 <div className="space-y-6">
                     {/* Overview Tab */}
                     {activeTab === 'overview' && (
-                        <div className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-6 animate-fadeIn">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 {overviewMetrics.map((metric) => {
                                     const Icon = metric.icon;
-                                    const iconStyle = metricIconStyles[metric.accent] || metricIconStyles.storage;
                                     return (
-                                        <div key={metric.id} className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
-                                            <div className="flex items-center justify-between mb-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${iconStyle.bg}`}>
-                                                        <Icon size={20} className={iconStyle.icon} />
+                                        <div key={metric.id} className="glass-card p-8 group hover:scale-[1.03] transition-all duration-500 border-none shadow-xl">
+                                            <div className="flex items-center justify-between mb-6">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="relative">
+                                                        <div className={`absolute inset-0 bg-gradient-to-br ${metric.id === 'storage' ? 'from-blue-500 to-cyan-500' : metric.id === 'users' ? 'from-emerald-500 to-teal-500' : 'from-purple-500 to-pink-500'} rounded-2xl blur-xl opacity-30 group-hover:opacity-60 transition-opacity`} />
+                                                        <div className={`relative w-14 h-14 rounded-2xl bg-gradient-to-br ${metric.id === 'storage' ? 'from-blue-500 to-cyan-500' : metric.id === 'users' ? 'from-emerald-500 to-teal-500' : 'from-purple-500 to-pink-500'} flex items-center justify-center text-white shadow-2xl transform group-hover:rotate-6 transition-transform`}>
+                                                            <Icon size={26} />
+                                                        </div>
                                                     </div>
                                                     <div>
-                                                        <p className="text-xs uppercase tracking-wide text-slate-500">{metric.title}</p>
-                                                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{metric.title}</h3>
+                                                        <p className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500">{metric.title}</p>
                                                     </div>
                                                 </div>
-                                                <span className="text-sm font-semibold text-slate-500">
-                                                    {metric.percentage !== null ? `${metric.percentage.toFixed(1)}%` : '—'}
-                                                </span>
+                                                <div className="text-right">
+                                                    <span className={`text-xl font-black ${metric.percentage && metric.percentage > 90 ? 'text-rose-500' : 'text-slate-900 dark:text-white'}`}>
+                                                        {metric.percentage !== null ? `${metric.percentage.toFixed(0)}%` : '—'}
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <p className="text-3xl font-bold text-slate-900 dark:text-white">
+                                            <p className="text-3xl font-black bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent mb-1">
                                                 {metric.value}
                                             </p>
-                                            <p className="text-sm text-slate-500">{metric.limit}</p>
-                                            <div className="mt-4 h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+                                            <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-tighter mb-6">{metric.limit}</p>
+
+                                            <div className="relative h-2.5 rounded-full bg-slate-200/50 dark:bg-slate-800/50 overflow-hidden mb-6">
                                                 {metric.percentage !== null ? (
                                                     <div
-                                                        className={`h-full rounded-full transition-all ${getBarColor(metric.id, metric.percentage)}`}
+                                                        className={`h-full rounded-full transition-all duration-1000 ease-out-expo ${getBarColor(metric.id, metric.percentage)} shadow-[0_0_12px_rgba(0,0,0,0.1)]`}
                                                         style={{ width: `${metric.percentage}%` }}
                                                     />
                                                 ) : (
-                                                    <div className="h-full rounded-full bg-slate-300/70 dark:bg-slate-700/70" style={{ width: '8%' }} />
+                                                    <div className="h-full rounded-full bg-slate-400/20 animate-pulse-soft" style={{ width: '10%' }} />
                                                 )}
                                             </div>
-                                            <div className="mt-4 flex items-center justify-between text-xs text-slate-500">
-                                                <span>{metric.footerLabel}</span>
-                                                <span className="font-semibold text-slate-900 dark:text-white">{metric.footerValue}</span>
+
+                                            <div className="flex items-center justify-between pt-4 border-t border-white/10 dark:border-slate-800/50">
+                                                <span className="text-[10px] uppercase font-bold text-slate-500">{metric.footerLabel}</span>
+                                                <span className="text-xs font-black text-slate-900 dark:text-white">{metric.footerValue}</span>
                                             </div>
                                         </div>
                                     );
                                 })}
                             </div>
 
-                                <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
-                                    <div className="flex items-center gap-3 mb-4">
-                                        <div className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                                            {controls.locked ? <Lock size={20} className="text-rose-500" /> : <Unlock size={20} className="text-emerald-500" />}
-                                        </div>
-                                        <div>
-                                            <p className="text-xs uppercase tracking-wide text-slate-500">Status</p>
-                                            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{controls.locked ? 'Access locked' : 'Access available'}</h3>
-                                        </div>
-                                    </div>
-                                    <ul className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
-                                        <li className="flex justify-between">
-                                            <span>Registration state</span>
-                                            <span className="font-semibold text-slate-900 dark:text-white">{formatStatus(clinic.status)}</span>
-                                        </li>
-                                        <li className="flex justify-between">
-                                            <span>Plan</span>
-                                            <span className="font-semibold text-slate-900 dark:text-white">{clinic.license?.plan?.name || 'Not assigned'}</span>
-                                        </li>
-                                        <li className="flex justify-between">
-                                            <span>License serial</span>
-                                            <span className="font-mono text-xs text-slate-500">{clinic.license?.serial?.slice(0, 10) || '—'}{clinic.license?.serial ? '…' : ''}</span>
-                                        </li>
-                                        <li className="flex justify-between">
-                                            <span>Last data sync</span>
-                                            <span className="text-slate-900 dark:text-white">{lastSyncDisplay || 'Not reported yet'}</span>
-                                        </li>
-                                    </ul>
-                                    <p className="mt-4 text-xs text-slate-500">Data source: live users + stored files counts</p>
-                                </div>
-                            </div>
-
-                            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
-                                <div className="flex items-center justify-between mb-4">
-                                    <div className="flex items-center gap-2">
-                                        <Zap size={18} className="text-amber-500" />
-                                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Enabled Features</h3>
-                                    </div>
-                                    <span className="text-xs text-slate-500">Reflects saved controls</span>
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                                    {Object.entries(features).map(([key, enabled]) => {
-                                        const typedKey = key as keyof FeatureToggles;
-                                        return (
-                                            <div
-                                                key={key}
-                                                className="rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3 flex items-center justify-between text-sm"
-                                            >
-                                                <span className="font-medium text-slate-900 dark:text-white">{featureLabels[typedKey]}</span>
-                                                <span className={`inline-flex items-center gap-1 text-xs font-semibold ${enabled ? 'text-emerald-600' : 'text-slate-400'
-                                                    }`}>
-                                                    {enabled ? <CheckCircle size={14} /> : <XCircle size={14} />}
-                                                    {enabled ? 'Enabled' : 'Disabled'}
-                                                </span>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <div className="glass-card p-8 group relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl -mr-16 -mt-16 group-hover:opacity-100 opacity-30 transition-opacity" />
+                                    <div className="relative z-10">
+                                        <div className="flex items-center gap-4 mb-8">
+                                            <div className="relative">
+                                                <div className={`absolute inset-0 ${controls.locked ? 'bg-rose-500' : 'bg-emerald-500'} rounded-2xl blur-xl opacity-30`} />
+                                                <div className={`relative w-16 h-16 rounded-2xl ${controls.locked ? 'bg-gradient-to-br from-rose-500 to-pink-500' : 'bg-gradient-to-br from-emerald-500 to-teal-500'} flex items-center justify-center text-white shadow-2xl`}>
+                                                    {controls.locked ? <Lock size={28} /> : <Unlock size={28} />}
+                                                </div>
                                             </div>
-                                        );
-                                    })}
+                                            <div>
+                                                <p className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500">Node Status</p>
+                                                <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">{controls.locked ? 'Access Suspended' : 'Access Fully Verified'}</h3>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div className="glass-panel p-5 border-none bg-white/30 dark:bg-slate-800/30">
+                                                <p className="text-[10px] uppercase font-bold text-slate-500 mb-2">Registration Status</p>
+                                                <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider italic">{formatStatus(clinic.status)}</p>
+                                            </div>
+                                            <div className="glass-panel p-5 border-none bg-white/30 dark:bg-slate-800/30">
+                                                <p className="text-[10px] uppercase font-bold text-slate-500 mb-2">Service Component</p>
+                                                <p className="text-sm font-black text-slate-900 dark:text-white tracking-widest">{clinic.license?.plan?.name || 'GENERIC NODE'}</p>
+                                            </div>
+                                            <div className="glass-panel p-5 border-none bg-white/30 dark:bg-slate-800/30">
+                                                <p className="text-[10px] uppercase font-bold text-slate-500 mb-2">License Authentication</p>
+                                                <p className="font-mono text-[10px] text-slate-500 bg-slate-100 dark:bg-slate-900 px-2 py-1 rounded inline-block">{clinic.license?.serial || 'UNREGISTERED'}</p>
+                                            </div>
+                                            <div className="glass-panel p-5 border-none bg-white/30 dark:bg-slate-800/30">
+                                                <p className="text-[10px] uppercase font-bold text-slate-500 mb-2">Telemetry Uplink</p>
+                                                <p className="text-sm font-black text-emerald-500">{lastSyncDisplay || 'SYNC PENDING'}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="glass-card p-8 group relative overflow-hidden">
+                                    <div className="absolute top-0 left-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl -ml-16 -mt-16 group-hover:opacity-100 opacity-30 transition-opacity" />
+                                    <div className="relative z-10">
+                                        <div className="flex items-center justify-between mb-8">
+                                            <div className="flex items-center gap-4">
+                                                <div className="relative">
+                                                    <div className="absolute inset-0 bg-amber-500 rounded-2xl blur-xl opacity-30" />
+                                                    <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white shadow-2xl">
+                                                        <Zap size={28} />
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500">Core Engine</p>
+                                                    <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Active Modules</h3>
+                                                </div>
+                                            </div>
+                                            <span className="glass-badge glass-gradient-purple text-purple-700 dark:text-purple-300 font-black text-[10px] tracking-widest">VERIFIED</span>
+                                        </div>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-3">
+                                            {Object.entries(features).map(([key, enabled]) => {
+                                                const typedKey = key as keyof FeatureToggles;
+                                                return (
+                                                    <div
+                                                        key={key}
+                                                        className={`glass-panel px-4 py-3 border-none flex items-center justify-between transition-all hover:translate-y-[-2px] group/feat ${enabled ? 'bg-emerald-500/10' : 'bg-slate-100/50 dark:bg-slate-800/30'}`}
+                                                    >
+                                                        <span className={`text-[11px] font-black uppercase tracking-tight ${enabled ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-400'}`}>{featureLabels[typedKey]}</span>
+                                                        <div className={`w-2 h-2 rounded-full ${enabled ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-slate-300 dark:bg-slate-600'}`} />
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -591,13 +637,14 @@ const ClinicControlPanel: React.FC = () => {
 
                     {/* Limits Tab */}
                     {activeTab === 'limits' && (
-                        <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm">
-                            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">Resource Limits & Quotas</h2>
+                        <div className="glass-card p-8 animate-fadeIn">
+                            <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-900 via-purple-800 to-slate-900 dark:from-white dark:via-purple-300 dark:to-white bg-clip-text text-transparent mb-6">Resource Limits & Quotas</h2>
 
                             <div className="space-y-8">
                                 {/* Storage Limit */}
                                 <div>
-                                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
+                                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
+                                        <HardDrive size={16} className="text-purple-500" />
                                         Storage Limit (MB)
                                     </label>
                                     <div className="flex items-center gap-4">
@@ -607,22 +654,23 @@ const ClinicControlPanel: React.FC = () => {
                                             onChange={(e) => setStorageLimitInput(parseInt(e.target.value) || 0)}
                                             min="100"
                                             step="100"
-                                            className="flex-1 px-6 py-4 text-lg border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-slate-900 dark:focus:ring-white focus:border-transparent dark:bg-slate-800 dark:text-white"
+                                            className="glass-input flex-1 px-6 py-4 text-lg font-semibold"
                                         />
-                                        <div className="text-sm text-slate-500 dark:text-slate-400">
-                                            <div className="font-semibold">Current Usage:</div>
-                                            <div>
+                                        <div className="glass-panel px-4 py-3 text-sm">
+                                            <div className="font-bold text-slate-900 dark:text-white">Current Usage:</div>
+                                            <div className="text-slate-600 dark:text-slate-400">
                                                 {storageUsed !== null ? `${storageUsed.toFixed(2)} MB` : 'Not reported yet'}
                                                 {storagePercentage !== null ? ` (${storagePercentage.toFixed(1)}%)` : ''}
                                             </div>
                                         </div>
                                     </div>
-                                    <p className="mt-2 text-sm text-slate-500">Maximum storage space allowed for this clinic</p>
+                                    <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 italic">Maximum storage space allowed for this clinic</p>
                                 </div>
 
                                 {/* Users Limit */}
                                 <div>
-                                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
+                                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
+                                        <UsersIcon size={16} className="text-blue-500" />
                                         Users Limit
                                     </label>
                                     <div className="flex items-center gap-4">
@@ -631,22 +679,23 @@ const ClinicControlPanel: React.FC = () => {
                                             value={usersLimitInput}
                                             onChange={(e) => setUsersLimitInput(parseInt(e.target.value) || 0)}
                                             min="1"
-                                            className="flex-1 px-6 py-4 text-lg border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-slate-900 dark:focus:ring-white focus:border-transparent dark:bg-slate-800 dark:text-white"
+                                            className="glass-input flex-1 px-6 py-4 text-lg font-semibold"
                                         />
-                                        <div className="text-sm text-slate-500 dark:text-slate-400">
-                                            <div className="font-semibold">Active Users:</div>
-                                            <div>
+                                        <div className="glass-panel px-4 py-3 text-sm">
+                                            <div className="font-bold text-slate-900 dark:text-white">Active Users:</div>
+                                            <div className="text-slate-600 dark:text-slate-400">
                                                 {usersUsed !== null ? `${usersUsed} users` : 'Not reported yet'}
                                                 {usersPercentage !== null ? ` (${usersPercentage.toFixed(1)}%)` : ''}
                                             </div>
                                         </div>
                                     </div>
-                                    <p className="mt-2 text-sm text-slate-500">Maximum number of active users allowed</p>
+                                    <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 italic">Maximum number of active users allowed</p>
                                 </div>
 
                                 {/* Patients Limit */}
                                 <div>
-                                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
+                                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
+                                        <TrendingUp size={16} className="text-emerald-500" />
                                         Patients Limit
                                     </label>
                                     <div className="flex items-center gap-4">
@@ -656,14 +705,14 @@ const ClinicControlPanel: React.FC = () => {
                                             onChange={(e) => setPatientsLimitInput(e.target.value)}
                                             min="1"
                                             placeholder="Leave blank for unlimited"
-                                            className="flex-1 px-6 py-4 text-lg border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-slate-900 dark:focus:ring-white focus:border-transparent dark:bg-slate-800 dark:text-white"
+                                            className="glass-input flex-1 px-6 py-4 text-lg font-semibold"
                                         />
-                                        <div className="text-sm text-slate-500 dark:text-slate-400">
-                                            <div className="font-semibold">Current Limit:</div>
-                                            <div>{patientsLimit !== null ? `${patientsLimit.toLocaleString()} patients` : 'Unlimited'}</div>
+                                        <div className="glass-panel px-4 py-3 text-sm">
+                                            <div className="font-bold text-slate-900 dark:text-white">Current Limit:</div>
+                                            <div className="text-slate-600 dark:text-slate-400">{patientsLimit !== null ? `${patientsLimit.toLocaleString()} patients` : 'Unlimited'}</div>
                                         </div>
                                     </div>
-                                    <p className="mt-2 text-sm text-slate-500">
+                                    <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 italic">
                                         Number of patients Smart Clinic may store before blocking new entries
                                     </p>
                                 </div>
@@ -673,7 +722,7 @@ const ClinicControlPanel: React.FC = () => {
                                     <button
                                         onClick={handleSaveControls}
                                         disabled={saving}
-                                        className="px-8 py-4 bg-slate-900 text-white dark:bg-white dark:text-slate-900 rounded-xl font-semibold transition-all flex items-center gap-3 shadow-sm disabled:opacity-50"
+                                        className="px-8 py-4 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold transition-all flex items-center gap-3 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:transform-none"
                                     >
                                         {saving ? (
                                             <>
@@ -694,20 +743,21 @@ const ClinicControlPanel: React.FC = () => {
 
                     {/* Features Tab */}
                     {activeTab === 'features' && (
-                        <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm">
-                            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">Feature Management</h2>
+                        <div className="glass-card p-8 animate-fadeIn">
+                            <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-900 via-purple-800 to-slate-900 dark:from-white dark:via-purple-300 dark:to-white bg-clip-text text-transparent mb-6">Feature Management</h2>
 
                             <div className="space-y-6">
                                 {Object.entries(features).map(([key, enabled]) => (
                                     <div
                                         key={key}
-                                        className="flex items-center justify-between p-6 rounded-xl border-2 border-slate-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-700 transition-all"
+                                        className="glass-panel p-6 flex items-center justify-between hover:scale-102 transition-all group"
                                     >
                                         <div>
-                                            <h3 className="text-lg font-bold text-slate-900 dark:text-white capitalize">
+                                            <h3 className="text-lg font-bold text-slate-900 dark:text-white capitalize flex items-center gap-2">
                                                 {key}
+                                                {enabled && <span className="glass-badge glass-gradient-emerald text-emerald-700 dark:text-emerald-300 text-xs">ACTIVE</span>}
                                             </h3>
-                                            <p className="text-sm text-slate-500 mt-1">
+                                            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                                                 {key === 'patients' && 'Patient records and management'}
                                                 {key === 'appointments' && 'Appointment scheduling and calendar'}
                                                 {key === 'orthodontics' && 'Orthodontics treatment tracking'}
@@ -717,11 +767,11 @@ const ClinicControlPanel: React.FC = () => {
                                         </div>
                                         <button
                                             onClick={() => setFeatures({ ...features, [key]: !enabled })}
-                                            className={`relative inline-flex h-8 w-16 items-center rounded-full transition-colors ${enabled ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'
+                                            className={`relative inline-flex h-10 w-20 items-center rounded-full transition-all duration-300 shadow-lg ${enabled ? 'bg-gradient-to-r from-emerald-500 to-teal-500' : 'bg-slate-300 dark:bg-slate-600'
                                                 }`}
                                         >
                                             <span
-                                                className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${enabled ? 'translate-x-9' : 'translate-x-1'
+                                                className={`inline-block h-8 w-8 transform rounded-full bg-white shadow-md transition-transform duration-300 ${enabled ? 'translate-x-11' : 'translate-x-1'
                                                     }`}
                                             />
                                         </button>
@@ -733,7 +783,7 @@ const ClinicControlPanel: React.FC = () => {
                                     <button
                                         onClick={handleSaveControls}
                                         disabled={saving}
-                                        className="px-8 py-4 bg-slate-900 text-white dark:bg-white dark:text-slate-900 rounded-xl font-semibold transition-all flex items-center gap-3 shadow-sm disabled:opacity-50"
+                                        className="px-8 py-4 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold transition-all flex items-center gap-3 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:transform-none"
                                     >
                                         {saving ? (
                                             <>
@@ -754,55 +804,58 @@ const ClinicControlPanel: React.FC = () => {
 
                     {/* Security Tab */}
                     {activeTab === 'security' && (
-                        <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm">
-                            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">Security & Access Control</h2>
+                        <div className="glass-card p-8 animate-fadeIn">
+                            <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-900 via-purple-800 to-slate-900 dark:from-white dark:via-purple-300 dark:to-white bg-clip-text text-transparent mb-6">Security & Access Control</h2>
 
                             <div className="space-y-6">
                                 {/* Lock Status */}
-                                <div className={`p-6 rounded-xl border-2 ${controls.locked
-                                        ? 'border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-900/20'
-                                        : 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20'
+                                <div className={`glass-card p-8 border-2 transition-all duration-500 ${controls.locked
+                                    ? 'border-rose-500/50 bg-rose-500/10'
+                                    : 'border-emerald-500/50 bg-emerald-500/10'
                                     }`}>
                                     <div className="flex items-center justify-between mb-4">
                                         <div>
-                                            <h3 className="text-xl font-bold text-slate-900 dark:text-white">Clinic Access</h3>
-                                            <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
+                                            <h3 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+                                                {controls.locked ? <Lock size={28} className="text-rose-500" /> : <Unlock size={28} className="text-emerald-500" />}
+                                                Clinic Access
+                                            </h3>
+                                            <p className="text-sm text-slate-600 dark:text-slate-300 mt-2">
                                                 {controls.locked
                                                     ? 'Clinic is currently locked. Users cannot access the system.'
                                                     : 'Clinic is active. All authorized users can access the system.'}
                                             </p>
                                         </div>
-                                        <div className={`p-4 rounded-xl ${controls.locked ? 'bg-rose-500' : 'bg-emerald-500'} text-white`}>
-                                            {controls.locked ? <Lock size={32} /> : <Unlock size={32} />}
+                                        <div className={`p-6 rounded-2xl ${controls.locked ? 'bg-gradient-to-br from-rose-500 to-pink-500' : 'bg-gradient-to-br from-emerald-500 to-teal-500'} text-white shadow-xl`}>
+                                            {controls.locked ? <Lock size={40} /> : <Unlock size={40} />}
                                         </div>
                                     </div>
 
                                     {controls.lockReason && (
-                                        <div className="mt-4 p-4 bg-white dark:bg-slate-800 rounded-lg">
-                                            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Lock Reason:</p>
-                                            <p className="text-slate-600 dark:text-slate-400">{controls.lockReason}</p>
+                                        <div className="mt-6 glass-panel p-5">
+                                            <p className="text-xs uppercase tracking-wider font-bold text-slate-500 mb-2">Lock Reason:</p>
+                                            <p className="text-slate-800 dark:text-slate-200 font-medium">{controls.lockReason}</p>
                                         </div>
                                     )}
                                 </div>
 
                                 {/* Lock/Unlock Button */}
-                                <div className="flex justify-center">
+                                <div className="flex justify-center pt-4">
                                     <button
                                         onClick={() => setShowLockConfirm(true)}
-                                        className={`px-8 py-4 rounded-xl font-semibold text-lg transition-all flex items-center gap-3 shadow-sm text-white ${controls.locked
-                                                ? 'bg-emerald-600 hover:bg-emerald-700'
-                                                : 'bg-rose-600 hover:bg-rose-700'
+                                        className={`px-10 py-5 rounded-2xl text-white font-bold transition-all flex items-center gap-3 shadow-xl hover:shadow-2xl transform hover:-translate-y-1 ${controls.locked
+                                            ? 'bg-gradient-to-r from-emerald-500 to-teal-600'
+                                            : 'bg-gradient-to-r from-rose-500 to-pink-600'
                                             }`}
                                     >
                                         {controls.locked ? (
                                             <>
                                                 <Unlock size={24} />
-                                                Unlock Clinic
+                                                Unlock Clinic Access
                                             </>
                                         ) : (
                                             <>
                                                 <Lock size={24} />
-                                                Lock Clinic
+                                                Lock Clinic Access
                                             </>
                                         )}
                                     </button>
@@ -814,68 +867,69 @@ const ClinicControlPanel: React.FC = () => {
             </div>
 
             {/* Lock Confirmation Modal */}
-            {showLockConfirm && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 max-w-md w-full shadow-2xl">
-                        <div className="flex items-center gap-4 mb-4">
-                            <AlertTriangle className="text-amber-500" size={32} />
-                            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
-                                {controls.locked ? 'Unlock Clinic' : 'Lock Clinic'}
-                            </h3>
-                        </div>
-                        <p className="text-slate-600 dark:text-slate-300 mb-6">
-                            {controls.locked
-                                ? 'This will allow the clinic to access their system again.'
-                                : 'This will prevent all users from accessing the clinic system.'}
-                        </p>
-
-                        {!controls.locked && (
-                            <div className="mb-6">
-                                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                                    Lock Reason <span className="text-rose-500">*</span>
-                                </label>
-                                <textarea
-                                    value={lockReason}
-                                    onChange={(e) => setLockReason(e.target.value)}
-                                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-purple-500 dark:bg-slate-700 dark:text-white resize-none"
-                                    rows={4}
-                                    placeholder="e.g., Payment overdue, Subscription expired, Policy violation..."
-                                />
+            {
+                showLockConfirm && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-md animate-fadeIn">
+                        <div className="glass-card p-10 max-w-lg w-full shadow-2xl animate-scaleUp">
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className={`p-4 rounded-xl ${controls.locked ? 'bg-emerald-500' : 'bg-rose-500'} text-white shadow-lg`}>
+                                    {controls.locked ? <Unlock size={32} /> : <Lock size={32} />}
+                                </div>
+                                <div>
+                                    <h3 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
+                                        {controls.locked ? 'Unlock Clinic' : 'Lock Clinic'}
+                                    </h3>
+                                    <p className="text-slate-600 dark:text-slate-400 font-medium">Action Confirmation</p>
+                                </div>
                             </div>
-                        )}
 
-                        <div className="flex gap-3">
-                            <button
-                                onClick={() => setShowLockConfirm(false)}
-                                className="flex-1 px-6 py-3 border-2 border-slate-300 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-all font-medium"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleToggleLock}
-                                disabled={saving || (!controls.locked && !lockReason.trim())}
-                                className={`flex-1 px-6 py-3 rounded-xl text-white transition-all font-semibold flex items-center justify-center gap-2 disabled:opacity-50 ${controls.locked
-                                        ? 'bg-emerald-500 hover:bg-emerald-600'
-                                        : 'bg-rose-500 hover:bg-rose-600'
-                                    }`}
-                            >
-                                {saving ? (
-                                    <>
-                                        <Loader2 className="animate-spin" size={20} />
-                                        Processing...
-                                    </>
-                                ) : (
-                                    <>
-                                        {controls.locked ? <Unlock size={20} /> : <Lock size={20} />}
-                                        {controls.locked ? 'Unlock' : 'Lock'}
-                                    </>
-                                )}
-                            </button>
+                            <p className="text-lg text-slate-700 dark:text-slate-300 mb-8 leading-relaxed">
+                                {controls.locked
+                                    ? 'This will allow all authorized users to log in and use the clinic system again.'
+                                    : 'This will immediately disconnect all active users and prevent anyone from logging into the clinic system.'}
+                            </p>
+
+                            {!controls.locked && (
+                                <div className="mb-8">
+                                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 ml-1">
+                                        Reason for Locking <span className="text-rose-500">*</span>
+                                    </label>
+                                    <textarea
+                                        value={lockReason}
+                                        onChange={(e) => setLockReason(e.target.value)}
+                                        placeholder="Enter the reason for this action..."
+                                        className="glass-input w-full p-6 h-32 resize-none text-base"
+                                        required
+                                    />
+                                </div>
+                            )}
+
+                            <div className="flex gap-4">
+                                <button
+                                    onClick={() => {
+                                        setShowLockConfirm(false);
+                                        setLockReason('');
+                                    }}
+                                    className="flex-1 glass-button px-6 py-4 font-bold text-slate-700 dark:text-slate-200"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleToggleLock}
+                                    disabled={saving}
+                                    className={`flex-1 px-6 py-4 rounded-xl font-bold text-white shadow-lg transition-all transform hover:-translate-y-1 ${controls.locked
+                                        ? 'bg-gradient-to-r from-emerald-500 to-teal-500'
+                                        : 'bg-gradient-to-r from-rose-500 to-pink-500'
+                                        } disabled:opacity-50`}
+                                >
+                                    {saving ? <Loader2 className="animate-spin mx-auto" size={24} /> : (controls.locked ? 'Unlock Now' : 'Lock Now')}
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
 
