@@ -11,7 +11,8 @@ import {
     ClinicsHeader
 } from '../components/clinics';
 import ClinicControlDashboard from '../components/ClinicControlDashboard';
-import { Building2, CheckCircle2, Clock, Ban, Loader2 } from 'lucide-react';
+import { useTranslation } from '../hooks/useTranslation';
+import { Building2, CheckCircle2, Clock, Ban, Loader2, RefreshCw } from 'lucide-react';
 
 interface ClinicsProps {
     viewMode: 'requests' | 'manage';
@@ -20,6 +21,7 @@ interface ClinicsProps {
 type ActionType = 'approve' | 'reject' | 'suspend' | 'reactivate' | 'delete';
 
 const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
+    const { t } = useTranslation();
 
     // State
     const [clinics, setClinics] = useState<Clinic[]>([]);
