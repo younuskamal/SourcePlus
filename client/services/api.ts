@@ -343,6 +343,7 @@ export const api = {
     return doRequest<{
       storageLimitMB: number;
       usersLimit: number;
+      patientsLimit: number | null;
       features: {
         patients: boolean;
         appointments: boolean;
@@ -357,6 +358,7 @@ export const api = {
   updateClinicControls(id: string, payload: {
     storageLimitMB?: number;
     usersLimit?: number;
+    patientsLimit?: number | null;
     features?: {
       patients?: boolean;
       appointments?: boolean;
@@ -370,6 +372,7 @@ export const api = {
     return doRequest<{
       storageLimitMB: number;
       usersLimit: number;
+      patientsLimit: number | null;
       features: any;
       locked: boolean;
       lockReason: string | null;

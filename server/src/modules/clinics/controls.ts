@@ -6,6 +6,7 @@ import { logAudit } from '../../utils/audit.js';
 const updateControlsSchema = z.object({
     storageLimitMB: z.number().int().positive().optional(),
     usersLimit: z.number().int().positive().optional(),
+    patientsLimit: z.number().int().positive().nullable().optional(),
     features: z.object({
         patients: z.boolean().optional(),
         appointments: z.boolean().optional(),
@@ -51,6 +52,7 @@ export default async function clinicControlsRoutes(app: FastifyInstance) {
             return reply.send({
                 storageLimitMB: control.storageLimitMB,
                 usersLimit: control.usersLimit,
+                patientsLimit: control.patientsLimit,
                 features: control.features as any,
                 locked: control.locked,
                 lockReason: control.lockReason
@@ -60,6 +62,7 @@ export default async function clinicControlsRoutes(app: FastifyInstance) {
         return reply.send({
             storageLimitMB: clinic.control.storageLimitMB,
             usersLimit: clinic.control.usersLimit,
+            patientsLimit: clinic.control.patientsLimit,
             features: clinic.control.features as any,
             locked: clinic.control.locked,
             lockReason: clinic.control.lockReason
@@ -82,6 +85,7 @@ export default async function clinicControlsRoutes(app: FastifyInstance) {
         const beforeState = clinic.control ? {
             storageLimitMB: clinic.control.storageLimitMB,
             usersLimit: clinic.control.usersLimit,
+            patientsLimit: clinic.control.patientsLimit,
             features: clinic.control.features,
             locked: clinic.control.locked,
             lockReason: clinic.control.lockReason
@@ -93,6 +97,7 @@ export default async function clinicControlsRoutes(app: FastifyInstance) {
         if (body.usersLimit !== undefined) updateData.usersLimit = body.usersLimit;
         if (body.locked !== undefined) updateData.locked = body.locked;
         if (body.lockReason !== undefined) updateData.lockReason = body.lockReason;
+        if (body.patientsLimit !== undefined) updateData.patientsLimit = body.patientsLimit;
         if (body.features) {
             // Merge with existing features
             const currentFeatures = clinic.control?.features as any || {
@@ -117,6 +122,7 @@ export default async function clinicControlsRoutes(app: FastifyInstance) {
                     clinicId: id,
                     storageLimitMB: body.storageLimitMB || 1024,
                     usersLimit: body.usersLimit || 3,
+                    patientsLimit: body.patientsLimit ?? null,
                     features: body.features || {
                         patients: true,
                         appointments: true,
@@ -134,6 +140,7 @@ export default async function clinicControlsRoutes(app: FastifyInstance) {
         const afterState = {
             storageLimitMB: control.storageLimitMB,
             usersLimit: control.usersLimit,
+            patientsLimit: control.patientsLimit,
             features: control.features,
             locked: control.locked,
             lockReason: control.lockReason
@@ -151,6 +158,9 @@ export default async function clinicControlsRoutes(app: FastifyInstance) {
         }
         if (body.lockReason !== undefined && beforeState?.lockReason !== body.lockReason) {
             changes.push(`lockReason: "${beforeState?.lockReason || 'none'}" → "${body.lockReason || 'none'}"`);
+        }
+        if (body.patientsLimit !== undefined && beforeState?.patientsLimit !== body.patientsLimit) {
+            changes.push(`patientsLimit: ${beforeState?.patientsLimit ?? 'unlimited'} → ${body.patientsLimit ?? 'unlimited'}`);
         }
         if (body.features) {
             const featuresChanged: string[] = [];
@@ -175,6 +185,7 @@ export default async function clinicControlsRoutes(app: FastifyInstance) {
         return reply.send({
             storageLimitMB: control.storageLimitMB,
             usersLimit: control.usersLimit,
+            patientsLimit: control.patientsLimit,
             features: control.features as any,
             locked: control.locked,
             lockReason: control.lockReason

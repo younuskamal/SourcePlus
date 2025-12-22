@@ -75,6 +75,7 @@ const sanitizeClinic = (clinic: any) => ({
     control: clinic.control ? {
         storageLimitMB: clinic.control.storageLimitMB,
         usersLimit: clinic.control.usersLimit,
+        patientsLimit: clinic.control.patientsLimit,
         features: clinic.control.features,
         locked: clinic.control.locked
     } : null
@@ -126,6 +127,7 @@ export default async function clinicRoutes(app: FastifyInstance) {
                     clinicId: newClinic.id,
                     storageLimitMB: 1024,
                     usersLimit: 3,
+                    patientsLimit: null,
                     features: {
                         patients: true,
                         appointments: true,

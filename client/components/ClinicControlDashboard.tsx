@@ -31,6 +31,7 @@ interface ClinicControlDashboardProps {
 interface ControlsData {
     storageLimitMB: number;
     usersLimit: number;
+    patientsLimit: number | null;
     features: {
         patients: boolean;
         appointments: boolean;
@@ -64,6 +65,7 @@ const ClinicControlDashboard: React.FC<ClinicControlDashboardProps> = ({ clinic,
     // Form state
     const [storageLimitMB, setStorageLimitMB] = useState(1024);
     const [usersLimit, setUsersLimit] = useState(3);
+    const [patientsLimit, setPatientsLimit] = useState<string>('');
     const [features, setFeatures] = useState({
         patients: true,
         appointments: true,
@@ -98,6 +100,7 @@ const ClinicControlDashboard: React.FC<ClinicControlDashboardProps> = ({ clinic,
             // Update form state
             setStorageLimitMB(controlsData.storageLimitMB);
             setUsersLimit(controlsData.usersLimit);
+            setPatientsLimit(controlsData.patientsLimit !== null ? controlsData.patientsLimit.toString() : '');
             setFeatures(controlsData.features);
             setLockReason(controlsData.lockReason || '');
         } catch (error: any) {
@@ -119,11 +122,19 @@ const ClinicControlDashboard: React.FC<ClinicControlDashboardProps> = ({ clinic,
     };
 
     const handleSaveControls = async () => {
+        const trimmed = patientsLimit.trim();
+        const patientsLimitValue = trimmed === '' ? null : Number(trimmed);
+        if (patientsLimitValue !== null && (!Number.isFinite(patientsLimitValue) || patientsLimitValue <= 0)) {
+            showMessage('error', 'Patients limit must be a positive number or left blank for unlimited');
+            return;
+        }
+
         try {
             setSaving(true);
             await api.updateClinicControls(clinic.id, {
                 storageLimitMB,
                 usersLimit,
+                patientsLimit: patientsLimitValue,
                 features
             });
 
@@ -303,7 +314,7 @@ const ClinicControlDashboard: React.FC<ClinicControlDashboardProps> = ({ clinic,
                         {activeTab === 'overview' && (
                             <div className="space-y-6">
                                 {/* Stats Grid */}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                     {/* Storage */}
                                     <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20">
                                         <div className="flex items-center gap-3 mb-3">
@@ -352,6 +363,20 @@ const ClinicControlDashboard: React.FC<ClinicControlDashboardProps> = ({ clinic,
                                                 />
                                             </div>
                                         </div>
+                                    </div>
+
+                                    {/* Patients */}
+                                    <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20">
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <div className="p-2 rounded-lg bg-amber-500 text-white">
+                                                <TrendingUp size={20} />
+                                            </div>
+                                            <p className="font-semibold text-slate-700 dark:text-slate-200">Patients</p>
+                                        </div>
+                                        <p className="text-lg font-bold text-slate-900 dark:text-white">
+                                            {controls.patientsLimit !== null ? controls.patientsLimit.toLocaleString() : 'Unlimited'}
+                                        </p>
+                                        <p className="text-sm text-slate-600 dark:text-slate-300">Enforced limit</p>
                                     </div>
 
                                     {/* Status */}
@@ -448,6 +473,24 @@ const ClinicControlDashboard: React.FC<ClinicControlDashboardProps> = ({ clinic,
                                     />
                                     <p className="text-sm text-slate-500 mt-1">
                                         Active users: {usage?.activeUsersCount || 0} ({usersPercentage.toFixed(1)}%)
+                                    </p>
+                                </div>
+
+                                {/* Patients Limit */}
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                                        Patients Limit
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={patientsLimit}
+                                        onChange={(e) => setPatientsLimit(e.target.value)}
+                                        className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:bg-slate-800 dark:text-white"
+                                        min="1"
+                                        placeholder="Leave blank for unlimited"
+                                    />
+                                    <p className="text-sm text-slate-500 mt-1">
+                                        Current limit: {controls.patientsLimit !== null ? `${controls.patientsLimit} patients` : 'Unlimited'}
                                     </p>
                                 </div>
 

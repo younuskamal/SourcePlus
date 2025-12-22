@@ -26,6 +26,7 @@ import {
 interface ControlsData {
     storageLimitMB: number;
     usersLimit: number;
+    patientsLimit: number | null;
     features: FeatureToggles;
     locked: boolean;
     lockReason: string | null;
@@ -71,6 +72,7 @@ const ClinicControlPanel: React.FC = () => {
     // Form state
     const [storageLimitInput, setStorageLimitInput] = useState(1024);
     const [usersLimitInput, setUsersLimitInput] = useState(3);
+    const [patientsLimitInput, setPatientsLimitInput] = useState<string>('');
     const [features, setFeatures] = useState<FeatureToggles>({
         patients: true,
         appointments: true,
@@ -110,6 +112,7 @@ const ClinicControlPanel: React.FC = () => {
             // Update form state
             setStorageLimitInput(controlsData.storageLimitMB);
             setUsersLimitInput(controlsData.usersLimit);
+            setPatientsLimitInput(controlsData.patientsLimit !== null ? controlsData.patientsLimit.toString() : '');
             setFeatures(controlsData.features);
             setLockReason(controlsData.lockReason || '');
         } catch (error: any) {
@@ -128,11 +131,19 @@ const ClinicControlPanel: React.FC = () => {
     const handleSaveControls = async () => {
         if (!id) return;
 
+        const trimmed = patientsLimitInput.trim();
+        const patientsLimitValue = trimmed === '' ? null : Number(trimmed);
+        if (patientsLimitValue !== null && (!Number.isFinite(patientsLimitValue) || patientsLimitValue <= 0)) {
+            showMessage('error', 'Patients limit must be a positive number or left blank for unlimited');
+            return;
+        }
+
         try {
             setSaving(true);
             await api.updateClinicControls(id, {
                 storageLimitMB: storageLimitInput,
                 usersLimit: usersLimitInput,
+                patientsLimit: patientsLimitValue,
                 features
             });
 
@@ -204,6 +215,7 @@ const ClinicControlPanel: React.FC = () => {
 
     const storageLimit = usage.storageLimitMB || controls.storageLimitMB || storageLimitInput;
     const usersLimit = usage.usersLimit || controls.usersLimit || usersLimitInput;
+    const patientsLimit = controls.patientsLimit ?? null;
     const storagePercentage = storageLimit ? Math.min((usage.storageUsedMB / storageLimit) * 100, 100) : 0;
     const usersPercentage = usersLimit ? Math.min((usage.activeUsersCount / usersLimit) * 100, 100) : 0;
 
@@ -355,7 +367,7 @@ const ClinicControlPanel: React.FC = () => {
                     {/* Overview Tab */}
                     {activeTab === 'overview' && (
                         <div className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                 <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
                                     <div className="flex items-center justify-between mb-4">
                                         <div className="flex items-center gap-3">
@@ -411,7 +423,26 @@ const ClinicControlPanel: React.FC = () => {
                                     <div className="mt-4 flex items-center justify-between text-xs text-slate-500">
                                         <span>Available seats</span>
                                         <span className="font-semibold text-slate-900 dark:text-white">{Math.max(usersLimit - usage.activeUsersCount, 0)}</span>
+                                </div>
+                            </div>
+
+                                <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                                            <TrendingUp size={20} className="text-slate-600 dark:text-slate-300" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs uppercase tracking-wide text-slate-500">Patients</p>
+                                            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Patient Limit</h3>
+                                        </div>
                                     </div>
+                                    <p className="text-3xl font-bold text-slate-900 dark:text-white">
+                                        {patientsLimit !== null ? patientsLimit.toLocaleString() : 'Unlimited'}
+                                    </p>
+                                    <p className="text-sm text-slate-500">
+                                        {patientsLimit !== null ? 'Maximum patients allowed' : 'No limit enforced'}
+                                    </p>
+                                    <p className="mt-4 text-xs text-slate-500">SourcePlus enforced</p>
                                 </div>
 
                                 <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
@@ -523,6 +554,30 @@ const ClinicControlPanel: React.FC = () => {
                                         </div>
                                     </div>
                                     <p className="mt-2 text-sm text-slate-500">Maximum number of active users allowed</p>
+                                </div>
+
+                                {/* Patients Limit */}
+                                <div>
+                                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
+                                        Patients Limit
+                                    </label>
+                                    <div className="flex items-center gap-4">
+                                        <input
+                                            type="number"
+                                            value={patientsLimitInput}
+                                            onChange={(e) => setPatientsLimitInput(e.target.value)}
+                                            min="1"
+                                            placeholder="Leave blank for unlimited"
+                                            className="flex-1 px-6 py-4 text-lg border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-slate-900 dark:focus:ring-white focus:border-transparent dark:bg-slate-800 dark:text-white"
+                                        />
+                                        <div className="text-sm text-slate-500 dark:text-slate-400">
+                                            <div className="font-semibold">Current Limit:</div>
+                                            <div>{patientsLimit !== null ? `${patientsLimit.toLocaleString()} patients` : 'Unlimited'}</div>
+                                        </div>
+                                    </div>
+                                    <p className="mt-2 text-sm text-slate-500">
+                                        Number of patients Smart Clinic may store before blocking new entries
+                                    </p>
                                 </div>
 
                                 {/* Save Button */}

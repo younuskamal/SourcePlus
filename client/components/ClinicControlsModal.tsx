@@ -25,6 +25,7 @@ interface ClinicControlsModalProps {
 interface ControlsData {
     storageLimitMB: number;
     usersLimit: number;
+    patientsLimit: number | null;
     features: {
         patients: boolean;
         appointments: boolean;
@@ -39,6 +40,7 @@ interface ControlsData {
 const DEFAULT_CONTROLS: ControlsData = {
     storageLimitMB: 1024,
     usersLimit: 3,
+    patientsLimit: null,
     features: {
         patients: true,
         appointments: true,
@@ -264,6 +266,28 @@ const ClinicControlsModal: React.FC<ClinicControlsModalProps> = ({ clinic, onClo
                                 />
                                 <p className="text-xs text-slate-500">
                                     Maximum users allowed
+                                </p>
+                            </div>
+
+                            {/* Patients Limit */}
+                            <div className="space-y-2">
+                                <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
+                                    <Users size={16} className="text-emerald-500" />
+                                    Patients Limit
+                                </label>
+                                <input
+                                    type="number"
+                                    min={1}
+                                    value={controls.patientsLimit ?? ''}
+                                    placeholder="Leave blank for unlimited"
+                                    onChange={(e) => {
+                                        const nextValue = e.target.value === '' ? null : (parseInt(e.target.value, 10) || null);
+                                        setControls({ ...controls, patientsLimit: nextValue });
+                                    }}
+                                    className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none font-mono"
+                                />
+                                <p className="text-xs text-slate-500">
+                                    Current setting: {controls.patientsLimit !== null ? `${controls.patientsLimit} patients` : 'Unlimited'}
                                 </p>
                             </div>
                         </div>
