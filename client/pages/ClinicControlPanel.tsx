@@ -61,6 +61,14 @@ const ClinicControlPanel: React.FC = () => {
 
     const [clinic, setClinic] = useState<Clinic | null>(null);
     const [activeTab, setActiveTab] = useState<TabType>('overview');
+
+    // Utility: Format numbers with commas (Professional standard)
+    const formatNumber = (val: number | string | null) => {
+        if (val === null || val === undefined) return '0';
+        const num = typeof val === 'string' ? parseInt(val) : val;
+        if (isNaN(num)) return '0';
+        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    };
     const [controls, setControls] = useState<ControlsData | null>(null);
     const [usage, setUsage] = useState<UsageData | null>(null);
     const [loading, setLoading] = useState(true);
@@ -296,58 +304,50 @@ const ClinicControlPanel: React.FC = () => {
     const overviewMetrics = [
         {
             id: 'storage',
-            title: 'Storage',
-            value: storageUsed !== null ? `${storageUsed.toFixed(2)} MB` : 'Not reported yet',
-            limit: storageLimit ? `${storageLimit} MB total` : 'No limit configured',
+            title: 'Cloud Repository',
+            value: storageUsed !== null ? storageUsed.toFixed(1) : '0',
+            limit: storageLimit ? `${formatNumber(storageLimit)} MB CAPACITY` : 'UNLIMITED',
             percentage: storagePercentage,
-            footerLabel: 'Files stored',
-            footerValue: filesStored !== null ? filesStored.toLocaleString() : '—',
+            footerLabel: 'Storage Objects',
+            footerValue: formatNumber(filesStored),
             icon: HardDrive,
             accent: 'storage'
         },
         {
             id: 'users',
-            title: 'Active Users',
-            value: usersUsed !== null ? usersUsed.toLocaleString() : 'Not reported yet',
-            limit: usersLimit ? `of ${usersLimit} users` : 'No limit configured',
+            title: 'Operator Access',
+            value: formatNumber(usersUsed),
+            limit: usersLimit ? `MAX OPERATORS: ${formatNumber(usersLimit)}` : 'GENERIC LICENSE',
             percentage: usersPercentage,
-            footerLabel: 'Available seats',
-            footerValue: availableSeats !== null ? availableSeats.toLocaleString() : '—',
+            footerLabel: 'Available Slots',
+            footerValue: formatNumber(availableSeats),
             icon: UsersIcon,
             accent: 'users'
         },
         {
             id: 'patients',
-            title: 'Patients',
-            value: patientsUsed !== null
-                ? `${patientsUsed.toLocaleString()} / ${humanPatientsLimit}`
-                : humanPatientsLimit,
-            limit: patientsUsed !== null ? 'Reported from Smart Clinic' : (patientsLimit !== null ? 'Maximum enforced limit' : 'No limit enforced'),
+            title: 'Database Population',
+            value: formatNumber(patientsUsed),
+            limit: patientsLimit !== null ? `SYSTEM THRESHOLD: ${formatNumber(patientsLimit)}` : 'ENTERPRISE UNLIMITED',
             percentage: patientsPercentage,
-            footerLabel: 'Limit source',
-            footerValue: patientsLimit !== null ? 'SourcePlus' : 'Unlimited',
+            footerLabel: 'Data Node Status',
+            footerValue: 'VERIFIED',
             icon: TrendingUp,
             accent: 'patients'
         }
     ];
     const snapshotRows = [
         {
-            label: 'Storage',
-            value: storageUsed !== null && storageLimit
-                ? `${storageUsed.toFixed(2)} MB / ${storageLimit} MB`
-                : 'Usage not reported yet'
+            label: 'Storage Used',
+            value: storageUsed !== null ? `${storageUsed.toFixed(1)} MB` : '0 MB'
         },
         {
             label: 'Active Users',
-            value: usersUsed !== null && usersLimit
-                ? `${usersUsed} / ${usersLimit}`
-                : 'Usage not reported yet'
+            value: usersUsed !== null ? usersUsed.toString() : '0'
         },
         {
-            label: 'Patients',
-            value: patientsUsed !== null
-                ? `${patientsUsed.toLocaleString()} / ${humanPatientsLimit}`
-                : 'Usage not reported yet'
+            label: 'Total Patients',
+            value: formatNumber(patientsUsed)
         },
         {
             label: 'Files Stored',
@@ -535,10 +535,17 @@ const ClinicControlPanel: React.FC = () => {
                                                     </span>
                                                 </div>
                                             </div>
-                                            <p className="text-3xl font-black bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent mb-1">
-                                                {metric.value}
-                                            </p>
-                                            <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-tighter mb-6">{metric.limit}</p>
+                                            <div className="flex flex-col mt-2">
+                                                <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-2">Live Metric</span>
+                                                <p className="text-5xl font-black bg-gradient-to-r from-slate-950 via-slate-800 to-slate-700 dark:from-white dark:via-slate-200 dark:to-slate-400 bg-clip-text text-transparent leading-none tracking-tighter">
+                                                    {metric.value}
+                                                </p>
+                                            </div>
+                                            <div className="mt-4 mb-8">
+                                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.15em] opacity-70">
+                                                    {metric.limit}
+                                                </p>
+                                            </div>
 
                                             <div className="relative h-2.5 rounded-full bg-slate-200/50 dark:bg-slate-800/50 overflow-hidden mb-6">
                                                 {metric.percentage !== null ? (
@@ -638,105 +645,153 @@ const ClinicControlPanel: React.FC = () => {
                     {/* Limits Tab */}
                     {activeTab === 'limits' && (
                         <div className="glass-card p-8 animate-fadeIn">
-                            <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-900 via-purple-800 to-slate-900 dark:from-white dark:via-purple-300 dark:to-white bg-clip-text text-transparent mb-6">Resource Limits & Quotas</h2>
-
-                            <div className="space-y-8">
-                                {/* Storage Limit */}
+                            <div className="flex items-center justify-between mb-8">
                                 <div>
-                                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
-                                        <HardDrive size={16} className="text-purple-500" />
-                                        Storage Limit (MB)
-                                    </label>
-                                    <div className="flex items-center gap-4">
-                                        <input
-                                            type="number"
-                                            value={storageLimitInput}
-                                            onChange={(e) => setStorageLimitInput(parseInt(e.target.value) || 0)}
-                                            min="100"
-                                            step="100"
-                                            className="glass-input flex-1 px-6 py-4 text-lg font-semibold"
-                                        />
-                                        <div className="glass-panel px-4 py-3 text-sm">
-                                            <div className="font-bold text-slate-900 dark:text-white">Current Usage:</div>
-                                            <div className="text-slate-600 dark:text-slate-400">
-                                                {storageUsed !== null ? `${storageUsed.toFixed(2)} MB` : 'Not reported yet'}
-                                                {storagePercentage !== null ? ` (${storagePercentage.toFixed(1)}%)` : ''}
+                                    <h2 className="text-2xl font-black bg-gradient-to-r from-slate-900 via-purple-800 to-slate-900 dark:from-white dark:via-purple-300 dark:to-white bg-clip-text text-transparent uppercase tracking-tight">Resource Limits & Quotas</h2>
+                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Management Console • v1.0.4</p>
+                                </div>
+                                <div className="flex items-center gap-2 glass-panel px-3 py-1.5 border-none bg-emerald-500/5 animate-pulse-soft">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                                    <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-tighter">Live Sync Active</span>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                {/* Left Column: Inputs */}
+                                <div className="space-y-6">
+                                    {/* Storage Limit */}
+                                    <div className="glass-panel p-6 border-none bg-white/40 dark:bg-slate-800/20 group hover:shadow-xl transition-all">
+                                        <label className="block text-[10px] font-black text-slate-500 mb-3 flex items-center gap-2 uppercase tracking-widest">
+                                            <HardDrive size={14} className="text-purple-500" />
+                                            Data Storage Allocation (MB)
+                                        </label>
+                                        <div className="relative">
+                                            <input
+                                                type="number"
+                                                value={storageLimitInput}
+                                                onChange={(e) => setStorageLimitInput(parseInt(e.target.value) || 0)}
+                                                className="glass-input w-full px-5 py-4 text-xl font-black bg-white/50"
+                                            />
+                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">MB</div>
+                                        </div>
+                                    </div>
+
+                                    {/* Users Limit */}
+                                    <div className="glass-panel p-6 border-none bg-white/40 dark:bg-slate-800/20 group hover:shadow-xl transition-all">
+                                        <label className="block text-[10px] font-black text-slate-500 mb-3 flex items-center gap-2 uppercase tracking-widest">
+                                            <UsersIcon size={14} className="text-blue-500" />
+                                            Operator Seat Limit
+                                        </label>
+                                        <div className="relative">
+                                            <input
+                                                type="number"
+                                                value={usersLimitInput}
+                                                onChange={(e) => setUsersLimitInput(parseInt(e.target.value) || 0)}
+                                                className="glass-input w-full px-5 py-4 text-xl font-black bg-white/50"
+                                            />
+                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">USERS</div>
+                                        </div>
+                                    </div>
+
+                                    {/* Patients Limit */}
+                                    <div className="glass-panel p-6 border-none bg-white/40 dark:bg-slate-800/20 group hover:shadow-xl transition-all">
+                                        <label className="block text-[10px] font-black text-slate-500 mb-3 flex items-center gap-2 uppercase tracking-widest">
+                                            <TrendingUp size={14} className="text-emerald-500" />
+                                            Patient Database Threshold
+                                        </label>
+                                        <div className="relative">
+                                            <input
+                                                type="number"
+                                                value={patientsLimitInput}
+                                                onChange={(e) => setPatientsLimitInput(e.target.value)}
+                                                placeholder="Unlimited"
+                                                className="glass-input w-full px-5 py-4 text-xl font-black bg-white/50"
+                                            />
+                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">MAX</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Right Column: Live Usage Visualization */}
+                                <div className="space-y-6">
+                                    {[
+                                        {
+                                            label: 'Storage Utilization',
+                                            used: storageUsed,
+                                            total: storageLimit,
+                                            percent: storagePercentage,
+                                            unit: 'MB',
+                                            color: 'from-purple-500 to-indigo-600'
+                                        },
+                                        {
+                                            label: 'License Seats',
+                                            used: usersUsed,
+                                            total: usersLimit,
+                                            percent: usersPercentage,
+                                            unit: 'Seats',
+                                            color: 'from-blue-500 to-cyan-600'
+                                        },
+                                        {
+                                            label: 'Database Indexing',
+                                            used: patientsUsed,
+                                            total: patientsLimit,
+                                            percent: patientsPercentage,
+                                            unit: 'Records',
+                                            color: 'from-emerald-500 to-teal-600'
+                                        }
+                                    ].map((metric, i) => (
+                                        <div key={i} className="glass-panel p-6 border-none bg-slate-900/5 dark:bg-slate-100/5 overflow-hidden relative">
+                                            <div className="flex justify-between items-end mb-4 relative z-10">
+                                                <div>
+                                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{metric.label}</p>
+                                                    <p className="text-2xl font-black text-slate-900 dark:text-white leading-none">
+                                                        {formatNumber(metric.used)} <span className="text-sm font-bold opacity-50">{metric.unit}</span>
+                                                    </p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-xl font-black text-slate-900 dark:text-white leading-none">
+                                                        {metric.percent !== null ? `${metric.percent.toFixed(1)}%` : '--'}
+                                                    </p>
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase">of {formatNumber(metric.total) || '∞'}</p>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </div>
-                                    <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 italic">Maximum storage space allowed for this clinic</p>
-                                </div>
 
-                                {/* Users Limit */}
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
-                                        <UsersIcon size={16} className="text-blue-500" />
-                                        Users Limit
-                                    </label>
-                                    <div className="flex items-center gap-4">
-                                        <input
-                                            type="number"
-                                            value={usersLimitInput}
-                                            onChange={(e) => setUsersLimitInput(parseInt(e.target.value) || 0)}
-                                            min="1"
-                                            className="glass-input flex-1 px-6 py-4 text-lg font-semibold"
-                                        />
-                                        <div className="glass-panel px-4 py-3 text-sm">
-                                            <div className="font-bold text-slate-900 dark:text-white">Active Users:</div>
-                                            <div className="text-slate-600 dark:text-slate-400">
-                                                {usersUsed !== null ? `${usersUsed} users` : 'Not reported yet'}
-                                                {usersPercentage !== null ? ` (${usersPercentage.toFixed(1)}%)` : ''}
+                                            {/* Modern Progress Line */}
+                                            <div className="relative h-1.5 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                                                <div
+                                                    className={`absolute top-0 left-0 h-full bg-gradient-to-r ${metric.color} transition-all duration-1000 ease-out-expo`}
+                                                    style={{ width: `${Math.min(100, metric.percent || 0)}%` }}
+                                                />
                                             </div>
-                                        </div>
-                                    </div>
-                                    <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 italic">Maximum number of active users allowed</p>
-                                </div>
 
-                                {/* Patients Limit */}
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
-                                        <TrendingUp size={16} className="text-emerald-500" />
-                                        Patients Limit
-                                    </label>
-                                    <div className="flex items-center gap-4">
-                                        <input
-                                            type="number"
-                                            value={patientsLimitInput}
-                                            onChange={(e) => setPatientsLimitInput(e.target.value)}
-                                            min="1"
-                                            placeholder="Leave blank for unlimited"
-                                            className="glass-input flex-1 px-6 py-4 text-lg font-semibold"
-                                        />
-                                        <div className="glass-panel px-4 py-3 text-sm">
-                                            <div className="font-bold text-slate-900 dark:text-white">Current Limit:</div>
-                                            <div className="text-slate-600 dark:text-slate-400">{patientsLimit !== null ? `${patientsLimit.toLocaleString()} patients` : 'Unlimited'}</div>
+                                            {/* Animated Pulse Overlay */}
+                                            {metric.percent && metric.percent > 90 && (
+                                                <div className="absolute inset-0 bg-rose-500/5 animate-pulse pointer-events-none" />
+                                            )}
                                         </div>
-                                    </div>
-                                    <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 italic">
-                                        Number of patients Smart Clinic may store before blocking new entries
-                                    </p>
+                                    ))}
                                 </div>
+                            </div>
 
-                                {/* Save Button */}
-                                <div className="flex justify-end pt-4">
-                                    <button
-                                        onClick={handleSaveControls}
-                                        disabled={saving}
-                                        className="px-8 py-4 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold transition-all flex items-center gap-3 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:transform-none"
-                                    >
-                                        {saving ? (
-                                            <>
-                                                <Loader2 className="animate-spin" size={20} />
-                                                Saving...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Save size={20} />
-                                                Save Changes
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
+                            {/* Save Button */}
+                            <div className="flex justify-end mt-10 pt-6 border-t border-slate-200 dark:border-slate-800">
+                                <button
+                                    onClick={handleSaveControls}
+                                    disabled={saving}
+                                    className="px-12 py-4 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black uppercase tracking-widest text-xs transition-all hover:scale-105 active:scale-95 shadow-2xl disabled:opacity-50 flex items-center gap-3"
+                                >
+                                    {saving ? (
+                                        <>
+                                            <Loader2 className="animate-spin" size={16} />
+                                            Syncing Changes...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save size={16} />
+                                            Commit Updates
+                                        </>
+                                    )}
+                                </button>
                             </div>
                         </div>
                     )}

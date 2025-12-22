@@ -201,59 +201,71 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
         <div className="clinic-bg-gradient min-h-screen">
             <div className="max-w-[1800px] mx-auto p-6">
 
-                {/* Header */}
-                <ClinicsHeader
-                    title={viewMode === 'requests' ? 'Clinic Requests' : 'Clinics Management'}
-                    description={viewMode === 'requests'
-                        ? 'Review and approve clinic registration requests'
-                        : 'Manage all registered clinics and their subscriptions'
-                    }
-                    onRefresh={loadData}
-                    loading={loading}
-                />
+                {/* Header with Integrated Switcher */}
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8 group">
+                    <div className="animate-fadeIn">
+                        <h1 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.4em] mb-2 px-1">Infrastructure Hub</h1>
+                        <div className="flex items-center gap-4">
+                            <div className="relative">
+                                <div className="absolute inset-0 bg-purple-500/20 blur-xl rounded-full animate-pulse-soft" />
+                                <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-2xl">
+                                    <Building2 size={24} />
+                                </div>
+                            </div>
+                            <div>
+                                <h1 className="text-4xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">
+                                    {viewMode === 'requests' ? 'Node Requests' : 'Node Cluster'}
+                                </h1>
+                                <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 opacity-70">
+                                    {viewMode === 'requests' ? 'INCOMING REGISTRATION POOL' : 'ACTIVE NETWORK MANAGEMENT'}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
 
-                {/* Stats Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                    <StatCard
-                        title="Total Clinics"
-                        value={stats.total}
-                        icon={Building2}
-                        color="blue"
-                        subtitle="All registered clinics"
-                    />
-                    <StatCard
-                        title="Approved"
-                        value={stats.approved}
-                        icon={CheckCircle2}
-                        color="green"
-                        subtitle="Active & operational"
-                    />
-                    <StatCard
-                        title="Pending"
-                        value={stats.pending}
-                        icon={Clock}
-                        color="amber"
-                        subtitle="Awaiting approval"
-                    />
-                    <StatCard
-                        title="Suspended"
-                        value={stats.suspended}
-                        icon={Ban}
-                        color="red"
-                        subtitle="Temporarily disabled"
-                    />
+                    <div className="flex items-center gap-4 animate-scaleUp">
+                        <button
+                            onClick={loadData}
+                            className="glass-button p-4 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all active:scale-90"
+                            title="Refresh Uplink"
+                        >
+                            <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
+                        </button>
+                    </div>
                 </div>
 
-                {/* Filters */}
-                <ClinicFilters
-                    search={search}
-                    setSearch={setSearch}
-                    statusFilter={statusFilter}
-                    setStatusFilter={setStatusFilter}
-                    totalCount={clinics.length}
-                    filteredCount={filteredClinics.length}
-                    hideStatusFilter={viewMode === 'requests'}
-                />
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    {[
+                        { title: "Total Nodes", value: stats.total, icon: Building2, color: "blue", sub: "Network Infrastructure" },
+                        { title: "Active Nodes", value: stats.approved, icon: CheckCircle2, color: "green", sub: "Operational Status" },
+                        { title: "Pending Verif", value: stats.pending, icon: Clock, color: "amber", sub: "Awaiting Validation" },
+                        { title: "Access Revoked", value: stats.suspended, icon: Ban, color: "red", sub: "Security Lockdown" }
+                    ].map((stat, i) => (
+                        <div key={i} className="animate-scaleUp" style={{ animationDelay: `${i * 100}ms` }}>
+                            <StatCard
+                                title={stat.title}
+                                value={stat.value}
+                                icon={stat.icon}
+                                color={stat.color as any}
+                                subtitle={stat.sub}
+                            />
+                        </div>
+                    ))}
+                </div>
+
+                {/* Filters Section */}
+                <div className="animate-fadeIn" style={{ animationDelay: '400ms' }}>
+                    <ClinicFilters
+                        search={search}
+                        setSearch={setSearch}
+                        statusFilter={statusFilter}
+                        setStatusFilter={setStatusFilter}
+                        totalCount={clinics.length}
+                        filteredCount={filteredClinics.length}
+                        hideStatusFilter={viewMode === 'requests'}
+                    />
+                </div>
 
                 {/* Content */}
                 {error ? (

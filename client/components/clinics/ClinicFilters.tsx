@@ -38,15 +38,15 @@ const ClinicFilters: React.FC<ClinicFiltersProps> = ({
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder="Search clinics by name, email, phone, or address..."
-                            className="glass-input w-full pl-11 pr-4 py-3 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none"
+                            className="glass-input w-full pl-11 pr-4 py-3 bg-white/30 dark:bg-slate-800/20 text-slate-900 dark:text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all"
                         />
                         {/* Clear Search Button */}
                         {search && (
                             <button
                                 onClick={() => setSearch('')}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-90"
                             >
-                                <X size={16} className="text-slate-400" />
+                                <X size={16} className="text-slate-500" />
                             </button>
                         )}
                     </div>
@@ -55,15 +55,14 @@ const ClinicFilters: React.FC<ClinicFiltersProps> = ({
                 {/* Status Filter */}
                 {!hideStatusFilter && (
                     <div className="flex items-center gap-2 group">
-                        <Filter size={18} className="text-slate-400 group-hover:text-purple-500 transition-colors" />
                         <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value as any)}
-                            className="glass-input px-4 py-3 font-medium text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-none appearance-none bg-right bg-no-repeat pr-10"
+                            className="glass-input px-6 py-3 bg-white/30 dark:bg-slate-800/20 font-black uppercase text-[10px] tracking-widest text-slate-600 dark:text-slate-300 cursor-pointer focus:outline-none appearance-none bg-right bg-no-repeat pr-12 hover:bg-white/50 dark:hover:bg-slate-800/40 transition-all"
                             style={{
-                                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
-                                backgroundSize: '1.25rem',
-                                backgroundPosition: 'right 0.75rem center'
+                                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                                backgroundSize: '1rem',
+                                backgroundPosition: 'right 1rem center'
                             }}
                         >
                             <option value="ALL">All Status</option>

@@ -58,7 +58,7 @@ const ClinicCard: React.FC<ClinicCardProps> = ({
     const StatusIcon = config.icon;
 
     return (
-        <div className="glass-card p-6 group relative overflow-hidden">
+        <div className="glass-card p-6 group relative overflow-hidden animate-fadeIn">
             {/* Animated Gradient Border on Hover */}
             <div
                 className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
