@@ -41,6 +41,10 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
 
     // Fetch data on mount and viewMode change
     useEffect(() => {
+        // Reset filters when switching views to ensure "Clear Filters" doesn't show up on first entry
+        setSearch('');
+        setStatusFilter(viewMode === 'requests' ? RegistrationStatus.PENDING : 'ALL');
+
         loadData();
     }, [viewMode]);
 
@@ -190,10 +194,11 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
     if (loading) {
         return (
             <div className="clinic-bg-gradient flex flex-col items-center justify-center min-h-screen">
-                <div className="glass-modal p-8 text-center">
-                    <Loader2 className="animate-spin text-purple-600 mx-auto mb-4" size={64} />
-                    <p className="text-slate-600 dark:text-slate-300 text-lg font-medium">{t('common.loading')}</p>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm mt-2">{t('clinicDashboard.subtitle')}</p>
+                <div className="glass-modal p-10 text-center relative overflow-hidden group">
+                    <div className="absolute inset-0 bg-primary-500/5 animate-pulse" />
+                    <Loader2 className="animate-spin text-primary-500 mx-auto mb-6 relative z-10" size={64} />
+                    <p className="text-slate-900 dark:text-white text-xl font-black uppercase tracking-widest relative z-10">{t('common.loading')}</p>
+                    <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold mt-2 uppercase tracking-[0.2em] relative z-10">Establishing Secure Uplink...</p>
                 </div>
             </div>
         );
@@ -206,20 +211,20 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                 {/* Header with Integrated Switcher */}
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8 group">
                     <div className="animate-fadeIn">
-                        <h1 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.4em] mb-2 px-1">{t('nav.clinicSystem')}</h1>
+                        <h1 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.4em] mb-2 px-1">SmartClinic Infrastructure</h1>
                         <div className="flex items-center gap-4">
                             <div className="relative">
-                                <div className="absolute inset-0 bg-purple-500/20 blur-xl rounded-full animate-pulse-soft" />
-                                <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-2xl">
-                                    <Building2 size={24} />
+                                <div className="absolute inset-0 bg-primary-500/20 blur-xl rounded-full animate-pulse-soft" />
+                                <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-600 to-primary-700 flex items-center justify-center text-white shadow-2xl">
+                                    <Building2 size={28} />
                                 </div>
                             </div>
                             <div>
-                                <h1 className="text-4xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">
-                                    {viewMode === 'requests' ? t('clinics.requestsTitle') : t('clinics.manageTitle')}
+                                <h1 className="text-4xl font-black text-slate-900 dark:text-white uppercase tracking-tighter leading-none">
+                                    {viewMode === 'requests' ? 'Registration Requests' : 'Clinic Topology'}
                                 </h1>
-                                <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 opacity-70">
-                                    {viewMode === 'requests' ? t('clinics.requestsSubtitle').toUpperCase() : t('clinics.manageSubtitle').toUpperCase()}
+                                <p className="text-[10px] font-black text-primary-500 uppercase tracking-[0.2em] mt-1.5">
+                                    {viewMode === 'requests' ? 'Awaiting Provisioning' : 'Global Network Management'}
                                 </p>
                             </div>
                         </div>
@@ -273,13 +278,14 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                 {error ? (
                     <ErrorAlert message={error} onRetry={loadData} />
                 ) : filteredClinics.length === 0 ? (
-                    <div className="glass-card text-center py-16">
-                        <div className="relative inline-block mb-6">
-                            <div className="absolute inset-0 bg-purple-500/20 rounded-full blur-2xl" />
-                            <Building2 className="relative mx-auto text-slate-300 dark:text-slate-600" size={80} />
+                    <div className="glass-card text-center py-24 relative overflow-hidden group">
+                        <div className="absolute inset-0 bg-primary-500/[0.02] group-hover:bg-primary-500/[0.05] transition-colors" />
+                        <div className="relative inline-block mb-8">
+                            <div className="absolute inset-0 bg-primary-500/20 rounded-full blur-3xl opacity-50 group-hover:opacity-100 transition-opacity" />
+                            <Building2 className="relative mx-auto text-slate-300 dark:text-slate-700" size={100} strokeWidth={1} />
                         </div>
-                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
-                            No clinics found
+                        <h3 className="text-3xl font-black text-slate-900 dark:text-white mb-3 uppercase tracking-tight relative z-10">
+                            Zero Nodes Found
                         </h3>
                         <p className="text-slate-600 dark:text-slate-400 max-w-md mx-auto">
                             {search || statusFilter !== 'ALL'

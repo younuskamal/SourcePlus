@@ -76,7 +76,7 @@ function AppContent() {
     if (product === 'POS') {
       updateThemeColors('#3b82f6'); // Blue
     } else {
-      updateThemeColors('#10b981'); // Emerald
+      updateThemeColors('#f59e0b'); // Professional Orange (SmartClinic Branding)
     }
   }, [product]);
 
@@ -151,7 +151,7 @@ function AppContent() {
           <LoaderIcon />
         </div>
         <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight animate-pulse">
-          SOURCE<span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-500 to-indigo-500">PLUS</span>
+          Smart<span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-500 to-indigo-500">Clinic</span>
         </h1>
       </div>
     );

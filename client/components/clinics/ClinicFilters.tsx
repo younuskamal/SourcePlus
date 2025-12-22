@@ -21,7 +21,7 @@ const ClinicFilters: React.FC<ClinicFiltersProps> = ({
     filteredCount,
     hideStatusFilter = false
 }) => {
-    const hasActiveFilters = search || (!hideStatusFilter && statusFilter !== 'ALL');
+    const hasActiveFilters = search.trim() !== '' || (!hideStatusFilter && statusFilter !== 'ALL');
 
     return (
         <div className="glass-card p-5 mb-6">
@@ -30,7 +30,7 @@ const ClinicFilters: React.FC<ClinicFiltersProps> = ({
                 <div className="flex-1 min-w-[280px]">
                     <div className="relative group">
                         <Search
-                            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-purple-500 transition-colors"
+                            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-500 transition-colors"
                             size={20}
                         />
                         <input
@@ -38,7 +38,7 @@ const ClinicFilters: React.FC<ClinicFiltersProps> = ({
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder="Search clinics by name, email, phone, or address..."
-                            className="glass-input w-full pl-11 pr-4 py-3 bg-white/30 dark:bg-slate-800/20 text-slate-900 dark:text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all"
+                            className="glass-input w-full pl-11 pr-4 py-3 bg-white/30 dark:bg-slate-800/20 text-slate-900 dark:text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all font-medium"
                         />
                         {/* Clear Search Button */}
                         {search && (
@@ -93,10 +93,10 @@ const ClinicFilters: React.FC<ClinicFiltersProps> = ({
 
             {/* Results Count with Animation */}
             <div className="mt-4 flex items-center gap-2 text-sm">
-                <TrendingUp size={16} className="text-purple-500" />
+                <TrendingUp size={16} className="text-primary-500" />
                 <span className="text-slate-600 dark:text-slate-300">
                     Showing{' '}
-                    <span className="font-bold text-purple-600 dark:text-purple-400 transition-all">
+                    <span className="font-bold text-primary-600 dark:text-primary-400 transition-all">
                         {filteredCount}
                     </span>
                     {filteredCount !== totalCount && (
@@ -110,7 +110,7 @@ const ClinicFilters: React.FC<ClinicFiltersProps> = ({
                     {' '}clinic{filteredCount !== 1 ? 's' : ''}
                 </span>
                 {hasActiveFilters && (
-                    <span className="ml-2 px-2 py-0.5 glass-badge text-purple-600 dark:text-purple-400">
+                    <span className="ml-2 px-2 py-0.5 glass-badge text-primary-600 dark:text-primary-400">
                         Filtered
                     </span>
                 )}

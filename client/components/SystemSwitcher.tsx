@@ -11,7 +11,7 @@ const SystemSwitcher: React.FC = () => {
 
     const options = [
         { value: 'POS' as ProductType, label: t('nav.posSystem'), icon: Monitor, color: 'text-blue-500' },
-        { value: 'CLINIC' as ProductType, label: t('nav.clinicSystem'), icon: Stethoscope, color: 'text-emerald-500' },
+        { value: 'CLINIC' as ProductType, label: t('nav.clinicSystem'), icon: Stethoscope, color: 'text-amber-500' },
     ];
 
     const current = options.find(o => o.value === product) || options[0];
@@ -32,7 +32,7 @@ const SystemSwitcher: React.FC = () => {
                 onClick={() => setIsOpen(!isOpen)}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 hover:bg-white dark:hover:bg-slate-600 text-sm font-medium text-slate-700 dark:text-slate-200 transition-colors shadow-sm"
             >
-                <current.icon size={16} className={product === 'POS' ? 'text-blue-500' : 'text-emerald-500'} />
+                <current.icon size={16} className={product === 'POS' ? 'text-blue-500' : 'text-amber-500'} />
                 <span className="hidden sm:inline-block">{current.label}</span>
                 <ChevronDown size={14} className={`text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </button>
@@ -48,8 +48,8 @@ const SystemSwitcher: React.FC = () => {
                                     setIsOpen(false);
                                 }}
                                 className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors ${product === opt.value
-                                        ? 'bg-slate-100 dark:bg-slate-700/50'
-                                        : 'hover:bg-slate-50 dark:hover:bg-slate-700/30'
+                                    ? 'bg-slate-100 dark:bg-slate-700/50'
+                                    : 'hover:bg-slate-50 dark:hover:bg-slate-700/30'
                                     }`}
                             >
                                 <div className={`p-2 rounded-lg bg-slate-100 dark:bg-slate-900 ${opt.color}`}>

@@ -147,11 +147,11 @@ const ClinicControlPanel: React.FC = () => {
                 setUsageMessage(null);
             } catch (usageError: any) {
                 if (usageError?.response?.status === 404) {
-                    setUsageMessage('Usage data has not been reported yet from this clinic.');
+                    setUsageMessage(t('controls.noUsageData'));
                 } else {
                     console.error('Failed to load usage data:', usageError);
-                    setUsageMessage('Unable to load usage data right now.');
-                    showMessage('error', `Failed to load usage data: ${usageError.response?.data?.message || usageError.message}`);
+                    setUsageMessage(t('controls.usageError'));
+                    showMessage('error', `${t('controls.usageError')}: ${usageError.response?.data?.message || usageError.message}`);
                 }
             }
 
@@ -184,18 +184,18 @@ const ClinicControlPanel: React.FC = () => {
         const trimmed = patientsLimitInput.trim();
         const patientsLimitValue = trimmed === '' ? null : Number(trimmed);
         if (patientsLimitValue !== null && (!Number.isFinite(patientsLimitValue) || patientsLimitValue <= 0)) {
-            showMessage('error', 'Patients limit must be a positive number or left blank for unlimited');
+            showMessage('error', t('controls.patientsLimitError'));
             return;
         }
 
         const storageLimitValue = Number(storageLimitInput);
         const usersLimitValue = Number(usersLimitInput);
         if (!Number.isFinite(storageLimitValue) || storageLimitValue <= 0) {
-            showMessage('error', 'Storage limit must be a positive number');
+            showMessage('error', t('controls.storageLimitError'));
             return;
         }
         if (!Number.isFinite(usersLimitValue) || usersLimitValue <= 0) {
-            showMessage('error', 'Users limit must be a positive number');
+            showMessage('error', t('controls.usersLimitError'));
             return;
         }
 
@@ -209,7 +209,7 @@ const ClinicControlPanel: React.FC = () => {
             });
 
             await loadData();
-            showMessage('success', 'Controls updated successfully');
+            showMessage('success', t('controls.controlsUpdated'));
         } catch (error: any) {
             console.error('Failed to update controls:', error);
             showMessage('error', `Failed to update: ${error.response?.data?.message || error.message}`);
@@ -222,7 +222,7 @@ const ClinicControlPanel: React.FC = () => {
         if (!id || !controls) return;
 
         if (!controls.locked && !lockReason.trim()) {
-            showMessage('error', 'Please provide a lock reason');
+            showMessage('error', t('controls.lockReasonRequired'));
             return;
         }
 
@@ -234,7 +234,7 @@ const ClinicControlPanel: React.FC = () => {
             });
 
             await loadData();
-            showMessage('success', controls.locked ? 'Clinic unlocked' : 'Clinic locked');
+            showMessage('success', controls.locked ? t('controls.clinicUnlocked') : t('controls.clinicLocked'));
             setShowLockConfirm(false);
             setLockReason('');
         } catch (error: any) {
@@ -483,15 +483,18 @@ const ClinicControlPanel: React.FC = () => {
                             <div className="relative z-10">
                                 <div className="flex flex-wrap items-start justify-between gap-6">
                                     <div className="flex items-center gap-6">
-                                        <div className="relative">
-                                            <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl blur-xl opacity-40 group-hover:opacity-70 transition-opacity" />
-                                            <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white shadow-2xl">
-                                                <Building2 size={32} />
+                                        <div className="relative group/logo">
+                                            {/* Subtle Glow */}
+                                            <div className="absolute inset-0 bg-primary-500/20 rounded-2xl blur-2xl opacity-0 group-hover/logo:opacity-100 transition-opacity" />
+
+                                            {/* Transparent Logo Container */}
+                                            <div className="relative w-20 h-20 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-white/5 dark:bg-slate-800/5 backdrop-blur-sm flex items-center justify-center text-primary-500 shadow-xl transition-all group-hover/logo:border-primary-500/50 group-hover/logo:scale-105">
+                                                <Building2 size={40} strokeWidth={1.5} />
                                             </div>
                                         </div>
                                         <div>
-                                            <h1 className="text-4xl font-extrabold bg-gradient-to-r from-slate-900 via-purple-800 to-slate-900 dark:from-white dark:via-purple-300 dark:to-white bg-clip-text text-transparent mb-1">{clinic.name}</h1>
-                                            <p className="text-slate-600 dark:text-slate-400 font-medium tracking-tight">Enterprise Clinic Management Dashboard</p>
+                                            <h1 className="text-4xl font-extrabold bg-gradient-to-r from-slate-900 via-primary-600 to-slate-900 dark:from-white dark:via-primary-300 dark:to-white bg-clip-text text-transparent mb-1">{clinic.name}</h1>
+                                            <p className="text-slate-600 dark:text-slate-400 font-medium tracking-tight">SmartClinic Enterprise Node Control</p>
                                         </div>
                                     </div>
                                     <div className={`glass-badge flex items-center gap-3 px-6 py-3 text-sm font-black tracking-widest ${controls.locked
@@ -575,7 +578,7 @@ const ClinicControlPanel: React.FC = () => {
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
                                     className={`relative flex items-center justify-center gap-3 rounded-xl px-4 py-4 text-sm font-black uppercase tracking-widest transition-all duration-300 ${activeTab === tab.id
-                                        ? 'glass-gradient-purple text-purple-700 dark:text-purple-300 shadow-xl scale-[1.02] transform'
+                                        ? 'glass-gradient-primary text-primary-700 dark:text-primary-300 shadow-xl scale-[1.02] transform'
                                         : 'text-slate-500 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50'
                                         }`}
                                 >
@@ -815,8 +818,8 @@ const ClinicControlPanel: React.FC = () => {
                         <div className="glass-card p-8 animate-fadeIn">
                             <div className="flex items-center justify-between mb-8">
                                 <div>
-                                    <h2 className="text-2xl font-black bg-gradient-to-r from-slate-900 via-purple-800 to-slate-900 dark:from-white dark:via-purple-300 dark:to-white bg-clip-text text-transparent uppercase tracking-tight">Resource Limits & Quotas</h2>
-                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Management Console • v1.0.4</p>
+                                    <h2 className="text-2xl font-black bg-gradient-to-r from-slate-900 via-primary-600 to-slate-900 dark:from-white dark:via-primary-300 dark:to-white bg-clip-text text-transparent uppercase tracking-tight">Resource Limits & Quotas</h2>
+                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">SmartClinic Management Console • v2.1.0</p>
                                 </div>
                                 <div className="flex items-center gap-2 glass-panel px-3 py-1.5 border-none bg-emerald-500/5 animate-pulse-soft">
                                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
@@ -824,58 +827,107 @@ const ClinicControlPanel: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                {/* Left Column: Inputs */}
-                                <div className="space-y-6">
-                                    {/* Storage Limit */}
-                                    <div className="glass-panel p-6 border-none bg-white/40 dark:bg-slate-800/20 group hover:shadow-xl transition-all">
-                                        <label className="block text-[10px] font-black text-slate-500 mb-3 flex items-center gap-2 uppercase tracking-widest">
-                                            <HardDrive size={14} className="text-purple-500" />
-                                            Data Storage Allocation (MB)
-                                        </label>
-                                        <div className="relative">
-                                            <input
-                                                type="number"
-                                                value={storageLimitInput}
-                                                onChange={(e) => setStorageLimitInput(parseInt(e.target.value) || 0)}
-                                                className="glass-input w-full px-5 py-4 text-xl font-black bg-white/50"
-                                            />
-                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">MB</div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                {/* Left Column: Interactive Controls */}
+                                <div className="space-y-10">
+                                    {/* Storage Limit Section */}
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between items-end">
+                                            <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                                <HardDrive size={14} className="text-primary-500" />
+                                                Storage Allocation
+                                            </label>
+                                            <span className="text-sm font-black text-slate-900 dark:text-white">{storageLimitInput >= 1024 ? `${(storageLimitInput / 1024).toFixed(1)} GB` : `${storageLimitInput} MB`}</span>
+                                        </div>
+
+                                        <input
+                                            type="range"
+                                            min="256"
+                                            max="51200"
+                                            step="256"
+                                            value={storageLimitInput}
+                                            onChange={(e) => setStorageLimitInput(parseInt(e.target.value))}
+                                            className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-primary-500"
+                                        />
+
+                                        <div className="grid grid-cols-4 gap-2">
+                                            {[1024, 5120, 10240, 20480].map(val => (
+                                                <button
+                                                    key={val}
+                                                    onClick={() => setStorageLimitInput(val)}
+                                                    className={`py-2 px-1 rounded-lg text-[9px] font-black uppercase transition-all ${storageLimitInput === val ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200'}`}
+                                                >
+                                                    {val >= 1024 ? `${val / 1024}GB` : `${val}MB`}
+                                                </button>
+                                            ))}
                                         </div>
                                     </div>
 
-                                    {/* Users Limit */}
-                                    <div className="glass-panel p-6 border-none bg-white/40 dark:bg-slate-800/20 group hover:shadow-xl transition-all">
-                                        <label className="block text-[10px] font-black text-slate-500 mb-3 flex items-center gap-2 uppercase tracking-widest">
-                                            <UsersIcon size={14} className="text-blue-500" />
-                                            {t('dashboard.activeUsers')}
-                                        </label>
-                                        <div className="relative">
-                                            <input
-                                                type="number"
-                                                value={usersLimitInput}
-                                                onChange={(e) => setUsersLimitInput(parseInt(e.target.value) || 0)}
-                                                className="glass-input w-full px-5 py-4 text-xl font-black bg-white/50"
-                                            />
-                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">USERS</div>
+                                    {/* Users Limit Section */}
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between items-end">
+                                            <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                                <UsersIcon size={14} className="text-primary-500" />
+                                                Seat Capacity
+                                            </label>
+                                            <span className="text-sm font-black text-slate-900 dark:text-white uppercase">{usersLimitInput} Operators</span>
+                                        </div>
+
+                                        <input
+                                            type="range"
+                                            min="1"
+                                            max="100"
+                                            step="1"
+                                            value={usersLimitInput}
+                                            onChange={(e) => setUsersLimitInput(parseInt(e.target.value))}
+                                            className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-primary-500"
+                                        />
+
+                                        <div className="grid grid-cols-4 gap-2">
+                                            {[3, 10, 25, 50].map(val => (
+                                                <button
+                                                    key={val}
+                                                    onClick={() => setUsersLimitInput(val)}
+                                                    className={`py-2 px-1 rounded-lg text-[9px] font-black uppercase transition-all ${usersLimitInput === val ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200'}`}
+                                                >
+                                                    {val} Seats
+                                                </button>
+                                            ))}
                                         </div>
                                     </div>
 
-                                    {/* Patients Limit */}
-                                    <div className="glass-panel p-6 border-none bg-white/40 dark:bg-slate-800/20 group hover:shadow-xl transition-all">
-                                        <label className="block text-[10px] font-black text-slate-500 mb-3 flex items-center gap-2 uppercase tracking-widest">
-                                            <TrendingUp size={14} className="text-emerald-500" />
-                                            {t('dashboard.totalPatients')}
-                                        </label>
-                                        <div className="relative">
+                                    {/* Patients Limit Section */}
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between items-end">
+                                            <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                                <TrendingUp size={14} className="text-primary-500" />
+                                                Patient Records
+                                            </label>
+                                            <span className="text-sm font-black text-slate-900 dark:text-white uppercase">
+                                                {patientsLimitInput === '' || patientsLimitInput === null ? 'Unlimited Access' : `${patientsLimitInput} Records`}
+                                            </span>
+                                        </div>
+
+                                        <div className="grid grid-cols-4 gap-2">
+                                            {[500, 1000, 5000, ''].map((val, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => setPatientsLimitInput(val === '' ? '' : val.toString())}
+                                                    className={`py-3 px-1 rounded-lg text-[9px] font-black uppercase transition-all ${patientsLimitInput === (val === '' ? '' : val.toString()) ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200'}`}
+                                                >
+                                                    {val === '' ? 'Unlimited' : val}
+                                                </button>
+                                            ))}
+                                        </div>
+
+                                        <div className="relative group/input">
                                             <input
                                                 type="number"
                                                 value={patientsLimitInput}
                                                 onChange={(e) => setPatientsLimitInput(e.target.value)}
-                                                placeholder="Unlimited"
-                                                className="glass-input w-full px-5 py-4 text-xl font-black bg-white/50"
+                                                placeholder="Custom Record Limit..."
+                                                className="glass-input w-full px-4 py-3 text-xs font-bold bg-white/50 border-none"
                                             />
-                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">MAX</div>
                                         </div>
                                     </div>
                                 </div>

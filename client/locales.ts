@@ -24,7 +24,7 @@ export const translations = {
       description: "Secure Licensing & Management System"
     },
     login: {
-      title: "Sign in to SourcePlus",
+      title: "Sign in to SmartClinic",
       email: "Email Address",
       password: "Password",
       button: "Sign In",
@@ -428,7 +428,16 @@ export const translations = {
       thresholdAlert: "CRITICAL THRESHOLD REACHED",
       viewMetric: "Live Metric",
       syncProtocol: "Sync Protocol",
-      dataNodeStatus: "Data Node Status"
+      dataNodeStatus: "Data Node Status",
+      noUsageData: "Usage data has not been reported yet from this clinic.",
+      usageError: "Unable to load usage data right now.",
+      patientsLimitError: "Patients limit must be a positive number or left blank for unlimited",
+      storageLimitError: "Storage limit must be a positive number",
+      usersLimitError: "Users limit must be a positive number",
+      controlsUpdated: "Controls updated successfully",
+      lockReasonRequired: "Please provide a lock reason",
+      clinicLocked: "Clinic locked",
+      clinicUnlocked: "Clinic unlocked"
     },
     supportMessages: {
       title: "Support Messages",
@@ -466,9 +475,19 @@ export const translations = {
       fullMessage: "Full Message",
       close: "Close",
       deleteConfirm: "Are you sure you want to delete this message?",
-      statusUpdated: "Status updated successfully",
-      messageDeleted: "Message deleted successfully",
-      error: "An error occurred"
+      error: "An error occurred",
+      priority: "Priority",
+      priorityAll: "All Priorities",
+      priorityUrgent: "Urgent",
+      priorityHigh: "High",
+      priorityNormal: "Normal",
+      priorityLow: "Low",
+      enterReply: "Please enter a reply message",
+      sendReply: "Send Reply",
+      replyPlaceholder: "Type your reply here...",
+      sending: "Sending...",
+      supportTeam: "Support Team",
+      selectToView: "Select a message to view conversation"
     }
   },
   ar: {
@@ -495,7 +514,7 @@ export const translations = {
       description: "نظام الترخيص والإدارة الآمن"
     },
     login: {
-      title: "تسجيل الدخول إلى SourcePlus",
+      title: "تسجيل الدخول إلى SmartClinic",
       email: "البريد الإلكتروني",
       password: "كلمة المرور",
       button: "تسجيل الدخول",
@@ -899,7 +918,16 @@ export const translations = {
       thresholdAlert: "تم الوصول للحد الحرج",
       viewMetric: "قياس مباشر",
       syncProtocol: "بروتوكول التزامن",
-      dataNodeStatus: "حالة نقطة البيانات"
+      dataNodeStatus: "حالة نقطة البيانات",
+      noUsageData: "بيانات الاستهلاك لم يتم الإبلاغ عنها من هذه العيادة بعد.",
+      usageError: "تعذر تحميل بيانات الاستهلاك حالياً.",
+      patientsLimitError: "يجب أن يكون حد المرضى رقماً موجباً أو يترك فارغاً لغير محدود",
+      storageLimitError: "يجب أن يكون حد التخزين رقماً موجباً",
+      usersLimitError: "يجب أن يكون حد المستخدمين رقماً موجباً",
+      controlsUpdated: "تم تحديث الضوابط بنجاح",
+      lockReasonRequired: "يرجى تقديم سبب القفل",
+      clinicLocked: "تم قفل العيادة",
+      clinicUnlocked: "تم فك قفل العيادة"
     },
     supportMessages: {
       title: "رسائل الدعم",
@@ -939,7 +967,19 @@ export const translations = {
       deleteConfirm: "هل أنت متأكد من حذف هذه الرسالة؟",
       statusUpdated: "تم تحديث الحالة بنجاح",
       messageDeleted: "تم حذف الرسالة بنجاح",
-      error: "حدث خطأ"
+      error: "حدث خطأ",
+      priority: "الأولوية",
+      priorityAll: "كل الأولويات",
+      priorityUrgent: "عاجل",
+      priorityHigh: "عالي",
+      priorityNormal: "عادي",
+      priorityLow: "منخفض",
+      enterReply: "يرجى إدخال نص الرد",
+      sendReply: "إرسال الرد",
+      replyPlaceholder: "اكتب ردك هنا...",
+      sending: "جاري الإرسال...",
+      supportTeam: "فريق الدعم",
+      selectToView: "اختر رسالة لعرض المحادثة"
     }
   }
 };

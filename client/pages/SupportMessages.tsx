@@ -156,7 +156,7 @@ const SupportMessages: React.FC = () => {
 
     const handleSendReply = async () => {
         if (!selectedMessage || !replyContent.trim()) {
-            alert('Please enter a reply message');
+            alert(t('supportMessages.enterReply'));
             return;
         }
 
@@ -186,7 +186,7 @@ const SupportMessages: React.FC = () => {
     };
 
     const handleDeleteMessage = async (messageId: string) => {
-        if (!confirm('Are you sure you want to delete this message? This action cannot be undone.')) {
+        if (!confirm(t('supportMessages.deleteConfirm'))) {
             return;
         }
 
@@ -205,7 +205,7 @@ const SupportMessages: React.FC = () => {
             // Reload messages list
             await loadMessages();
 
-            alert('Message deleted successfully');
+            alert(t('supportMessages.messageDeleted'));
         } catch (error: any) {
             console.error('❌ Failed to delete message:', error);
             alert(`Failed to delete message: ${error.response?.data?.message || error.message}`);
@@ -301,14 +301,15 @@ const SupportMessages: React.FC = () => {
                         <select
                             value={filterPriority}
                             onChange={(e) => setFilterPriority(e.target.value as any)}
-                            className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-purple-500 dark:bg-slate-700 dark:text-white"
+                            className="w-full sm:w-48 px-4 py-2 bg-white/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none transition-all text-sm"
                         >
-                            <option value="ALL">All Priorities</option>
-                            <option value="URGENT">Urgent</option>
-                            <option value="HIGH">High</option>
-                            <option value="NORMAL">Normal</option>
-                            <option value="LOW">Low</option>
+                            <option value="ALL">{t('supportMessages.priorityAll')}</option>
+                            <option value="URGENT">{t('supportMessages.priorityUrgent')}</option>
+                            <option value="HIGH">{t('supportMessages.priorityHigh')}</option>
+                            <option value="NORMAL">{t('supportMessages.priorityNormal')}</option>
+                            <option value="LOW">{t('supportMessages.priorityLow')}</option>
                         </select>
+
                     </div>
                 </div>
 
@@ -515,7 +516,7 @@ const SupportMessages: React.FC = () => {
                                                         </span>
                                                         {reply.isFromAdmin && (
                                                             <span className="text-xs px-2 py-0.5 rounded bg-purple-500 text-white">
-                                                                Support
+                                                                {t('supportMessages.supportTeam')}
                                                             </span>
                                                         )}
                                                         <span className="text-xs text-slate-500">
@@ -539,7 +540,7 @@ const SupportMessages: React.FC = () => {
                                             <textarea
                                                 value={replyContent}
                                                 onChange={(e) => setReplyContent(e.target.value)}
-                                                placeholder="Type your reply..."
+                                                placeholder={t('supportMessages.replyPlaceholder')}
                                                 className="flex-1 px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-purple-500 dark:bg-slate-700 dark:text-white resize-none"
                                                 rows={3}
                                                 onKeyDown={(e) => {
@@ -559,7 +560,7 @@ const SupportMessages: React.FC = () => {
                                                 ) : (
                                                     <Send size={20} />
                                                 )}
-                                                Send
+                                                {sending ? t('supportMessages.sending') : t('supportMessages.sendReply')}
                                             </button>
                                         </div>
                                     </div>
@@ -570,7 +571,7 @@ const SupportMessages: React.FC = () => {
                                 <div className="text-center">
                                     <MessageSquare className="mx-auto text-slate-300 dark:text-slate-600 mb-4" size={64} />
                                     <p className="text-slate-500 dark:text-slate-400 text-lg">
-                                        Select a message to view conversation
+                                        {t('supportMessages.selectToView')}
                                     </p>
                                 </div>
                             </div>

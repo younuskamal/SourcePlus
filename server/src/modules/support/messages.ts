@@ -8,17 +8,23 @@ const createMessageSchema = z.object({
     clinicId: z.string().uuid(),
     clinicName: z.string(),
     accountCode: z.string().optional(),
-    subject: z.string().min(3).max(200),
-    message: z.string().min(10).max(5000),
-    priority: z.enum(['LOW', 'NORMAL', 'HIGH', 'URGENT']).optional()
+    subject: z.string().min(3, "Subject must be at least 3 characters").max(200),
+    message: z.string().min(10, "Message must be at least 10 characters").max(5000),
+    priority: z.preprocess(
+        (val) => (typeof val === 'string' ? val.toUpperCase() : val),
+        z.enum(['LOW', 'NORMAL', 'HIGH', 'URGENT']).optional()
+    )
 });
 
 const updateStatusSchema = z.object({
-    status: z.enum(['NEW', 'READ', 'CLOSED'])
+    status: z.preprocess(
+        (val) => (typeof val === 'string' ? val.toUpperCase() : val),
+        z.enum(['NEW', 'READ', 'CLOSED'])
+    )
 });
 
 const addReplySchema = z.object({
-    content: z.string().min(1).max(5000)
+    content: z.string().min(1, "Reply content cannot be empty").max(5000)
 });
 
 const assignMessageSchema = z.object({
@@ -26,8 +32,12 @@ const assignMessageSchema = z.object({
 });
 
 const updatePrioritySchema = z.object({
-    priority: z.enum(['LOW', 'NORMAL', 'HIGH', 'URGENT'])
+    priority: z.preprocess(
+        (val) => (typeof val === 'string' ? val.toUpperCase() : val),
+        z.enum(['LOW', 'NORMAL', 'HIGH', 'URGENT'])
+    )
 });
+
 
 export default async function supportMessagesRoutes(app: FastifyInstance) {
 

@@ -89,7 +89,7 @@ const ClinicCard: React.FC<ClinicCardProps> = ({
                     <div className="flex-1 min-w-0">
                         {/* Name & Status Badge */}
                         <div className="flex items-center gap-3 mb-3 flex-wrap">
-                            <h3 className="text-xl font-bold text-slate-900 dark:text-white truncate group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                            <h3 className="text-xl font-bold text-slate-900 dark:text-white truncate group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
                                 {clinic.name || 'Unknown Clinic'}
                             </h3>
                             <span className={`glass-badge ${config.badge} flex items-center gap-1.5 px-3 py-1`}>
@@ -142,11 +142,9 @@ const ClinicCard: React.FC<ClinicCardProps> = ({
                         {/* Subscription Info */}
                         {subscription && clinic.status === RegistrationStatus.APPROVED && (
                             <div className="glass-panel px-3 py-2 flex flex-wrap items-center gap-3 text-sm">
-                                <div className="flex items-center gap-2">
-                                    <Crown size={16} className="text-amber-500" />
-                                    <span className="text-slate-600 dark:text-slate-300">
-                                        <span className="font-semibold text-slate-900 dark:text-white">{subscription.planName}</span>
-                                    </span>
+                                <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-primary-500/10 text-primary-700 dark:text-primary-300">
+                                    <Crown size={14} className="animate-bounce" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">{subscription.license.plan.name}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <div className={`w-2 h-2 rounded-full ${subscription.isActive ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
@@ -168,8 +166,8 @@ const ClinicCard: React.FC<ClinicCardProps> = ({
                         {/* View Details Button */}
                         <button
                             onClick={() => onSelect(clinic)}
-                            className="glass-button p-2.5 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all"
-                            title="View Details"
+                            className="glass-button p-3 text-slate-600 dark:text-slate-300 hover:bg-slate-800 dark:hover:bg-slate-100 hover:text-white dark:hover:text-slate-900 border-transparent transition-all"
+                            title="View Discovery"
                         >
                             <Eye size={18} />
                         </button>
@@ -178,7 +176,7 @@ const ClinicCard: React.FC<ClinicCardProps> = ({
                         {clinic.status === RegistrationStatus.APPROVED && (
                             <button
                                 onClick={onControls}
-                                className="glass-button p-2.5 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 text-purple-600 dark:text-purple-400 transition-all group/controls"
+                                className="glass-button p-3 text-primary-600 dark:text-primary-400 hover:bg-primary-500 hover:text-white border-transparent transition-all group/controls"
                                 title="Manage Controls"
                             >
                                 <Settings size={18} className="group-hover/controls:rotate-90 transition-transform duration-300" />
