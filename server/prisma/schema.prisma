@@ -24,6 +24,7 @@ model Clinic {
   users         User[]
   conversations Conversation[]
   control       ClinicControl?
+  fileUploads   FileUpload[]
 
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
@@ -202,6 +203,19 @@ model Attachment {
   mimeType   String
   size       Int
   createdAt  DateTime @default(now())
+}
+
+model FileUpload {
+  id        String   @id @default(uuid())
+  clinicId  String
+  clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  size      Int?     @default(0)
+  fileName  String?
+  category  String?
+  createdAt DateTime @default(now())
+  deletedAt DateTime?
+
+  @@map("file_uploads")
 }
 
 model Transaction {
