@@ -137,8 +137,12 @@ const ClinicDashboard: React.FC<Props> = ({ setPage }) => {
                 const expiry = clinic.license?.expireDate;
 
                 return (
-                  <tr key={clinic.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                    <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">
+                  <tr
+                    key={clinic.id}
+                    onClick={() => setPage(`manage-clinics/${clinic.id}`)}
+                    className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors cursor-pointer group"
+                  >
+                    <td className="px-6 py-4 font-medium text-slate-900 dark:text-white group-hover:text-emerald-600 transition-colors">
                       {clinic.name}
                       <div className="text-xs text-slate-500 font-normal">{clinic.email}</div>
                     </td>
