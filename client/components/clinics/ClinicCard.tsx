@@ -2,7 +2,8 @@
 import React from 'react';
 import {
     CheckCircle2, XCircle, Clock, Ban, Mail, Phone, MapPin,
-    Calendar, Eye, Settings, Loader2, PlayCircle, Trash2, Crown
+    Calendar, Eye, Settings, Loader2, PlayCircle, Trash2, Crown,
+    Database, Smartphone, Zap
 } from 'lucide-react';
 import { Clinic, RegistrationStatus, ClinicSubscriptionStatus } from '../../types';
 
@@ -27,142 +28,122 @@ const ClinicCard: React.FC<ClinicCardProps> = ({
     processing,
     viewMode
 }) => {
-    const statusColors = {
-        [RegistrationStatus.APPROVED]: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400',
-        [RegistrationStatus.PENDING]: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-400',
-        [RegistrationStatus.SUSPENDED]: 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-400',
-        [RegistrationStatus.REJECTED]: 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-400'
-    };
+    const isApproved = clinic.status === RegistrationStatus.APPROVED;
+    const isPending = clinic.status === RegistrationStatus.PENDING;
+    const isSuspended = clinic.status === RegistrationStatus.SUSPENDED;
 
     return (
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
+        <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all group overflow-hidden relative">
+            {/* Visual Accents */}
+            <div className={`absolute top-0 right-0 w-32 h-32 -mr-16 -mt-16 rounded-full opacity-10 group-hover:scale-150 transition-transform duration-700 ${isApproved ? 'bg-emerald-500' : 'bg-amber-500'
+                }`}></div>
 
-                {/* Info Section */}
-                <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                            {clinic.name || 'Unknown Clinic'}
-                        </h3>
-                        <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${statusColors[clinic.status]}`}>
-                            {clinic.status}
-                        </span>
-                    </div>
+            <div className="flex items-start justify-between mb-6 relative z-10">
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-black shadow-inner ${isApproved ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
+                    }`}>
+                    {clinic.name?.charAt(0)}
+                </div>
+                <div className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${isApproved ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'
+                    }`}>
+                    {clinic.status}
+                </div>
+            </div>
 
-                    <div className="text-sm text-slate-500 dark:text-slate-400 space-y-1">
-                        <div className="flex flex-wrap gap-4">
-                            <span className="flex items-center gap-1">
-                                <Mail size={14} /> {clinic.email || 'No email'}
-                            </span>
-                            {clinic.phone && (
-                                <span className="flex items-center gap-1">
-                                    <Phone size={14} /> {clinic.phone}
-                                </span>
-                            )}
-                            {clinic.address && (
-                                <span className="flex items-center gap-1">
-                                    <MapPin size={14} /> {clinic.address}
-                                </span>
-                            )}
-                            <span className="flex items-center gap-1">
-                                <Calendar size={14} /> {new Date(clinic.createdAt).toLocaleDateString()}
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* Resources / Subscription Info */}
-                    {subscription && clinic.status === RegistrationStatus.APPROVED && (
-                        <div className="mt-3 flex items-center gap-4 text-sm bg-slate-50 dark:bg-slate-900/50 p-2 rounded border border-slate-100 dark:border-slate-800">
-                            <div className="flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300">
-                                <Crown size={14} className="text-amber-500" />
-                                {subscription.license?.plan?.name || 'No Plan'}
-                            </div>
-                            <div className="text-slate-500">
-                                {subscription.license?.activationCount || 0} / {subscription.license?.deviceLimit || 0} Devices
-                            </div>
-                            {subscription.remainingDays !== undefined && (
-                                <div className={`${subscription.remainingDays < 30 ? 'text-rose-500' : 'text-emerald-600'} font-medium`}>
-                                    {subscription.remainingDays} days remaining
-                                </div>
-                            )}
-                        </div>
-                    )}
+            <div className="space-y-4 relative z-10">
+                <div>
+                    <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                        {clinic.name || 'UNNAMED_NODE'}
+                    </h3>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">{clinic.email || 'NO_IDENTIFIER'}</p>
                 </div>
 
-                {/* Actions Section */}
-                <div className="flex items-center gap-2 mt-4 md:mt-0">
-                    <button
-                        onClick={() => onSelect(clinic)}
-                        className="p-2 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition-colors"
-                        title="View Details"
-                    >
-                        <Eye size={18} />
-                    </button>
+                {/* Status Bar for active clinics */}
+                {subscription && isApproved && (
+                    <div className="flex items-center gap-4 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-2xl border border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center gap-1.5 overflow-hidden">
+                            <Crown size={14} className="text-amber-500 shrink-0" />
+                            <span className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300 truncate">{subscription.license?.plan?.name || 'CUSTOM'}</span>
+                        </div>
+                        <div className="h-4 w-px bg-slate-200 dark:bg-slate-700"></div>
+                        <div className="flex items-center gap-1.5">
+                            <Smartphone size={14} className="text-blue-500 shrink-0" />
+                            <span className="text-[10px] font-black text-slate-500">{subscription.license?.activationCount || 0}/{subscription.license?.deviceLimit || 0}</span>
+                        </div>
+                    </div>
+                )}
 
-                    {clinic.status === RegistrationStatus.APPROVED && (
+                <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase">
+                        <MapPin size={12} className="text-emerald-500" /> {clinic.address?.slice(0, 24) || 'GLOBAL_INSTANCE'}...
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase">
+                        <Calendar size={12} className="text-emerald-500" /> SYNCED: {new Date(clinic.createdAt).toLocaleDateString()}
+                    </div>
+                </div>
+
+                <div className="pt-4 flex gap-2">
+                    {isApproved && (
                         <button
                             onClick={onControls}
-                            className="p-2 text-emerald-600 hover:text-emerald-700 transition-colors"
-                            title="Manage Controls"
+                            className="flex-1 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-black uppercase tracking-widest text-[10px] hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-slate-900/10"
                         >
-                            <Settings size={18} />
+                            Node Control
                         </button>
                     )}
 
-                    {viewMode === 'requests' && clinic.status === RegistrationStatus.PENDING && (
+                    {isPending && viewMode === 'requests' && (
                         <>
                             <button
                                 onClick={() => onAction('approve')}
-                                disabled={processing}
-                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded transition-colors flex items-center gap-1"
+                                className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-emerald-700 active:scale-95 transition-all shadow-lg shadow-emerald-600/20"
                             >
-                                {processing ? <Loader2 className="animate-spin" size={14} /> : <CheckCircle2 size={14} />}
-                                Approve
+                                Authorize
                             </button>
                             <button
                                 onClick={() => onAction('reject')}
-                                disabled={processing}
-                                className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium rounded transition-colors flex items-center gap-1"
+                                className="flex-1 py-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-rose-600 rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-rose-50 transition-all active:scale-95"
                             >
-                                {processing ? <Loader2 className="animate-spin" size={14} /> : <XCircle size={14} />}
-                                Reject
+                                Deny
                             </button>
                         </>
                     )}
 
+                    {!isPending && (
+                        <button
+                            onClick={() => onSelect(clinic)}
+                            className="p-3 bg-slate-100 dark:bg-slate-700/50 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl transition-all"
+                        >
+                            <Eye size={18} />
+                        </button>
+                    )}
+
                     {viewMode === 'manage' && (
-                        <>
-                            {clinic.status === RegistrationStatus.APPROVED && (
+                        <div className="flex gap-2">
+                            {isApproved ? (
                                 <button
                                     onClick={() => onAction('suspend')}
-                                    disabled={processing}
-                                    className="p-2 text-amber-600 hover:text-amber-700 transition-colors"
-                                    title="Suspend"
+                                    className="p-3 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-100 transition-all"
+                                    title="Revoke Access"
                                 >
-                                    {processing ? <Loader2 className="animate-spin" size={18} /> : <Ban size={18} />}
+                                    <Ban size={18} />
                                 </button>
-                            )}
-
-                            {clinic.status === RegistrationStatus.SUSPENDED && (
+                            ) : isSuspended ? (
                                 <button
                                     onClick={() => onAction('reactivate')}
-                                    disabled={processing}
-                                    className="p-2 text-emerald-600 hover:text-emerald-700 transition-colors"
-                                    title="Reactivate"
+                                    className="p-3 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-all"
+                                    title="Restore Access"
                                 >
-                                    {processing ? <Loader2 className="animate-spin" size={18} /> : <PlayCircle size={18} />}
+                                    <PlayCircle size={18} />
                                 </button>
-                            )}
-
+                            ) : null}
                             <button
                                 onClick={() => onAction('delete')}
-                                disabled={processing}
-                                className="p-2 text-rose-500 hover:text-rose-700 transition-colors"
-                                title="Delete"
+                                className="p-3 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 transition-all"
+                                title="Purge Node"
                             >
                                 <Trash2 size={18} />
                             </button>
-                        </>
+                        </div>
                     )}
                 </div>
             </div>
