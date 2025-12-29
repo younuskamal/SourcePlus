@@ -8,15 +8,24 @@ const updateControlsSchema = z.object({
     usersLimit: z.number().int().positive().optional(),
     patientsLimit: z.number().int().positive().nullable().optional(),
     features: z.object({
-        patients: z.boolean().optional(),
         appointments: z.boolean().optional(),
-        orthodontics: z.boolean().optional(),
-        xray: z.boolean().optional(),
-        ai: z.boolean().optional()
+        patients: z.boolean().optional(),
+        dentalChart: z.boolean().optional(),
+        billing: z.boolean().optional(),
+        reports: z.boolean().optional(),
+        support: z.boolean().optional()
     }).optional(),
     locked: z.boolean().optional(),
     lockReason: z.string().optional().nullable()
 });
+const DEFAULT_FEATURES = {
+    appointments: true,
+    patients: true,
+    dentalChart: true,
+    billing: true,
+    reports: true,
+    support: true,
+};
 
 export default async function clinicControlsRoutes(app: FastifyInstance) {
     // GET /api/clinics/:id/controls - Read clinic controls (for Smart Clinic)
@@ -37,13 +46,7 @@ export default async function clinicControlsRoutes(app: FastifyInstance) {
                     clinicId: id,
                     storageLimitMB: 1024,
                     usersLimit: 3,
-                    features: {
-                        patients: true,
-                        appointments: true,
-                        orthodontics: false,
-                        xray: false,
-                        ai: false
-                    },
+                    features: DEFAULT_FEATURES,
                     locked: false,
                     lockReason: null
                 }
@@ -53,7 +56,7 @@ export default async function clinicControlsRoutes(app: FastifyInstance) {
                 storageLimitMB: control.storageLimitMB,
                 usersLimit: control.usersLimit,
                 patientsLimit: control.patientsLimit,
-                features: control.features as any,
+                    features: { ...DEFAULT_FEATURES, ...(control.features as any || {}) },
                 locked: control.locked,
                 lockReason: control.lockReason
             });
@@ -63,7 +66,7 @@ export default async function clinicControlsRoutes(app: FastifyInstance) {
             storageLimitMB: clinic.control.storageLimitMB,
             usersLimit: clinic.control.usersLimit,
             patientsLimit: clinic.control.patientsLimit,
-            features: clinic.control.features as any,
+            features: { ...DEFAULT_FEATURES, ...(clinic.control.features as any || {}) },
             locked: clinic.control.locked,
             lockReason: clinic.control.lockReason
         });
@@ -100,14 +103,8 @@ export default async function clinicControlsRoutes(app: FastifyInstance) {
         if (body.patientsLimit !== undefined) updateData.patientsLimit = body.patientsLimit;
         if (body.features) {
             // Merge with existing features
-            const currentFeatures = clinic.control?.features as any || {
-                patients: true,
-                appointments: true,
-                orthodontics: false,
-                xray: false,
-                ai: false
-            };
-            updateData.features = { ...currentFeatures, ...body.features };
+            const currentFeatures = clinic.control?.features as any || DEFAULT_FEATURES;
+            updateData.features = { ...DEFAULT_FEATURES, ...currentFeatures, ...body.features };
         }
 
         let control;
@@ -123,13 +120,7 @@ export default async function clinicControlsRoutes(app: FastifyInstance) {
                     storageLimitMB: body.storageLimitMB || 1024,
                     usersLimit: body.usersLimit || 3,
                     patientsLimit: body.patientsLimit ?? null,
-                    features: body.features || {
-                        patients: true,
-                        appointments: true,
-                        orthodontics: false,
-                        xray: false,
-                        ai: false
-                    },
+                    features: body.features || DEFAULT_FEATURES,
                     locked: body.locked || false,
                     lockReason: body.lockReason || null
                 }

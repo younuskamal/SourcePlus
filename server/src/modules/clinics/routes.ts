@@ -129,11 +129,12 @@ export default async function clinicRoutes(app: FastifyInstance) {
                     usersLimit: 3,
                     patientsLimit: null,
                     features: {
-                        patients: true,
                         appointments: true,
-                        orthodontics: false,
-                        xray: false,
-                        ai: false
+                        patients: true,
+                        dentalChart: true,
+                        billing: true,
+                        reports: true,
+                        support: true
                     },
                     locked: false
                 }

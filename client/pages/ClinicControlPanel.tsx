@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import { Clinic, RegistrationStatus } from '../types';
+import { Clinic } from '../types';
 import { useTranslation } from '../hooks/useTranslation';
 import {
     ArrowLeft,
@@ -15,45 +16,14 @@ import {
     Loader2,
     CheckCircle,
     XCircle,
-    Clock,
     Shield,
     TrendingUp,
     Settings,
     AlertTriangle,
-    Eye,
-    EyeOff,
-    Activity,
-    ChevronRight,
-    Search,
-    RefreshCw,
     Info,
-    History
+    Calendar,
+    Mail
 } from 'lucide-react';
-
-// Sparkline Component for Trend Visualization
-const Sparkline: React.FC<{ data: number[]; color: string }> = ({ data, color }) => (
-    <svg className="w-16 h-8 opacity-60" viewBox="0 0 100 40">
-        <path
-            d={`M 0 ${40 - (data[0] / 100) * 40} ${data.map((d, i) => `L ${(i / (data.length - 1)) * 100} ${40 - (d / 100) * 40}`).join(' ')}`}
-            fill="none"
-            stroke={color}
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="animate-fadeIn"
-        />
-    </svg>
-);
-
-// Glass Tooltip Component
-const GlassTooltip: React.FC<{ content: string; children: React.ReactNode }> = ({ content, children }) => (
-    <div className="group relative inline-block">
-        {children}
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 px-4 py-2 glass-card border-white/20 text-[10px] font-black uppercase tracking-widest text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all pointer-events-none z-50 shadow-2xl scale-90 group-hover:scale-100">
-            {content}
-        </div>
-    </div>
-);
 
 interface ControlsData {
     storageLimitMB: number;
@@ -76,7 +46,7 @@ interface UsageData {
     storageUsedMB: number;
     storageLimitMB: number;
     usersUsed: number;
-    usersLimit: number;
+    usersLimit: number; // Max users allowed
     patientsUsed: number | null;
     patientsLimit: number | null;
     filesCount: number;
@@ -90,18 +60,10 @@ type TabType = 'overview' | 'limits' | 'features' | 'security';
 const ClinicControlPanel: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { t, i18n } = useTranslation();
+    const { t } = useTranslation();
 
     const [clinic, setClinic] = useState<Clinic | null>(null);
     const [activeTab, setActiveTab] = useState<TabType>('overview');
-
-    // Utility: Format numbers with commas (Professional standard)
-    const formatNumber = (val: number | string | null) => {
-        if (val === null || val === undefined) return '0';
-        const num = typeof val === 'string' ? parseInt(val) : val;
-        if (isNaN(num)) return '0';
-        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-    };
     const [controls, setControls] = useState<ControlsData | null>(null);
     const [usage, setUsage] = useState<UsageData | null>(null);
     const [loading, setLoading] = useState(true);
@@ -131,7 +93,6 @@ const ClinicControlPanel: React.FC = () => {
 
     const loadData = async () => {
         if (!id) return;
-
         try {
             setLoading(true);
             setUsageMessage(null);
@@ -144,14 +105,12 @@ const ClinicControlPanel: React.FC = () => {
             let usageData: UsageData | null = null;
             try {
                 usageData = await api.getClinicUsage(id);
-                setUsageMessage(null);
             } catch (usageError: any) {
                 if (usageError?.response?.status === 404) {
                     setUsageMessage(t('controls.noUsageData'));
                 } else {
                     console.error('Failed to load usage data:', usageError);
                     setUsageMessage(t('controls.usageError'));
-                    showMessage('error', `${t('controls.usageError')}: ${usageError.response?.data?.message || usageError.message}`);
                 }
             }
 
@@ -166,8 +125,8 @@ const ClinicControlPanel: React.FC = () => {
             setFeatures(controlsData.features);
             setLockReason(controlsData.lockReason || '');
         } catch (error: any) {
-            console.error('❌ Failed to load data:', error);
-            showMessage('error', `Failed to load clinic data: ${error.response?.data?.message || error.message}`);
+            console.error('Failed to load data:', error);
+            showMessage('error', `Failed to load clinic data: ${error.message}`);
         } finally {
             setLoading(false);
         }
@@ -183,6 +142,7 @@ const ClinicControlPanel: React.FC = () => {
 
         const trimmed = patientsLimitInput.trim();
         const patientsLimitValue = trimmed === '' ? null : Number(trimmed);
+
         if (patientsLimitValue !== null && (!Number.isFinite(patientsLimitValue) || patientsLimitValue <= 0)) {
             showMessage('error', t('controls.patientsLimitError'));
             return;
@@ -190,6 +150,7 @@ const ClinicControlPanel: React.FC = () => {
 
         const storageLimitValue = Number(storageLimitInput);
         const usersLimitValue = Number(usersLimitInput);
+
         if (!Number.isFinite(storageLimitValue) || storageLimitValue <= 0) {
             showMessage('error', t('controls.storageLimitError'));
             return;
@@ -212,7 +173,7 @@ const ClinicControlPanel: React.FC = () => {
             showMessage('success', t('controls.controlsUpdated'));
         } catch (error: any) {
             console.error('Failed to update controls:', error);
-            showMessage('error', `Failed to update: ${error.response?.data?.message || error.message}`);
+            showMessage('error', `Failed to update: ${error.message}`);
         } finally {
             setSaving(false);
         }
@@ -220,227 +181,53 @@ const ClinicControlPanel: React.FC = () => {
 
     const handleToggleLock = async () => {
         if (!id || !controls) return;
-
         if (!controls.locked && !lockReason.trim()) {
             showMessage('error', t('controls.lockReasonRequired'));
             return;
         }
-
         try {
             setSaving(true);
             await api.updateClinicControls(id, {
                 locked: !controls.locked,
                 lockReason: !controls.locked ? lockReason : null
             });
-
             await loadData();
             showMessage('success', controls.locked ? t('controls.clinicUnlocked') : t('controls.clinicLocked'));
             setShowLockConfirm(false);
             setLockReason('');
         } catch (error: any) {
             console.error('Failed to toggle lock:', error);
-            showMessage('error', `Failed: ${error.response?.data?.message || error.message}`);
+            showMessage('error', `Failed: ${error.message}`);
         } finally {
             setSaving(false);
         }
     };
 
+    const formatNumber = (val: number | string | null | undefined) => {
+        if (val === null || val === undefined) return '0';
+        return Number(val).toLocaleString();
+    };
+
     if (loading) {
         return (
-            <div className="clinic-bg-gradient min-h-screen flex items-center justify-center p-6">
-                <div className="glass-card p-12 text-center max-w-md w-full animate-scaleUp">
-                    <div className="relative mb-8">
-                        <div className="absolute inset-0 bg-purple-500 rounded-full blur-2xl opacity-20 animate-pulse" />
-                        <Loader2 size={64} className="animate-spin text-purple-600 mx-auto relative z-10" />
-                    </div>
-                    <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent mb-3">
-                        {t('common.loading')}
-                    </h2>
-                    <p className="text-slate-600 dark:text-slate-400 font-medium">{t('clinicDashboard.subtitle')}</p>
-                    <div className="mt-8 flex gap-2 justify-center">
-                        <div className="w-2 h-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: '0s' }} />
-                        <div className="w-2 h-2 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: '0.2s' }} />
-                        <div className="w-2 h-2 rounded-full bg-purple-600 animate-bounce" style={{ animationDelay: '0.4s' }} />
-                    </div>
-                </div>
+            <div className="flex flex-col items-center justify-center min-h-screen">
+                <Loader2 className="animate-spin text-emerald-600 mb-4" size={48} />
+                <p className="text-slate-500 font-medium">Loading Clinic Data...</p>
             </div>
         );
     }
 
     if (!clinic || !controls) {
         return (
-            <div className="clinic-bg-gradient min-h-screen flex items-center justify-center p-6">
-                <div className="glass-card p-12 text-center max-w-md w-full border-rose-500/20 shadow-rose-500/10">
-                    <div className="w-20 h-20 rounded-2xl bg-rose-500/10 flex items-center justify-center text-rose-500 mx-auto mb-6">
-                        <AlertTriangle size={48} />
-                    </div>
-                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">{t('supportMessages.error')}</h2>
-                    <p className="text-slate-600 dark:text-slate-400 mb-8 leading-relaxed">
-                        {t('clinicDashboard.noLicense')}
-                    </p>
-                    <button
-                        onClick={() => navigate('/manage-clinics')}
-                        className="w-full glass-button px-6 py-4 font-bold text-slate-700 dark:text-slate-200 flex items-center justify-center gap-3 group"
-                    >
-                        <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
-                        {t('common.back')}
-                    </button>
-                </div>
+            <div className="p-8 text-center text-rose-500">
+                <AlertTriangle size={48} className="mx-auto mb-4" />
+                <h2 className="text-xl font-bold">Error Loading Clinic</h2>
+                <button onClick={() => navigate('/manage-clinics')} className="mt-4 text-blue-500 hover:underline">
+                    Back to List
+                </button>
             </div>
         );
     }
-
-    const storageLimit = usage?.storageLimitMB ?? controls.storageLimitMB ?? storageLimitInput;
-    const storageUsed = usage?.storageUsedMB ?? null;
-    const usersLimit = usage?.usersLimit ?? controls.usersLimit ?? usersLimitInput;
-    const usersUsed = usage?.usersUsed ?? null;
-    const patientsLimit = controls.patientsLimit ?? null;
-    const patientsUsed = usage?.patientsUsed ?? null;
-    const humanPatientsLimit = patientsLimit !== null ? patientsLimit.toLocaleString() : 'Unlimited';
-    const availableSeats = usersUsed !== null && usersLimit
-        ? Math.max(usersLimit - usersUsed, 0)
-        : null;
-    const storagePercentage = storageUsed !== null && storageLimit
-        ? Math.min((storageUsed / storageLimit) * 100, 100)
-        : null;
-    const usersPercentage = usersUsed !== null && usersLimit
-        ? Math.min((usersUsed / usersLimit) * 100, 100)
-        : null;
-    const filesStored = usage?.filesCount ?? null;
-    const patientsPercentage = patientsUsed !== null && patientsLimit !== null
-        ? Math.min((patientsUsed / patientsLimit) * 100, 100)
-        : null;
-    const lastSyncDisplay = usage?.lastSyncAt ? new Date(usage.lastSyncAt).toLocaleString() : null;
-    const metricIconStyles: Record<string, { bg: string; icon: string }> = {
-        storage: { bg: 'bg-slate-100 dark:bg-slate-800', icon: 'text-slate-600 dark:text-slate-300' },
-        users: { bg: 'bg-slate-100 dark:bg-slate-800', icon: 'text-slate-600 dark:text-slate-300' },
-        patients: { bg: 'bg-slate-100 dark:bg-slate-800', icon: 'text-slate-600 dark:text-slate-300' }
-    };
-    const getBarColor = (metricId: string, percentage: number) => {
-        if (metricId === 'users') {
-            if (percentage >= 100) return 'bg-rose-500';
-            if (percentage > 80) return 'bg-amber-500';
-            return 'bg-emerald-500';
-        }
-        if (metricId === 'storage') {
-            if (percentage > 90) return 'bg-rose-500';
-            if (percentage > 70) return 'bg-amber-500';
-            return 'bg-slate-900 dark:bg-white';
-        }
-        if (metricId === 'patients') {
-            if (percentage >= 100) return 'bg-rose-500';
-            if (percentage > 75) return 'bg-amber-500';
-            return 'bg-indigo-500';
-        }
-        return 'bg-slate-900';
-    };
-    // --- Advanced Analytics Calculations ---
-    const healthScore = useMemo(() => {
-        if (!usage) return 100;
-        let score = 100;
-        if (storagePercentage && storagePercentage > 90) score -= 20;
-        if (usersPercentage && usersPercentage > 95) score -= 15;
-        if (patientsPercentage && patientsPercentage > 90) score -= 10;
-        if (controls?.locked) score -= 30;
-        return Math.max(0, score);
-    }, [usage, controls]);
-
-    const getHealthColor = (score: number) => {
-        if (score > 85) return 'from-emerald-500 to-teal-500';
-        if (score > 60) return 'from-amber-500 to-orange-500';
-        return 'from-rose-500 to-pink-500';
-    };
-
-    const getHealthLabel = (score: number) => {
-        if (score > 85) return t('dashboard.healthExcellent');
-        if (score > 60) return t('dashboard.healthGood');
-        if (score >= 40) return t('dashboard.healthWarning');
-        return t('dashboard.healthCritical');
-    };
-
-    const storageForecast = useMemo(() => {
-        if (!storagePercentage || storagePercentage < 10) return null;
-        // Mock forecasting logic: (Remaining / Daily growth)
-        return Math.floor((100 - storagePercentage) * 1.5);
-    }, [storagePercentage]);
-
-    const usersForecast = useMemo(() => {
-        if (!usersPercentage || usersPercentage < 50) return null;
-        return Math.floor((100 - usersPercentage) * 2.1);
-    }, [usersPercentage]);
-
-    const overviewMetrics = [
-        {
-            id: 'storage',
-            title: t('dashboard.storage'),
-            value: storageUsed !== null ? storageUsed.toFixed(1) : '0',
-            limit: storageLimit ? `${formatNumber(storageLimit)} MB CAPACITY` : 'UNLIMITED',
-            percentage: storagePercentage,
-            footerLabel: t('dashboard.sparklineAlt'),
-            footerValue: formatNumber(filesStored),
-            icon: HardDrive,
-            accent: 'storage',
-            forecast: storageForecast,
-            trends: [10, 15, 28, 45, 42, 58, 70]
-        },
-        {
-            id: 'users',
-            title: t('dashboard.activeUsers'),
-            value: formatNumber(usersUsed),
-            limit: usersLimit ? `MAX OPERATORS: ${formatNumber(usersLimit)}` : 'GENERIC LICENSE',
-            percentage: usersPercentage,
-            footerLabel: t('dashboard.sparklineAlt'),
-            footerValue: formatNumber(availableSeats),
-            icon: UsersIcon,
-            accent: 'users',
-            forecast: usersForecast,
-            trends: [20, 20, 40, 40, 60, 60, 80]
-        },
-        {
-            id: 'patients',
-            title: t('dashboard.dataNodeStatus'),
-            value: formatNumber(patientsUsed),
-            limit: patientsLimit !== null ? `${t('clinics.deviceLimit').toUpperCase()}: ${formatNumber(patientsLimit)}` : t('dashboard.notAvailable').toUpperCase(),
-            percentage: patientsPercentage,
-            footerLabel: t('dashboard.syncProtocol'),
-            footerValue: t('dashboard.healthExcellent').toUpperCase(),
-            icon: TrendingUp,
-            accent: 'patients',
-            forecast: null,
-            trends: [5, 12, 18, 25, 30, 45, 55]
-        }
-    ];
-
-    const activities = [
-        { id: 1, type: 'limit', label: t('dashboard.activities.limitUpdate'), time: '2h ago', icon: Settings, color: 'text-blue-500' },
-        { id: 2, type: 'status', label: t('dashboard.activities.usageSync'), time: '4h ago', icon: Activity, color: 'text-emerald-500' },
-        { id: 3, type: 'feature', label: t('dashboard.activities.featureToggle'), time: '1d ago', icon: Zap, color: 'text-purple-500' },
-    ];
-    const snapshotRows = [
-        {
-            label: t('dashboard.storageUsed'),
-            value: storageUsed !== null ? `${storageUsed.toFixed(1)} MB` : '0 MB'
-        },
-        {
-            label: t('dashboard.activeUsers'),
-            value: usersUsed !== null ? usersUsed.toString() : '0'
-        },
-        {
-            label: t('dashboard.totalPatients'),
-            value: formatNumber(patientsUsed)
-        },
-        {
-            label: t('dashboard.storageForecast', { days: '—' }),
-            value: storageForecast ? `${storageForecast} ${t('clinics.days')}` : '∞'
-        }
-    ];
-
-    const tabs: { id: TabType; label: string; icon: any }[] = [
-        { id: 'overview', label: t('dashboard.overview'), icon: Zap },
-        { id: 'limits', label: t('dashboard.usage'), icon: HardDrive },
-        { id: 'features', label: t('dashboard.features'), icon: Settings },
-        { id: 'security', label: t('dashboard.security'), icon: Shield }
-    ];
 
     const featureLabels: Record<string, string> = {
         patients: t('features.patients'),
@@ -450,761 +237,360 @@ const ClinicControlPanel: React.FC = () => {
         ai: t('features.ai')
     };
 
-    const formatStatus = (value: string) => value
-        .replace(/_/g, ' ')
-        .toLowerCase()
-        .replace(/\b\w/g, (char) => char.toUpperCase());
-
     return (
-        <div className="clinic-bg-gradient min-h-screen">
-            <div className="max-w-7xl mx-auto p-6 animate-fadeIn">
-                {/* Message Toast */}
-                {message && (
-                    <div className={`fixed top-6 right-6 z-50 px-8 py-5 rounded-2xl shadow-2xl flex items-center gap-4 animate-scaleUp ${message.type === 'success' ? 'glass-gradient-emerald text-emerald-900 dark:text-emerald-100' : 'glass-gradient-rose text-rose-900 dark:text-rose-100'
-                        } border border-white/20 backdrop-blur-xl`}>
-                        {message.type === 'success' ? <CheckCircle size={28} className="text-emerald-600" /> : <XCircle size={28} className="text-rose-600" />}
-                        <span className="font-bold text-lg">{message.text}</span>
-                    </div>
-                )}
+        <div className="p-6 max-w-7xl mx-auto space-y-6">
+            {/* Toast Message */}
+            {message && (
+                <div className={`fixed top-4 right-4 z-50 px-6 py-4 rounded shadow-lg border flex items-center gap-3 ${message.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-rose-50 border-rose-200 text-rose-800'
+                    }`}>
+                    {message.type === 'success' ? <CheckCircle size={20} /> : <XCircle size={20} />}
+                    <span className="font-medium">{message.text}</span>
+                </div>
+            )}
 
-                {/* Header Section */}
-                <div className="mb-8 flex flex-col gap-6">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
                     <button
                         onClick={() => navigate('/manage-clinics')}
-                        className="glass-button w-fit flex items-center gap-2.5 px-6 py-3 text-sm font-bold text-slate-700 dark:text-slate-200 group"
+                        className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"
                     >
-                        <ArrowLeft size={20} className="group-hover:-translate-x-1.5 transition-transform" />
-                        {t('common.back')}
+                        <ArrowLeft size={24} />
                     </button>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div className="lg:col-span-2 glass-card p-8 relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/5 rounded-full blur-3xl -mr-32 -mt-32 transition-opacity group-hover:opacity-100 opacity-50" />
-                            <div className="relative z-10">
-                                <div className="flex flex-wrap items-start justify-between gap-6">
-                                    <div className="flex items-center gap-6">
-                                        <div className="relative group/logo">
-                                            {/* Subtle Glow */}
-                                            <div className="absolute inset-0 bg-primary-500/20 rounded-2xl blur-2xl opacity-0 group-hover/logo:opacity-100 transition-opacity" />
-
-                                            {/* Transparent Logo Container */}
-                                            <div className="relative w-20 h-20 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-white/5 dark:bg-slate-800/5 backdrop-blur-sm flex items-center justify-center text-primary-500 shadow-xl transition-all group-hover/logo:border-primary-500/50 group-hover/logo:scale-105">
-                                                <Building2 size={40} strokeWidth={1.5} />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <h1 className="text-4xl font-extrabold bg-gradient-to-r from-slate-900 via-primary-600 to-slate-900 dark:from-white dark:via-primary-300 dark:to-white bg-clip-text text-transparent mb-1">{clinic.name}</h1>
-                                            <p className="text-slate-600 dark:text-slate-400 font-medium tracking-tight">SmartClinic Enterprise Node Control</p>
-                                        </div>
-                                    </div>
-                                    <div className={`glass-badge flex items-center gap-3 px-6 py-3 text-sm font-black tracking-widest ${controls.locked
-                                        ? 'glass-gradient-rose text-rose-700 dark:text-rose-300'
-                                        : 'glass-gradient-emerald text-emerald-700 dark:text-emerald-300'
-                                        } ${controls.locked ? 'animate-pulse' : ''}`}>
-                                        {controls.locked ? <Lock size={18} /> : <Unlock size={18} />}
-                                        {controls.locked ? 'LOCKED' : 'ACTIVE'}
-                                    </div>
-                                </div>
-
-                                <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div className="glass-panel flex justify-between items-center px-6 py-4 hover:bg-white/40 dark:hover:bg-slate-800/40 transition-all border-none">
-                                        <span className="text-slate-500 font-bold text-xs uppercase tracking-widest">Clinic ID</span>
-                                        <span className="font-mono text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-xs">{clinic.id.slice(0, 8)}…</span>
-                                    </div>
-                                    <div className="glass-panel flex justify-between items-center px-6 py-4 hover:bg-white/40 dark:hover:bg-slate-800/40 transition-all border-none">
-                                        <span className="text-slate-500 font-bold text-xs uppercase tracking-widest">Principal</span>
-                                        <span className="text-slate-900 dark:text-white font-bold">{clinic.doctorName || '—'}</span>
-                                    </div>
-                                    <div className="glass-panel flex justify-between items-center px-6 py-4 hover:bg-white/40 dark:hover:bg-slate-800/40 transition-all border-none">
-                                        <span className="text-slate-500 font-bold text-xs uppercase tracking-widest">Digital Address</span>
-                                        <span className="text-slate-900 dark:text-white font-medium">{clinic.email}</span>
-                                    </div>
-                                    <div className="glass-panel flex justify-between items-center px-6 py-4 hover:bg-white/40 dark:hover:bg-slate-800/40 transition-all border-none">
-                                        <span className="text-slate-500 font-bold text-xs uppercase tracking-widest">Protocol Version</span>
-                                        <span className="text-slate-900 dark:text-white font-bold">{clinic.systemVersion || 'Not detected'}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="glass-card p-8 flex flex-col justify-between group overflow-hidden relative">
-                            <div className="absolute bottom-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl -mb-16 -mr-16 group-hover:opacity-100 opacity-50" />
-                            <div className="relative z-10 flex flex-col h-full">
-                                <div className="flex items-center justify-between mb-8">
-                                    <div>
-                                        <p className="text-[10px] uppercase font-black tracking-[0.3em] text-slate-500">Live Telemetry</p>
-                                        <p className="text-sm text-slate-900 dark:text-white font-black mt-1">Smart Clinic Node</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-[10px] uppercase font-bold text-slate-500 opacity-60">Sync state</p>
-                                        <p className="text-xs font-black text-emerald-500 flex items-center gap-1 justify-end">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                            STABLE
-                                        </p>
-                                    </div>
-                                </div>
-                                {usageMessage && (
-                                    <div className="mb-6 glass-panel border-amber-500/20 bg-amber-500/5 px-4 py-3 text-xs text-amber-700 dark:text-amber-300 flex items-center gap-3 animate-pulse">
-                                        <AlertTriangle size={18} className="shrink-0 text-amber-500" />
-                                        <span className="font-medium">{usageMessage}</span>
-                                    </div>
-                                )}
-                                <dl className="space-y-4 flex-1">
-                                    {snapshotRows.map((row) => (
-                                        <div key={row.label} className="flex items-center justify-between border-b border-white/10 dark:border-slate-800/50 pb-3 group/row">
-                                            <dt className="text-slate-500 font-medium text-xs uppercase tracking-wider group-hover/row:text-slate-400 transition-colors">{row.label}</dt>
-                                            <dd className="font-black text-slate-900 dark:text-white text-sm">{row.value}</dd>
-                                        </div>
-                                    ))}
-                                </dl>
-                                {controls.lockReason && (
-                                    <div className="mt-4 pt-4 border-t border-rose-500/20 text-[10px] text-rose-500 flex items-center gap-2 font-bold uppercase tracking-widest animate-pulse">
-                                        <Lock size={12} />
-                                        {controls.lockReason}
-                                    </div>
-                                )}
-                            </div>
+                    <div>
+                        <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+                            {clinic.name}
+                            {controls.locked && (
+                                <span className="px-2 py-1 text-xs bg-rose-100 text-rose-700 rounded font-bold uppercase flex items-center gap-1">
+                                    <Lock size={12} /> Locked
+                                </span>
+                            )}
+                        </h1>
+                        <div className="text-sm text-slate-500 flex items-center gap-3 mt-1">
+                            <span className="flex items-center gap-1"><Mail size={12} /> {clinic.email}</span>
+                            <span className="font-mono bg-slate-100 dark:bg-slate-900 px-1.5 rounded text-xs">{clinic.id.split('-')[0]}...</span>
                         </div>
                     </div>
                 </div>
-
-                {/* Main Control Interface */}
-                <div className="mb-6 glass-card p-3 shadow-2xl relative z-20">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                        {tabs.map((tab) => {
-                            const Icon = tab.icon;
-                            return (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => setActiveTab(tab.id)}
-                                    className={`relative flex items-center justify-center gap-3 rounded-xl px-4 py-4 text-sm font-black uppercase tracking-widest transition-all duration-300 ${activeTab === tab.id
-                                        ? 'glass-gradient-primary text-primary-700 dark:text-primary-300 shadow-xl scale-[1.02] transform'
-                                        : 'text-slate-500 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50'
-                                        }`}
-                                >
-                                    <Icon size={20} className={activeTab === tab.id ? 'animate-pulse' : ''} />
-                                    {tab.label}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
-
-                {/* Tab Viewports */}
-                <div className="space-y-6">
-                    {/* Overview Tab */}
-                    {activeTab === 'overview' && (
-                        <div className="space-y-6 animate-fadeIn">
-                            {/* Health Score & Activity Feed Row */}
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                {/* Health Score Circle */}
-                                <div className="glass-card p-8 flex items-center gap-8 relative overflow-hidden group">
-                                    <div className="relative w-32 h-32 shrink-0">
-                                        <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                                            <circle cx="50" cy="50" r="45" fill="none" className="stroke-slate-200 dark:stroke-slate-800" strokeWidth="8" />
-                                            <circle
-                                                cx="50" cy="50" r="45" fill="none"
-                                                className={`stroke-current transition-all duration-1000 ease-out-expo`}
-                                                strokeWidth="8"
-                                                strokeDasharray="282.7"
-                                                strokeDashoffset={282.7 - (282.7 * healthScore) / 100}
-                                                style={{ stroke: `url(#healthGradient)` }}
-                                            />
-                                            <defs>
-                                                <linearGradient id="healthGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                                    <stop offset="0%" stopColor={healthScore > 60 ? "#10b981" : "#f43f5e"} />
-                                                    <stop offset="100%" stopColor={healthScore > 60 ? "#06b6d4" : "#fb7185"} />
-                                                </linearGradient>
-                                            </defs>
-                                        </svg>
-                                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                            <span className="text-3xl font-black text-slate-900 dark:text-white leading-none">{healthScore}</span>
-                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">SCORE</span>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('dashboard.healthScore')}</h3>
-                                        <p className={`text-xl font-black bg-gradient-to-r ${getHealthColor(healthScore)} bg-clip-text text-transparent uppercase tracking-tight`}>
-                                            {getHealthLabel(healthScore)}
-                                        </p>
-                                        <p className="text-xs text-slate-500 mt-2 font-medium opacity-70">Infrastructure stability protocol active.</p>
-                                    </div>
-                                    <div className="absolute top-4 right-4 animate-pulse-soft">
-                                        <GlassTooltip content="Advanced Diagnostic Check">
-                                            <Info size={16} className="text-slate-400" />
-                                        </GlassTooltip>
-                                    </div>
-                                </div>
-
-                                {/* Live Activity Feed */}
-                                <div className="lg:col-span-2 glass-card p-8 group relative overflow-hidden">
-                                    <div className="flex items-center justify-between mb-6">
-                                        <div className="flex items-center gap-3">
-                                            <History size={18} className="text-purple-500" />
-                                            <h3 className="text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest">{t('dashboard.activityFeed')}</h3>
-                                        </div>
-                                        <span className="flex items-center gap-1.5 text-[10px] font-black text-emerald-500 uppercase animate-pulse">
-                                            <div className="w-1 h-1 rounded-full bg-emerald-500" />
-                                            LIVE MONITORING
-                                        </span>
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {activities.map((act) => (
-                                            <div key={act.id} className="glass-panel p-4 flex items-center justify-between border-none bg-slate-950/5 hover:bg-slate-950/10 transition-all cursor-default group/row">
-                                                <div className="flex items-center gap-4">
-                                                    <div className={`p-2 rounded-xl bg-white dark:bg-slate-800 shadow-sm ${act.color}`}>
-                                                        <act.icon size={16} />
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-xs font-black text-slate-900 dark:text-white leading-tight uppercase tracking-tighter">{act.label}</p>
-                                                        <p className="text-[10px] font-bold text-slate-400 mt-0.5">{act.time}</p>
-                                                    </div>
-                                                </div>
-                                                <ChevronRight size={14} className="text-slate-300 opacity-0 group-hover/row:opacity-100 transition-all group-hover/row:translate-x-1" />
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                {overviewMetrics.map((metric) => {
-                                    const Icon = metric.icon;
-                                    const isCritical = metric.percentage && metric.percentage > 90;
-                                    return (
-                                        <div key={metric.id} className={`glass-card p-8 group hover:scale-[1.03] transition-all duration-500 border-none shadow-xl relative overflow-hidden ${isCritical ? 'bg-rose-500/5' : ''}`}>
-                                            {isCritical && (
-                                                <div className="absolute top-0 right-0 p-3 animate-pulse">
-                                                    <AlertTriangle size={18} className="text-rose-500" />
-                                                </div>
-                                            )}
-                                            <div className="flex items-center justify-between mb-6">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="relative">
-                                                        <div className={`absolute inset-0 bg-gradient-to-br ${metric.id === 'storage' ? 'from-purple-500 to-indigo-500' : metric.id === 'users' ? 'from-blue-500 to-cyan-500' : 'from-emerald-500 to-teal-500'} rounded-2xl blur-xl opacity-30 group-hover:opacity-60 transition-opacity`} />
-                                                        <div className={`relative w-14 h-14 rounded-2xl bg-gradient-to-br ${metric.id === 'storage' ? 'from-purple-500 to-indigo-500' : metric.id === 'users' ? 'from-blue-500 to-cyan-500' : 'from-emerald-500 to-teal-500'} flex items-center justify-center text-white shadow-2xl transform group-hover:rotate-6 transition-transform`}>
-                                                            <Icon size={26} />
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500">{metric.title}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <Sparkline data={metric.trends} color={isCritical ? '#f43f5e' : '#8b5cf6'} />
-                                                    <div className={`text-xs font-black mt-1 ${isCritical ? 'text-rose-500' : 'text-slate-400'}`}>
-                                                        {metric.percentage?.toFixed(1)}%
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex flex-col mt-2">
-                                                <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-2">{t('dashboard.viewMetric')}</span>
-                                                <p className="text-5xl font-black bg-gradient-to-r from-slate-950 via-slate-800 to-slate-700 dark:from-white dark:via-slate-200 dark:to-slate-400 bg-clip-text text-transparent leading-none tracking-tighter">
-                                                    {metric.value}
-                                                </p>
-                                            </div>
-
-                                            <div className="mt-4 mb-6">
-                                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.15em] opacity-70">
-                                                    {metric.limit}
-                                                </p>
-                                            </div>
-
-                                            <div className="space-y-4">
-                                                <div className="relative h-1.5 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                                                    <div
-                                                        className={`absolute top-0 left-0 h-full transition-all duration-1000 ease-out-expo ${getBarColor(metric.id, metric.percentage || 0)} ${isCritical ? 'animate-pulse' : ''}`}
-                                                        style={{ width: `${Math.min(100, metric.percentage || 0)}%` }}
-                                                    />
-                                                </div>
-
-                                                {metric.forecast && (
-                                                    <div className={`flex items-center gap-2 p-2.5 rounded-xl border-none ${isCritical ? 'bg-rose-500/10 text-rose-600' : 'bg-slate-900/5 text-slate-500'} animate-fadeIn`}>
-                                                        <Info size={14} className={isCritical ? 'animate-pulse' : ''} />
-                                                        <span className="text-[10px] font-black uppercase tracking-tighter">
-                                                            Forecast: {metric.id === 'storage' ? t('dashboard.storageForecast', { days: metric.forecast.toString() }) : t('dashboard.usersForecast', { days: metric.forecast.toString() })}
-                                                        </span>
-                                                    </div>
-                                                )}
-
-                                                <div className="flex items-center justify-between pt-4 border-t border-white/10 dark:border-slate-800/50">
-                                                    <span className="text-[10px] uppercase font-bold text-slate-500">{metric.footerLabel}</span>
-                                                    <span className="text-xs font-black text-slate-900 dark:text-white">{metric.footerValue}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                <div className="glass-card p-8 group relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl -mr-16 -mt-16 group-hover:opacity-100 opacity-30 transition-opacity" />
-                                    <div className="relative z-10">
-                                        <div className="flex items-center gap-4 mb-8">
-                                            <div className="relative">
-                                                <div className={`absolute inset-0 ${controls.locked ? 'bg-rose-500' : 'bg-emerald-500'} rounded-2xl blur-xl opacity-30`} />
-                                                <div className={`relative w-16 h-16 rounded-2xl ${controls.locked ? 'bg-gradient-to-br from-rose-500 to-pink-500' : 'bg-gradient-to-br from-emerald-500 to-teal-500'} flex items-center justify-center text-white shadow-2xl`}>
-                                                    {controls.locked ? <Lock size={28} /> : <Unlock size={28} />}
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500">{t('dashboard.status')}</p>
-                                                <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">{controls.locked ? t('dashboard.locked') : t('dashboard.active')}</h3>
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <div className="glass-panel p-5 border-none bg-white/30 dark:bg-slate-800/30">
-                                                <p className="text-[10px] uppercase font-bold text-slate-500 mb-2">{t('clinics.tableStatus')}</p>
-                                                <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider italic">{formatStatus(clinic.status)}</p>
-                                            </div>
-                                            <div className="glass-panel p-5 border-none bg-white/30 dark:bg-slate-800/30">
-                                                <p className="text-[10px] uppercase font-bold text-slate-500 mb-2">{t('clinics.plan')}</p>
-                                                <p className="text-sm font-black text-slate-900 dark:text-white tracking-widest">{clinic.license?.plan?.name || t('dashboard.notAvailable')}</p>
-                                            </div>
-                                            <div className="glass-panel p-5 border-none bg-white/30 dark:bg-slate-800/30">
-                                                <p className="text-[10px] uppercase font-bold text-slate-500 mb-2">{t('licenses.serial')}</p>
-                                                <p className="font-mono text-[10px] text-slate-500 bg-slate-100 dark:bg-slate-900 px-2 py-1 rounded inline-block">{clinic.license?.serial || t('dashboard.notAvailable')}</p>
-                                            </div>
-                                            <div className="glass-panel p-5 border-none bg-white/30 dark:bg-slate-800/30">
-                                                <p className="text-[10px] uppercase font-bold text-slate-500 mb-2">{t('dashboard.lastHeartbeat')}</p>
-                                                <p className="text-sm font-black text-emerald-500">{lastSyncDisplay || t('dashboard.notAvailable')}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="glass-card p-8 group relative overflow-hidden">
-                                    <div className="absolute top-0 left-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl -ml-16 -mt-16 group-hover:opacity-100 opacity-30 transition-opacity" />
-                                    <div className="relative z-10">
-                                        <div className="flex items-center justify-between mb-8">
-                                            <div className="flex items-center gap-4">
-                                                <div className="relative">
-                                                    <div className="absolute inset-0 bg-amber-500 rounded-2xl blur-xl opacity-30" />
-                                                    <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white shadow-2xl">
-                                                        <Zap size={28} />
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <p className="text-[10px] uppercase font-black tracking-[0.2em] text-slate-500">Core Engine</p>
-                                                    <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Active Modules</h3>
-                                                </div>
-                                            </div>
-                                            <span className="glass-badge glass-gradient-purple text-purple-700 dark:text-purple-300 font-black text-[10px] tracking-widest">VERIFIED</span>
-                                        </div>
-                                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-3">
-                                            {Object.entries(features).map(([key, enabled]) => {
-                                                const typedKey = key as keyof FeatureToggles;
-                                                return (
-                                                    <div
-                                                        key={key}
-                                                        className={`glass-panel px-4 py-3 border-none flex items-center justify-between transition-all hover:translate-y-[-2px] group/feat ${enabled ? 'bg-emerald-500/10' : 'bg-slate-100/50 dark:bg-slate-800/30'}`}
-                                                    >
-                                                        <span className={`text-[11px] font-black uppercase tracking-tight ${enabled ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-400'}`}>{featureLabels[typedKey]}</span>
-                                                        <div className={`w-2 h-2 rounded-full ${enabled ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-slate-300 dark:bg-slate-600'}`} />
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Limits Tab */}
-                    {activeTab === 'limits' && (
-                        <div className="glass-card p-8 animate-fadeIn">
-                            <div className="flex items-center justify-between mb-8">
-                                <div>
-                                    <h2 className="text-2xl font-black bg-gradient-to-r from-slate-900 via-primary-600 to-slate-900 dark:from-white dark:via-primary-300 dark:to-white bg-clip-text text-transparent uppercase tracking-tight">Resource Limits & Quotas</h2>
-                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">SmartClinic Management Console • v2.1.0</p>
-                                </div>
-                                <div className="flex items-center gap-2 glass-panel px-3 py-1.5 border-none bg-emerald-500/5 animate-pulse-soft">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                                    <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-tighter">Live Sync Active</span>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                                {/* Left Column: Interactive Controls */}
-                                <div className="space-y-10">
-                                    {/* Storage Limit Section */}
-                                    <div className="space-y-4">
-                                        <div className="flex justify-between items-end">
-                                            <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                                                <HardDrive size={14} className="text-primary-500" />
-                                                Storage Allocation
-                                            </label>
-                                            <span className="text-sm font-black text-slate-900 dark:text-white">{storageLimitInput >= 1024 ? `${(storageLimitInput / 1024).toFixed(1)} GB` : `${storageLimitInput} MB`}</span>
-                                        </div>
-
-                                        <input
-                                            type="range"
-                                            min="256"
-                                            max="51200"
-                                            step="256"
-                                            value={storageLimitInput}
-                                            onChange={(e) => setStorageLimitInput(parseInt(e.target.value))}
-                                            className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-primary-500"
-                                        />
-
-                                        <div className="grid grid-cols-4 gap-2">
-                                            {[1024, 5120, 10240, 20480].map(val => (
-                                                <button
-                                                    key={val}
-                                                    onClick={() => setStorageLimitInput(val)}
-                                                    className={`py-2 px-1 rounded-lg text-[9px] font-black uppercase transition-all ${storageLimitInput === val ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200'}`}
-                                                >
-                                                    {val >= 1024 ? `${val / 1024}GB` : `${val}MB`}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* Users Limit Section */}
-                                    <div className="space-y-4">
-                                        <div className="flex justify-between items-end">
-                                            <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                                                <UsersIcon size={14} className="text-primary-500" />
-                                                Seat Capacity
-                                            </label>
-                                            <span className="text-sm font-black text-slate-900 dark:text-white uppercase">{usersLimitInput} Operators</span>
-                                        </div>
-
-                                        <input
-                                            type="range"
-                                            min="1"
-                                            max="100"
-                                            step="1"
-                                            value={usersLimitInput}
-                                            onChange={(e) => setUsersLimitInput(parseInt(e.target.value))}
-                                            className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-primary-500"
-                                        />
-
-                                        <div className="grid grid-cols-4 gap-2">
-                                            {[3, 10, 25, 50].map(val => (
-                                                <button
-                                                    key={val}
-                                                    onClick={() => setUsersLimitInput(val)}
-                                                    className={`py-2 px-1 rounded-lg text-[9px] font-black uppercase transition-all ${usersLimitInput === val ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200'}`}
-                                                >
-                                                    {val} Seats
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* Patients Limit Section */}
-                                    <div className="space-y-4">
-                                        <div className="flex justify-between items-end">
-                                            <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                                                <TrendingUp size={14} className="text-primary-500" />
-                                                Patient Records
-                                            </label>
-                                            <span className="text-sm font-black text-slate-900 dark:text-white uppercase">
-                                                {patientsLimitInput === '' || patientsLimitInput === null ? 'Unlimited Access' : `${patientsLimitInput} Records`}
-                                            </span>
-                                        </div>
-
-                                        <div className="grid grid-cols-4 gap-2">
-                                            {[500, 1000, 5000, ''].map((val, idx) => (
-                                                <button
-                                                    key={idx}
-                                                    onClick={() => setPatientsLimitInput(val === '' ? '' : val.toString())}
-                                                    className={`py-3 px-1 rounded-lg text-[9px] font-black uppercase transition-all ${patientsLimitInput === (val === '' ? '' : val.toString()) ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200'}`}
-                                                >
-                                                    {val === '' ? 'Unlimited' : val}
-                                                </button>
-                                            ))}
-                                        </div>
-
-                                        <div className="relative group/input">
-                                            <input
-                                                type="number"
-                                                value={patientsLimitInput}
-                                                onChange={(e) => setPatientsLimitInput(e.target.value)}
-                                                placeholder="Custom Record Limit..."
-                                                className="glass-input w-full px-4 py-3 text-xs font-bold bg-white/50 border-none"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Right Column: Live Usage Visualization */}
-                                <div className="space-y-6">
-                                    {[
-                                        {
-                                            label: t('dashboard.storageUsed'),
-                                            used: storageUsed,
-                                            total: storageLimit,
-                                            percent: storagePercentage,
-                                            unit: 'MB',
-                                            color: 'from-purple-500 to-indigo-600'
-                                        },
-                                        {
-                                            label: t('dashboard.activeUsers'),
-                                            used: usersUsed,
-                                            total: usersLimit,
-                                            percent: usersPercentage,
-                                            unit: 'Seats',
-                                            color: 'from-blue-500 to-cyan-600'
-                                        },
-                                        {
-                                            label: t('dashboard.dataNodeStatus'),
-                                            used: patientsUsed,
-                                            total: patientsLimit,
-                                            percent: patientsPercentage,
-                                            unit: 'Records',
-                                            color: 'from-emerald-500 to-teal-600'
-                                        }
-                                    ].map((metric, i) => (
-                                        <div key={i} className="glass-panel p-6 border-none bg-slate-900/5 dark:bg-slate-100/5 overflow-hidden relative">
-                                            <div className="flex justify-between items-end mb-4 relative z-10">
-                                                <div>
-                                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{metric.label}</p>
-                                                    <p className="text-2xl font-black text-slate-900 dark:text-white leading-none">
-                                                        {formatNumber(metric.used)} <span className="text-sm font-bold opacity-50">{metric.unit}</span>
-                                                    </p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="text-xl font-black text-slate-900 dark:text-white leading-none">
-                                                        {metric.percent !== null ? `${metric.percent.toFixed(1)}%` : '--'}
-                                                    </p>
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase">of {formatNumber(metric.total) || '∞'}</p>
-                                                </div>
-                                            </div>
-
-                                            {/* Modern Progress Line */}
-                                            <div className="relative h-1.5 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                                                <div
-                                                    className={`absolute top-0 left-0 h-full bg-gradient-to-r ${metric.color} transition-all duration-1000 ease-out-expo`}
-                                                    style={{ width: `${Math.min(100, metric.percent || 0)}%` }}
-                                                />
-                                            </div>
-
-                                            {/* Animated Pulse Overlay */}
-                                            {metric.percent && metric.percent > 90 && (
-                                                <div className="absolute inset-0 bg-rose-500/5 animate-pulse pointer-events-none" />
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Save Button */}
-                            <div className="flex justify-end mt-10 pt-6 border-t border-slate-200 dark:border-slate-800">
-                                <button
-                                    onClick={handleSaveControls}
-                                    disabled={saving}
-                                    className="px-12 py-4 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black uppercase tracking-widest text-xs transition-all hover:scale-105 active:scale-95 shadow-2xl disabled:opacity-50 flex items-center gap-3"
-                                >
-                                    {saving ? (
-                                        <>
-                                            <Loader2 className="animate-spin" size={16} />
-                                            {t('controls.saving')}
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Save size={16} />
-                                            {t('common.save')}
-                                        </>
-                                    )}
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Features Tab */}
-                    {activeTab === 'features' && (
-                        <div className="glass-card p-8 animate-fadeIn">
-                            <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-900 via-purple-800 to-slate-900 dark:from-white dark:via-purple-300 dark:to-white bg-clip-text text-transparent mb-6">{t('dashboard.features')}</h2>
-
-                            <div className="space-y-6">
-                                {Object.entries(features).map(([key, enabled]) => (
-                                    <div
-                                        key={key}
-                                        className="glass-panel p-6 flex items-center justify-between hover:scale-102 transition-all group"
-                                    >
-                                        <div>
-                                            <h3 className="text-lg font-bold text-slate-900 dark:text-white capitalize flex items-center gap-2">
-                                                {key}
-                                                {enabled && <span className="glass-badge glass-gradient-emerald text-emerald-700 dark:text-emerald-300 text-xs">ACTIVE</span>}
-                                            </h3>
-                                            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                                                {key === 'patients' && 'Patient records and management'}
-                                                {key === 'appointments' && 'Appointment scheduling and calendar'}
-                                                {key === 'orthodontics' && 'Orthodontics treatment tracking'}
-                                                {key === 'xray' && 'X-ray imaging and analysis'}
-                                                {key === 'ai' && 'AI-powered features and insights'}
-                                            </p>
-                                        </div>
-                                        <button
-                                            onClick={() => setFeatures({ ...features, [key]: !enabled })}
-                                            className={`relative inline-flex h-10 w-20 items-center rounded-full transition-all duration-300 shadow-lg ${enabled ? 'bg-gradient-to-r from-emerald-500 to-teal-500' : 'bg-slate-300 dark:bg-slate-600'
-                                                }`}
-                                        >
-                                            <span
-                                                className={`inline-block h-8 w-8 transform rounded-full bg-white shadow-md transition-transform duration-300 ${enabled ? 'translate-x-11' : 'translate-x-1'
-                                                    }`}
-                                            />
-                                        </button>
-                                    </div>
-                                ))}
-
-                                {/* Save Button */}
-                                <div className="flex justify-end pt-4">
-                                    <button
-                                        onClick={handleSaveControls}
-                                        disabled={saving}
-                                        className="px-8 py-4 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold transition-all flex items-center gap-3 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:transform-none"
-                                    >
-                                        {saving ? (
-                                            <>
-                                                <Loader2 className="animate-spin" size={20} />
-                                                {t('controls.saving')}
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Save size={20} />
-                                                {t('common.save')}
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Security Tab */}
-                    {activeTab === 'security' && (
-                        <div className="glass-card p-8 animate-fadeIn">
-                            <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-900 via-purple-800 to-slate-900 dark:from-white dark:via-purple-300 dark:to-white bg-clip-text text-transparent mb-6">{t('dashboard.security')}</h2>
-
-                            <div className="space-y-6">
-                                {/* Lock Status */}
-                                <div className={`glass-card p-8 border-2 transition-all duration-500 ${controls.locked
-                                    ? 'border-rose-500/50 bg-rose-500/10'
-                                    : 'border-emerald-500/50 bg-emerald-500/10'
-                                    }`}>
-                                    <div className="flex items-center justify-between mb-4">
-                                        <div>
-                                            <h3 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-                                                {controls.locked ? <Lock size={28} className="text-rose-500" /> : <Unlock size={28} className="text-emerald-500" />}
-                                                {t('dashboard.accessControl')}
-                                            </h3>
-                                            <p className="text-sm text-slate-600 dark:text-slate-300 mt-2">
-                                                {controls.locked
-                                                    ? t('dashboard.lockMessage')
-                                                    : t('dashboard.clinicActiveDesc')}
-                                            </p>
-                                        </div>
-                                        <div className={`p-6 rounded-2xl ${controls.locked ? 'bg-gradient-to-br from-rose-500 to-pink-500' : 'bg-gradient-to-br from-emerald-500 to-teal-500'} text-white shadow-xl`}>
-                                            {controls.locked ? <Lock size={40} /> : <Unlock size={40} />}
-                                        </div>
-                                    </div>
-
-                                    {controls.lockReason && (
-                                        <div className="mt-6 glass-panel p-5">
-                                            <p className="text-xs uppercase tracking-wider font-bold text-slate-500 mb-2">{t('dashboard.lockReason')}:</p>
-                                            <p className="text-slate-800 dark:text-slate-200 font-medium">{controls.lockReason}</p>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Lock/Unlock Button */}
-                                <div className="flex justify-center pt-4">
-                                    <button
-                                        onClick={() => setShowLockConfirm(true)}
-                                        className={`px-10 py-5 rounded-2xl text-white font-bold transition-all flex items-center gap-3 shadow-xl hover:shadow-2xl transform hover:-translate-y-1 ${controls.locked
-                                            ? 'bg-gradient-to-r from-emerald-500 to-teal-600'
-                                            : 'bg-gradient-to-r from-rose-500 to-pink-600'
-                                            }`}
-                                    >
-                                        {controls.locked ? (
-                                            <>
-                                                <Unlock size={24} />
-                                                {t('dashboard.unlockClinic')}
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Lock size={24} />
-                                                {t('dashboard.lockClinic')}
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                <div>
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${clinic.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' :
+                            clinic.status === 'SUSPENDED' ? 'bg-rose-100 text-rose-800' :
+                                'bg-slate-100 text-slate-800'
+                        }`}>
+                        {clinic.status}
+                    </span>
                 </div>
             </div>
 
-            {/* Lock Confirmation Modal */}
-            {
-                showLockConfirm && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-md animate-fadeIn">
-                        <div className="glass-card p-10 max-w-lg w-full shadow-2xl animate-scaleUp">
-                            <div className="flex items-center gap-4 mb-6">
-                                <div className={`p-4 rounded-xl ${controls.locked ? 'bg-emerald-500' : 'bg-rose-500'} text-white shadow-lg`}>
-                                    {controls.locked ? <Unlock size={32} /> : <Lock size={32} />}
+            {/* Tabs */}
+            <div className="border-b border-slate-200 dark:border-slate-700 flex gap-6">
+                {[
+                    { id: 'overview', label: 'Overview', icon: Zap },
+                    { id: 'limits', label: 'Analysis & Limits', icon: HardDrive },
+                    { id: 'features', label: 'Features', icon: Settings },
+                    { id: 'security', label: 'Security', icon: Shield }
+                ].map(tab => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id as TabType)}
+                        className={`flex items-center gap-2 pb-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id
+                                ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
+                                : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                            }`}
+                    >
+                        <tab.icon size={16} />
+                        {tab.label}
+                    </button>
+                ))}
+            </div>
+
+            {/* Content */}
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 min-h-[400px] p-6">
+
+                {/* OVERVIEW */}
+                {activeTab === 'overview' && (
+                    <div className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {/* Metric Cards */}
+                            <div className="p-4 rounded border border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+                                <div className="flex items-center gap-3 mb-3">
+                                    <div className="p-2 bg-blue-100 text-blue-600 rounded"><HardDrive size={20} /></div>
+                                    <span className="font-semibold text-slate-700 dark:text-slate-300">Storage</span>
                                 </div>
-                                <div>
-                                    <h3 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
-                                        {controls.locked ? t('dashboard.unlockClinic') : t('dashboard.lockClinic')}
-                                    </h3>
-                                    <p className="text-slate-600 dark:text-slate-400 font-medium">{t('clinics.confirmSubtitle', { name: clinic.name })}</p>
+                                <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                                    {usage?.storageUsedMB ? usage.storageUsedMB.toFixed(1) : 0} MB
+                                </div>
+                                <div className="text-sm text-slate-500 mt-1">
+                                    of {formatNumber(usage?.storageLimitMB || controls.storageLimitMB)} MB
+                                </div>
+                                {/* Progress */}
+                                <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full mt-3 overflow-hidden">
+                                    <div
+                                        className="bg-blue-500 h-full"
+                                        style={{ width: `${Math.min(((usage?.storageUsedMB || 0) / (usage?.storageLimitMB || controls.storageLimitMB || 1)) * 100, 100)}%` }}
+                                    />
                                 </div>
                             </div>
 
-                            <p className="text-lg text-slate-700 dark:text-slate-300 mb-8 leading-relaxed">
-                                {controls.locked
-                                    ? t('dashboard.clinicActiveDesc')
-                                    : t('dashboard.lockMessage')}
-                            </p>
-
-                            {!controls.locked && (
-                                <div className="mb-8">
-                                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 ml-1">
-                                        {t('dashboard.lockReason')} <span className="text-rose-500">*</span>
-                                    </label>
-                                    <textarea
-                                        value={lockReason}
-                                        onChange={(e) => setLockReason(e.target.value)}
-                                        placeholder={t('dashboard.lockReason')}
-                                        className="glass-input w-full p-6 h-32 resize-none text-base"
-                                        required
+                            <div className="p-4 rounded border border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+                                <div className="flex items-center gap-3 mb-3">
+                                    <div className="p-2 bg-purple-100 text-purple-600 rounded"><UsersIcon size={20} /></div>
+                                    <span className="font-semibold text-slate-700 dark:text-slate-300">Users</span>
+                                </div>
+                                <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                                    {formatNumber(usage?.usersUsed)}
+                                </div>
+                                <div className="text-sm text-slate-500 mt-1">
+                                    of {formatNumber(usage?.usersLimit || controls.usersLimit)} Seats
+                                </div>
+                                <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full mt-3 overflow-hidden">
+                                    <div
+                                        className="bg-purple-500 h-full"
+                                        style={{ width: `${Math.min(((usage?.usersUsed || 0) / (usage?.usersLimit || controls.usersLimit || 1)) * 100, 100)}%` }}
                                     />
                                 </div>
-                            )}
+                            </div>
 
-                            <div className="flex gap-4">
-                                <button
-                                    onClick={() => {
-                                        setShowLockConfirm(false);
-                                        setLockReason('');
-                                    }}
-                                    className="flex-1 glass-button px-6 py-4 font-bold text-slate-700 dark:text-slate-200"
-                                >
-                                    {t('common.cancel')}
-                                </button>
-                                <button
-                                    onClick={handleToggleLock}
-                                    disabled={saving}
-                                    className={`flex-1 px-6 py-4 rounded-xl font-bold text-white shadow-lg transition-all transform hover:-translate-y-1 ${controls.locked
-                                        ? 'bg-gradient-to-r from-emerald-500 to-teal-500'
-                                        : 'bg-gradient-to-r from-rose-500 to-pink-500'
-                                        } disabled:opacity-50`}
-                                >
-                                    {saving ? <Loader2 className="animate-spin mx-auto" size={24} /> : (controls.locked ? t('dashboard.unlockClinic') : t('dashboard.lockClinic'))}
-                                </button>
+                            <div className="p-4 rounded border border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+                                <div className="flex items-center gap-3 mb-3">
+                                    <div className="p-2 bg-emerald-100 text-emerald-600 rounded"><TrendingUp size={20} /></div>
+                                    <span className="font-semibold text-slate-700 dark:text-slate-300">Patients</span>
+                                </div>
+                                <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                                    {formatNumber(usage?.patientsUsed)}
+                                </div>
+                                <div className="text-sm text-slate-500 mt-1">
+                                    Limit: {controls.patientsLimit ? formatNumber(controls.patientsLimit) : 'Unlimited'}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
+                            <h3 className="font-bold text-slate-900 dark:text-white mb-4">Clinic Information</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="flex justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded border border-slate-100 dark:border-slate-700">
+                                    <span className="text-slate-500 text-sm">Doctor Name</span>
+                                    <span className="font-medium text-slate-900 dark:text-white">{clinic.doctorName || '-'}</span>
+                                </div>
+                                <div className="flex justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded border border-slate-100 dark:border-slate-700">
+                                    <span className="text-slate-500 text-sm">System Version</span>
+                                    <span className="font-medium text-slate-900 dark:text-white">{clinic.systemVersion || 'Unknown'}</span>
+                                </div>
+                                <div className="flex justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded border border-slate-100 dark:border-slate-700">
+                                    <span className="text-slate-500 text-sm">Last Sync</span>
+                                    <span className="font-medium text-slate-900 dark:text-white">{usage?.lastSyncAt ? new Date(usage.lastSyncAt).toLocaleString() : 'Never'}</span>
+                                </div>
+                                <div className="flex justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded border border-slate-100 dark:border-slate-700">
+                                    <span className="text-slate-500 text-sm">Plan</span>
+                                    <span className="font-medium text-slate-900 dark:text-white">{clinic.license?.plan?.name || 'No Plan'}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
-                )
-            }
-        </div >
+                )}
+
+                {/* LIMITS - DEFINING RESOURCES */}
+                {activeTab === 'limits' && (
+                    <div className="max-w-3xl">
+                        <div className="mb-6">
+                            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Resource Allocation</h2>
+                            <p className="text-slate-500 text-sm">Define the limits and quotas for this clinic license.</p>
+                        </div>
+
+                        <div className="space-y-6">
+                            {/* Storage */}
+                            <div className="space-y-2">
+                                <label className="flex items-center justify-between text-sm font-medium text-slate-700 dark:text-slate-300">
+                                    <span>Storage Allocation (MB)</span>
+                                    <span className="text-blue-600 font-bold">{storageLimitInput} MB</span>
+                                </label>
+                                <input
+                                    type="range"
+                                    min="256"
+                                    max="51200"
+                                    step="256"
+                                    value={storageLimitInput}
+                                    onChange={(e) => setStorageLimitInput(parseInt(e.target.value))}
+                                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                                />
+                                <div className="flex gap-2">
+                                    {[1024, 5120, 10240, 20480].map(val => (
+                                        <button
+                                            key={val}
+                                            onClick={() => setStorageLimitInput(val)}
+                                            className="px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 rounded text-slate-600 dark:text-slate-300"
+                                        >
+                                            {val} MB
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Users */}
+                            <div className="space-y-2">
+                                <label className="flex items-center justify-between text-sm font-medium text-slate-700 dark:text-slate-300">
+                                    <span>Max Users/Seats</span>
+                                    <span className="text-purple-600 font-bold">{usersLimitInput} Users</span>
+                                </label>
+                                <input
+                                    type="range"
+                                    min="1"
+                                    max="100"
+                                    step="1"
+                                    value={usersLimitInput}
+                                    onChange={(e) => setUsersLimitInput(parseInt(e.target.value))}
+                                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                                />
+                            </div>
+
+                            {/* Patients */}
+                            <div className="space-y-2">
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                                    Max Patient Records
+                                </label>
+                                <div className="flex gap-3">
+                                    <input
+                                        type="number"
+                                        value={patientsLimitInput}
+                                        onChange={(e) => setPatientsLimitInput(e.target.value)}
+                                        placeholder="Leave empty for Unlimited"
+                                        className="flex-1 p-2 border border-slate-300 dark:border-slate-600 rounded bg-transparent"
+                                    />
+                                    <button
+                                        onClick={() => setPatientsLimitInput('')}
+                                        className="px-4 py-2 border border-slate-300 rounded hover:bg-slate-50"
+                                    >
+                                        Unlimited
+                                    </button>
+                                </div>
+                                <p className="text-xs text-slate-500">Number of patient files allowed. Empty means unlimited.</p>
+                            </div>
+
+                            <button
+                                onClick={handleSaveControls}
+                                disabled={saving}
+                                className="mt-6 px-6 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded font-medium flex items-center gap-2"
+                            >
+                                {saving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
+                                Save Limits
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* FEATURES */}
+                {activeTab === 'features' && (
+                    <div className="max-w-3xl">
+                        <div className="mb-6">
+                            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Feature Toggles</h2>
+                            <p className="text-slate-500 text-sm">Enable or disable specific modules for this clinic.</p>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {Object.entries(features).map(([key, enabled]) => (
+                                <div key={key} className={`p-4 rounded border ${enabled ? 'border-emerald-200 bg-emerald-50 dark:bg-emerald-900/10' : 'border-slate-200 bg-white dark:border-slate-700'}`}>
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="font-bold capitalize text-slate-800 dark:text-slate-200">{key}</span>
+                                        <button
+                                            onClick={() => setFeatures({ ...features, [key]: !enabled })}
+                                            className={`w-10 h-5 rounded-full relative transition-colors ${enabled ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                                        >
+                                            <span className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform ${enabled ? 'translate-x-5' : ''}`} />
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-slate-500">
+                                        {featureLabels[key]}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                        <button
+                            onClick={handleSaveControls}
+                            disabled={saving}
+                            className="mt-6 px-6 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded font-medium flex items-center gap-2"
+                        >
+                            {saving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
+                            Save Features
+                        </button>
+                    </div>
+                )}
+
+                {/* SECURITY */}
+                {activeTab === 'security' && (
+                    <div className="max-w-2xl">
+                        <div className={`p-6 rounded-lg border-2 ${controls.locked ? 'border-rose-200 bg-rose-50' : 'border-emerald-200 bg-emerald-50'} mb-6`}>
+                            <div className="flex items-center gap-4">
+                                <div className={`p-3 rounded-full ${controls.locked ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                                    {controls.locked ? <Lock size={32} /> : <Unlock size={32} />}
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-slate-900">
+                                        {controls.locked ? 'Clinic is Locked' : 'Clinic is Active'}
+                                    </h3>
+                                    <p className="text-slate-600 text-sm">
+                                        {controls.locked ? 'Access to this clinic is currently restricted.' : 'Authorized users can access the system.'}
+                                    </p>
+                                </div>
+                            </div>
+                            {controls.lockReason && (
+                                <div className="mt-4 p-3 bg-white/50 rounded text-sm text-rose-800">
+                                    <strong>Reason:</strong> {controls.lockReason}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex justify-center">
+                            <button
+                                onClick={() => setShowLockConfirm(true)}
+                                className={`px-6 py-3 rounded-lg font-bold text-white shadow-sm ${controls.locked ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'}`}
+                            >
+                                {controls.locked ? 'Unlock Clinic Access' : 'Lock Clinic Access'}
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+            {/* Lock Confirmation Modal */}
+            {showLockConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-lg max-w-md w-full shadow-2xl">
+                        <h3 className="text-xl font-bold mb-4 text-slate-900 dark:text-white">
+                            {controls.locked ? t('dashboard.unlockClinic') : t('dashboard.lockClinic')}
+                        </h3>
+                        <p className="text-slate-600 dark:text-slate-300 mb-6">
+                            {controls.locked ? "Are you sure you want to restore access?" : "This will prevent all users from accessing this clinic."}
+                        </p>
+
+                        {!controls.locked && (
+                            <div className="mb-6">
+                                <label className="block text-sm font-bold mb-2">Lock Reason</label>
+                                <textarea
+                                    className="w-full p-2 border rounded"
+                                    rows={3}
+                                    value={lockReason}
+                                    onChange={e => setLockReason(e.target.value)}
+                                    placeholder="Reason for locking..."
+                                />
+                            </div>
+                        )}
+
+                        <div className="flex gap-3 justify-end">
+                            <button
+                                onClick={() => setShowLockConfirm(false)}
+                                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleToggleLock}
+                                className="px-4 py-2 bg-slate-900 text-white rounded hover:bg-slate-800"
+                            >
+                                Confirm
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 };
 

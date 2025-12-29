@@ -1,8 +1,8 @@
+
 import React from 'react';
 import {
     CheckCircle2, XCircle, Clock, Ban, Mail, Phone, MapPin,
-    Calendar, Eye, Settings, Loader2, PlayCircle, Trash2, Crown,
-    TrendingUp, Building2, Sparkles
+    Calendar, Eye, Settings, Loader2, PlayCircle, Trash2, Crown
 } from 'lucide-react';
 import { Clinic, RegistrationStatus, ClinicSubscriptionStatus } from '../../types';
 
@@ -27,218 +27,143 @@ const ClinicCard: React.FC<ClinicCardProps> = ({
     processing,
     viewMode
 }) => {
-    const statusConfig = {
-        [RegistrationStatus.APPROVED]: {
-            badge: 'glass-gradient-emerald text-emerald-700 dark:text-emerald-300',
-            icon: CheckCircle2,
-            gradient: 'from-emerald-500 to-teal-500',
-            glow: 'rgba(16, 185, 129, 0.3)'
-        },
-        [RegistrationStatus.PENDING]: {
-            badge: 'glass-gradient-amber text-amber-700 dark:text-amber-300',
-            icon: Clock,
-            gradient: 'from-amber-500 to-orange-500',
-            glow: 'rgba(245, 158, 11, 0.3)'
-        },
-        [RegistrationStatus.SUSPENDED]: {
-            badge: 'glass-gradient-rose text-rose-700 dark:text-rose-300',
-            icon: Ban,
-            gradient: 'from-rose-500 to-pink-500',
-            glow: 'rgba(244, 63, 94, 0.3)'
-        },
-        [RegistrationStatus.REJECTED]: {
-            badge: 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400',
-            icon: XCircle,
-            gradient: 'from-slate-500 to-slate-600',
-            glow: 'rgba(100, 116, 139, 0.3)'
-        }
+    const statusColors = {
+        [RegistrationStatus.APPROVED]: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400',
+        [RegistrationStatus.PENDING]: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-400',
+        [RegistrationStatus.SUSPENDED]: 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-400',
+        [RegistrationStatus.REJECTED]: 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-400'
     };
 
-    const config = statusConfig[clinic.status];
-    const StatusIcon = config.icon;
-
     return (
-        <div className="glass-card p-6 group relative overflow-hidden animate-fadeIn">
-            {/* Animated Gradient Border on Hover */}
-            <div
-                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-                style={{
-                    background: `linear-gradient(135deg, ${config.glow}, transparent)`,
-                    zIndex: 0
-                }}
-            />
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
 
-            <div className="relative z-10">
-                <div className="flex items-start gap-4">
-                    {/* Left: Clinic Avatar with Gradient */}
-                    <div className="flex-shrink-0">
-                        <div className="relative group/avatar">
-                            {/* Glow Effect */}
-                            <div
-                                className={`absolute inset-0 rounded-xl bg-gradient-to-br ${config.gradient} blur-md opacity-50 group-hover/avatar:opacity-75 transition-opacity`}
-                            />
-
-                            {/* Avatar */}
-                            <div className={`relative w-16 h-16 rounded-xl bg-gradient-to-br ${config.gradient} flex items-center justify-center text-white text-2xl font-bold shadow-lg transform transition-transform group-hover/avatar:scale-110`}>
-                                {clinic.name ? clinic.name.charAt(0).toUpperCase() : <Building2 size={28} />}
-                            </div>
-                        </div>
+                {/* Info Section */}
+                <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                            {clinic.name || 'Unknown Clinic'}
+                        </h3>
+                        <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${statusColors[clinic.status]}`}>
+                            {clinic.status}
+                        </span>
                     </div>
 
-                    {/* Middle: Clinic Info */}
-                    <div className="flex-1 min-w-0">
-                        {/* Name & Status Badge */}
-                        <div className="flex items-center gap-3 mb-3 flex-wrap">
-                            <h3 className="text-xl font-bold text-slate-900 dark:text-white truncate group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
-                                {clinic.name || 'Unknown Clinic'}
-                            </h3>
-                            <span className={`glass-badge ${config.badge} flex items-center gap-1.5 px-3 py-1`}>
-                                <StatusIcon size={14} strokeWidth={2.5} />
-                                <span className="font-semibold text-xs uppercase tracking-wide">
-                                    {clinic.status}
+                    <div className="text-sm text-slate-500 dark:text-slate-400 space-y-1">
+                        <div className="flex flex-wrap gap-4">
+                            <span className="flex items-center gap-1">
+                                <Mail size={14} /> {clinic.email || 'No email'}
+                            </span>
+                            {clinic.phone && (
+                                <span className="flex items-center gap-1">
+                                    <Phone size={14} /> {clinic.phone}
                                 </span>
+                            )}
+                            {clinic.address && (
+                                <span className="flex items-center gap-1">
+                                    <MapPin size={14} /> {clinic.address}
+                                </span>
+                            )}
+                            <span className="flex items-center gap-1">
+                                <Calendar size={14} /> {new Date(clinic.createdAt).toLocaleDateString()}
                             </span>
                         </div>
-
-                        {/* Contact Info Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
-                            {/* Email */}
-                            <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 group/item">
-                                <div className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 group-hover/item:bg-purple-100 dark:group-hover/item:bg-purple-900/30 transition-colors">
-                                    <Mail size={14} className="text-slate-500 group-hover/item:text-purple-600 transition-colors" />
-                                </div>
-                                <span className="truncate">{clinic.email || 'No email'}</span>
-                            </div>
-
-                            {/* Phone */}
-                            {clinic.phone && (
-                                <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 group/item">
-                                    <div className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 group-hover/item:bg-purple-100 dark:group-hover/item:bg-purple-900/30 transition-colors">
-                                        <Phone size={14} className="text-slate-500 group-hover/item:text-purple-600 transition-colors" />
-                                    </div>
-                                    <span>{clinic.phone}</span>
-                                </div>
-                            )}
-
-                            {/* Address */}
-                            {clinic.address && (
-                                <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 group/item">
-                                    <div className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 group-hover/item:bg-purple-100 dark:group-hover/item:bg-purple-900/30 transition-colors">
-                                        <MapPin size={14} className="text-slate-500 group-hover/item:text-purple-600 transition-colors" />
-                                    </div>
-                                    <span className="truncate">{clinic.address}</span>
-                                </div>
-                            )}
-
-                            {/* Registration Date */}
-                            <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 group/item">
-                                <div className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 group-hover/item:bg-purple-100 dark:group-hover/item:bg-purple-900/30 transition-colors">
-                                    <Calendar size={14} className="text-slate-500 group-hover/item:text-purple-600 transition-colors" />
-                                </div>
-                                <span>{new Date(clinic.createdAt).toLocaleDateString()}</span>
-                            </div>
-                        </div>
-
-                        {/* Subscription Info */}
-                        {subscription && clinic.status === RegistrationStatus.APPROVED && (
-                            <div className="glass-panel px-3 py-2 flex flex-wrap items-center gap-3 text-sm">
-                                <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-primary-500/10 text-primary-700 dark:text-primary-300">
-                                    <Crown size={14} className="animate-bounce" />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">{subscription.license.plan.name}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className={`w-2 h-2 rounded-full ${subscription.isActive ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
-                                    <span className={subscription.isActive ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-rose-600 dark:text-rose-400 font-semibold'}>
-                                        {subscription.isActive ? 'Active' : 'Inactive'}
-                                    </span>
-                                </div>
-                                {subscription.expiresAt && (
-                                    <span className="text-slate-600 dark:text-slate-400">
-                                        Expires: {new Date(subscription.expiresAt).toLocaleDateString()}
-                                    </span>
-                                )}
-                            </div>
-                        )}
                     </div>
 
-                    {/* Right: Action Buttons */}
-                    <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
-                        {/* View Details Button */}
-                        <button
-                            onClick={() => onSelect(clinic)}
-                            className="glass-button p-3 text-slate-600 dark:text-slate-300 hover:bg-slate-800 dark:hover:bg-slate-100 hover:text-white dark:hover:text-slate-900 border-transparent transition-all"
-                            title="View Discovery"
-                        >
-                            <Eye size={18} />
-                        </button>
-
-                        {/* Controls Button (for approved clinics) */}
-                        {clinic.status === RegistrationStatus.APPROVED && (
-                            <button
-                                onClick={onControls}
-                                className="glass-button p-3 text-primary-600 dark:text-primary-400 hover:bg-primary-500 hover:text-white border-transparent transition-all group/controls"
-                                title="Manage Controls"
-                            >
-                                <Settings size={18} className="group-hover/controls:rotate-90 transition-transform duration-300" />
-                            </button>
-                        )}
-
-                        {/* Status-specific Action Buttons */}
-                        {viewMode === 'requests' && clinic.status === RegistrationStatus.PENDING && (
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => onAction('approve')}
-                                    disabled={processing}
-                                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-medium transition-all disabled:opacity-50 flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                                >
-                                    {processing ? <Loader2 className="animate-spin" size={16} /> : <CheckCircle2 size={16} />}
-                                    Approve
-                                </button>
-                                <button
-                                    onClick={() => onAction('reject')}
-                                    disabled={processing}
-                                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white font-medium transition-all disabled:opacity-50 flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                                >
-                                    {processing ? <Loader2 className="animate-spin" size={16} /> : <XCircle size={16} />}
-                                    Reject
-                                </button>
+                    {/* Resources / Subscription Info */}
+                    {subscription && clinic.status === RegistrationStatus.APPROVED && (
+                        <div className="mt-3 flex items-center gap-4 text-sm bg-slate-50 dark:bg-slate-900/50 p-2 rounded border border-slate-100 dark:border-slate-800">
+                            <div className="flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300">
+                                <Crown size={14} className="text-amber-500" />
+                                {subscription.license?.plan?.name || 'No Plan'}
                             </div>
-                        )}
+                            <div className="text-slate-500">
+                                {subscription.license?.activationCount || 0} / {subscription.license?.deviceLimit || 0} Devices
+                            </div>
+                            {subscription.remainingDays !== undefined && (
+                                <div className={`${subscription.remainingDays < 30 ? 'text-rose-500' : 'text-emerald-600'} font-medium`}>
+                                    {subscription.remainingDays} days remaining
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
 
-                        {viewMode === 'manage' && clinic.status === RegistrationStatus.APPROVED && (
+                {/* Actions Section */}
+                <div className="flex items-center gap-2 mt-4 md:mt-0">
+                    <button
+                        onClick={() => onSelect(clinic)}
+                        className="p-2 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition-colors"
+                        title="View Details"
+                    >
+                        <Eye size={18} />
+                    </button>
+
+                    {clinic.status === RegistrationStatus.APPROVED && (
+                        <button
+                            onClick={onControls}
+                            className="p-2 text-emerald-600 hover:text-emerald-700 transition-colors"
+                            title="Manage Controls"
+                        >
+                            <Settings size={18} />
+                        </button>
+                    )}
+
+                    {viewMode === 'requests' && clinic.status === RegistrationStatus.PENDING && (
+                        <>
                             <button
-                                onClick={() => onAction('suspend')}
+                                onClick={() => onAction('approve')}
                                 disabled={processing}
-                                className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-medium transition-all disabled:opacity-50 flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded transition-colors flex items-center gap-1"
                             >
-                                {processing ? <Loader2 className="animate-spin" size={16} /> : <Ban size={16} />}
-                                Suspend
+                                {processing ? <Loader2 className="animate-spin" size={14} /> : <CheckCircle2 size={14} />}
+                                Approve
                             </button>
-                        )}
-
-                        {viewMode === 'manage' && clinic.status === RegistrationStatus.SUSPENDED && (
                             <button
-                                onClick={() => onAction('reactivate')}
+                                onClick={() => onAction('reject')}
                                 disabled={processing}
-                                className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-medium transition-all disabled:opacity-50 flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                                className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium rounded transition-colors flex items-center gap-1"
                             >
-                                {processing ? <Loader2 className="animate-spin" size={16} /> : <PlayCircle size={16} />}
-                                Reactivate
+                                {processing ? <Loader2 className="animate-spin" size={14} /> : <XCircle size={14} />}
+                                Reject
                             </button>
-                        )}
+                        </>
+                    )}
 
-                        {/* Delete Button (danger zone) */}
-                        {viewMode === 'manage' && (
+                    {viewMode === 'manage' && (
+                        <>
+                            {clinic.status === RegistrationStatus.APPROVED && (
+                                <button
+                                    onClick={() => onAction('suspend')}
+                                    disabled={processing}
+                                    className="p-2 text-amber-600 hover:text-amber-700 transition-colors"
+                                    title="Suspend"
+                                >
+                                    {processing ? <Loader2 className="animate-spin" size={18} /> : <Ban size={18} />}
+                                </button>
+                            )}
+
+                            {clinic.status === RegistrationStatus.SUSPENDED && (
+                                <button
+                                    onClick={() => onAction('reactivate')}
+                                    disabled={processing}
+                                    className="p-2 text-emerald-600 hover:text-emerald-700 transition-colors"
+                                    title="Reactivate"
+                                >
+                                    {processing ? <Loader2 className="animate-spin" size={18} /> : <PlayCircle size={18} />}
+                                </button>
+                            )}
+
                             <button
                                 onClick={() => onAction('delete')}
                                 disabled={processing}
-                                className="glass-button p-2.5 bg-rose-50 dark:bg-rose-900/30 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 transition-all disabled:opacity-50"
-                                title="Delete Clinic"
+                                className="p-2 text-rose-500 hover:text-rose-700 transition-colors"
+                                title="Delete"
                             >
                                 <Trash2 size={18} />
                             </button>
-                        )}
-                    </div>
+                        </>
+                    )}
                 </div>
             </div>
         </div>

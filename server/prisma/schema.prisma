@@ -37,7 +37,7 @@ model ClinicControl {
   storageLimitMB   Int      @default(1024)
   usersLimit       Int      @default(3)
   patientsLimit    Int?
-  features         Json     @default("{\"patients\":true,\"appointments\":true,\"orthodontics\":false,\"xray\":false,\"ai\":false}")
+  features         Json     @default("{\"appointments\":true,\"patients\":true,\"dentalChart\":true,\"billing\":true,\"reports\":true,\"support\":true}")
   locked           Boolean  @default(false)
   lockReason       String?
   createdAt        DateTime @default(now())

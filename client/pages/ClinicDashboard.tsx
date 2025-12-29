@@ -1,23 +1,23 @@
+
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Stethoscope, ShieldCheck, Clock, CheckCircle2, RefreshCw, Zap, Radio, Building2, ExternalLink, ChevronRight, Activity } from 'lucide-react';
+import { Building2, CheckCircle2, Clock, ShieldAlert, Activity, Users, Smartphone, Calendar } from 'lucide-react';
 import { api } from '../services/api';
-import { Clinic, RegistrationStatus } from '../types';
+import { Clinic, RegistrationStatus, LicenseStatus } from '../types';
 import { useTranslation } from '../hooks/useTranslation';
 
 interface Props {
   setPage: (page: string) => void;
 }
 
-const DashboardStat = ({ label, value, icon: Icon, colorClass, delay }: { label: string; value: string | number; icon: any; colorClass: string; delay: number }) => (
-  <div className="glass-stat-card group relative animate-scaleUp" style={{ animationDelay: `${delay}ms` }}>
-    <div className="relative z-10">
-      <div className={`w-12 h-12 rounded-xl mb-4 flex items-center justify-center transition-all bg-slate-100 dark:bg-slate-800 ${colorClass}`}>
-        <Icon size={24} />
-      </div>
-      <p className="text-[10px] uppercase font-black tracking-widest text-slate-500 mb-1">{label}</p>
-      <p className="text-3xl font-black text-slate-900 dark:text-white leading-none">{value}</p>
+const StatCard = ({ label, value, icon: Icon, color }: { label: string; value: number; icon: any; color: string }) => (
+  <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center gap-4 shadow-sm">
+    <div className={`p-3 rounded-md ${color} bg-opacity-10 dark:bg-opacity-20`}>
+      <Icon size={24} className={color.replace('bg-', 'text-')} />
     </div>
-    <div className={`absolute top-0 right-0 w-24 h-24 blur-3xl rounded-full -mr-12 -mt-12 opacity-0 group-hover:opacity-20 transition-opacity ${colorClass.split(' ')[0]}`} />
+    <div>
+      <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{label}</p>
+      <p className="text-2xl font-bold text-slate-900 dark:text-white">{value}</p>
+    </div>
   </div>
 );
 
@@ -25,224 +25,177 @@ const ClinicDashboard: React.FC<Props> = ({ setPage }) => {
   const { t } = useTranslation();
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-
-  const refreshIntervalMs = 30000;
 
   const load = useCallback(async () => {
-    setRefreshing(true);
+    setLoading(true);
     try {
       const data = await api.getClinics();
       setClinics(data);
-      setLastUpdated(new Date());
     } catch (e) {
       console.error('Failed to load clinics', e);
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
-    setLoading(true);
     load();
-    const timer = setInterval(load, refreshIntervalMs);
-    return () => clearInterval(timer);
   }, [load]);
 
-  const statusCounts = clinics.reduce<Record<RegistrationStatus, number>>((acc, c) => {
-    acc[c.status] = (acc[c.status] || 0) + 1;
-    return acc;
-  }, {
-    [RegistrationStatus.APPROVED]: 0,
-    [RegistrationStatus.PENDING]: 0,
-    [RegistrationStatus.SUSPENDED]: 0,
-    [RegistrationStatus.REJECTED]: 0
-  });
+  const statusCounts = useMemo(() => {
+    const counts = {
+      [RegistrationStatus.APPROVED]: 0,
+      [RegistrationStatus.PENDING]: 0,
+      [RegistrationStatus.SUSPENDED]: 0,
+      [RegistrationStatus.REJECTED]: 0
+    };
+    clinics.forEach(c => {
+      if (counts[c.status] !== undefined) counts[c.status]++;
+    });
+    return counts;
+  }, [clinics]);
 
-  const pending = useMemo(
-    () => clinics.filter(c => c.status === RegistrationStatus.PENDING).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')),
-    [clinics]
-  );
+  const recentClinics = useMemo(() => {
+    // Show active clinics first, or just recent ones?
+    // User wants "defining resources", so let's show a robust list of clinics with their resources.
+    return clinics.slice(0, 10); // Show top 10 for now
+  }, [clinics]);
 
   if (loading) {
     return (
-      <div className="clinic-bg-gradient flex flex-col items-center justify-center min-h-screen">
-        <div className="glass-modal p-10 text-center relative overflow-hidden group">
-          <div className="absolute inset-0 bg-primary-500/5 animate-pulse" />
-          <RefreshCw className="animate-spin text-primary-500 mx-auto mb-6 relative z-10" size={64} />
-          <p className="text-slate-900 dark:text-white text-xl font-black uppercase tracking-widest relative z-10">{t('common.loading')}</p>
-          <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold mt-2 uppercase tracking-[0.2em] relative z-10">Syncing Global Topology...</p>
-        </div>
+      <div className="p-8 text-center">
+        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+        <p className="mt-2 text-slate-500">Loading...</p>
       </div>
     );
   }
 
   return (
-    <div className="clinic-bg-gradient min-h-screen py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto space-y-8 animate-fadeIn">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Clinic Overview</h1>
+        <button
+          onClick={load}
+          className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 text-sm font-medium"
+        >
+          Refresh Data
+        </button>
+      </div>
 
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <div className="w-1.5 h-1.5 rounded-full bg-primary-500 animate-pulse" />
-              <span className="text-[10px] font-black text-primary-500 uppercase tracking-[0.4em]">SmartClinic Node Telemetry</span>
-            </div>
-            <h1 className="text-5xl font-black text-slate-900 dark:text-white uppercase tracking-tighter leading-none">
-              Control <span className="text-primary-500">Center</span>
-            </h1>
-            <p className="text-slate-500 dark:text-slate-400 font-bold text-sm tracking-tight opacity-70">Infrastructure Pulse • v{clinics.length}.0.4</p>
-          </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          label="Total Clinics"
+          value={clinics.length}
+          icon={Building2}
+          color="text-blue-600"
+        />
+        <StatCard
+          label="Active"
+          value={statusCounts[RegistrationStatus.APPROVED]}
+          icon={CheckCircle2}
+          color="text-emerald-600"
+        />
+        <StatCard
+          label="Pending"
+          value={statusCounts[RegistrationStatus.PENDING]}
+          icon={Clock}
+          color="text-amber-500"
+        />
+        <StatCard
+          label="Suspended"
+          value={statusCounts[RegistrationStatus.SUSPENDED]}
+          icon={ShieldAlert}
+          color="text-rose-600"
+        />
+      </div>
 
-          <div className="flex items-center gap-4">
-            <div className="text-right hidden sm:block">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Last Data Ingest</p>
-              <p className="text-xs font-mono font-bold text-slate-700 dark:text-white">
-                {lastUpdated ? lastUpdated.toLocaleTimeString() : '--:--:--'}
-              </p>
-            </div>
-            <button
-              onClick={load}
-              disabled={refreshing}
-              className="glass-button p-4 hover:scale-105 active:scale-95 transition-all group"
-            >
-              <RefreshCw size={22} className={`text-primary-500 ${refreshing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
-            </button>
-          </div>
+      {/* Resource Overview Table */}
+      <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">Resource Allocation & Status</h2>
+          <button onClick={() => setPage('clinics')} className="text-sm text-emerald-600 hover:text-emerald-700 font-medium">
+            View All
+          </button>
         </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 font-medium border-b border-slate-200 dark:border-slate-700">
+              <tr>
+                <th className="px-6 py-3">Clinic Name</th>
+                <th className="px-6 py-3">Status</th>
+                <th className="px-6 py-3">Plan / Resources</th>
+                <th className="px-6 py-3">Device Usage</th>
+                <th className="px-6 py-3">Doctor</th>
+                <th className="px-6 py-3 text-right">Expiry</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+              {recentClinics.map((clinic) => {
+                const planName = clinic.license?.plan?.name || 'No Plan';
+                const deviceLimit = clinic.license?.deviceLimit || 0;
+                const usedDevices = clinic.license?.activationCount || 0;
+                const expiry = clinic.license?.expireDate;
 
-        {/* Global Statistics Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <DashboardStat
-            label="Total Nodes"
-            value={clinics.length}
-            icon={Building2}
-            colorClass="text-blue-500 bg-blue-500/10"
-            delay={100}
-          />
-          <DashboardStat
-            label="Live Provisioning"
-            value={statusCounts[RegistrationStatus.APPROVED]}
-            icon={CheckCircle2}
-            colorClass="text-emerald-500 bg-emerald-500/10"
-            delay={200}
-          />
-          <DashboardStat
-            label="Pending Inbound"
-            value={statusCounts[RegistrationStatus.PENDING]}
-            icon={Clock}
-            colorClass="text-amber-500 bg-amber-500/10"
-            delay={300}
-          />
-          <DashboardStat
-            label="Security Lockdown"
-            value={statusCounts[RegistrationStatus.SUSPENDED]}
-            icon={ShieldCheck}
-            colorClass="text-rose-500 bg-rose-500/10"
-            delay={400}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column: Alerts & Monitoring */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Urgent Alerts Section */}
-            <div className="glass-card overflow-hidden">
-              <div className="p-6 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
-                <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-3">
-                  <Radio size={16} className="text-primary-500 animate-pulse" />
-                  Active Infrastructure Pulse
-                </h3>
-                <button onClick={() => setPage('clinics')} className="text-[10px] font-black text-primary-500 hover:text-primary-600 transition-colors uppercase flex items-center gap-1">
-                  Operational Map <ExternalLink size={10} />
-                </button>
-              </div>
-              <div className="p-10 text-center space-y-4">
-                <div className="relative inline-block">
-                  <div className="absolute inset-0 bg-primary-500/10 blur-3xl rounded-full" />
-                  <Activity size={80} className="text-slate-200 dark:text-slate-800 relative z-10" />
-                </div>
-                <div>
-                  <p className="text-slate-900 dark:text-white font-black uppercase tracking-tight text-xl">System Analytics Active</p>
-                  <p className="text-slate-500 font-bold text-xs uppercase tracking-widest mt-1">Monitoring {clinics.length} Global Discovery Nodes</p>
-                </div>
-                <button
-                  onClick={() => setPage('clinics')}
-                  className="glass-button px-6 py-3 text-xs font-black uppercase tracking-widest hover:bg-primary-500 hover:text-white transition-all"
-                >
-                  Open Management Console
-                </button>
-              </div>
-            </div>
-
-            {/* Registration Feed */}
-            <div className="glass-card overflow-hidden">
-              <div className="p-6 border-b border-white/10 flex items-center justify-between">
-                <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">Inbound Queue</h3>
-                <span className="glass-badge py-1 px-3 text-[10px]">{pending.length} Awaiting</span>
-              </div>
-              <div className="divide-y divide-white/5">
-                {pending.length > 0 ? pending.slice(0, 4).map(clinic => (
-                  <div key={clinic.id} className="p-6 flex items-center justify-between hover:bg-white/[0.03] transition-colors group">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-black text-slate-500 group-hover:scale-110 transition-transform">
-                        {clinic.name.charAt(0)}
+                return (
+                  <tr key={clinic.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                    <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">
+                      {clinic.name}
+                      <div className="text-xs text-slate-500 font-normal">{clinic.email}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                        ${clinic.status === RegistrationStatus.APPROVED ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400' : ''}
+                        ${clinic.status === RegistrationStatus.PENDING ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400' : ''}
+                        ${clinic.status === RegistrationStatus.SUSPENDED ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400' : ''}
+                        ${clinic.status === RegistrationStatus.REJECTED ? 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-400' : ''}
+                      `}>
+                        {clinic.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <Activity size={16} className="text-slate-400" />
+                        <span className="text-slate-700 dark:text-slate-300">{planName}</span>
                       </div>
-                      <div>
-                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase leading-none mb-1">{clinic.name}</p>
-                        <p className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-2">
-                          <Clock size={10} />
-                          {clinic.createdAt ? new Date(clinic.createdAt).toLocaleDateString() : 'Sync Pending'}
-                        </p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                        <Smartphone size={16} />
+                        <span>{usedDevices} / {deviceLimit}</span>
                       </div>
-                    </div>
-                    <button onClick={() => setPage('clinics')} className="p-2 text-primary-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <ChevronRight size={20} />
-                    </button>
-                  </div>
-                )) : (
-                  <div className="p-12 text-center text-slate-500 font-bold text-xs uppercase tracking-widest">Queue Clear • No Pending Actions</div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column: System Status */}
-          <div className="space-y-8">
-            <div className="glass-card p-8 bg-gradient-to-br from-primary-500 to-primary-600 text-white border-none shadow-2xl relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 blur-3xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700" />
-              <div className="relative z-10">
-                <Stethoscope size={40} className="mb-6 opacity-80" />
-                <h2 className="text-2xl font-black uppercase tracking-tighter mb-2">SmartClinic<br />Infrastructure</h2>
-                <p className="text-xs font-bold opacity-80 uppercase tracking-widest mb-6 leading-relaxed">Enterprise management and global provisioning system active.</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em]">{t('dashboard.active')}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="glass-card p-6 space-y-6">
-              <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest border-b border-white/10 pb-4">Security Protocol</h3>
-              <div className="space-y-4">
-                {[
-                  { label: 'Uplink Encryption', status: 'AES-256', icon: ShieldCheck, color: 'text-emerald-500' },
-                  { label: 'Node Isolation', status: 'Enabled', icon: Zap, color: 'text-primary-500' },
-                  { label: 'Latency Check', status: '12ms', icon: Activity, color: 'text-blue-500' }
-                ].map((item, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <item.icon size={16} className={item.color} />
-                      <span className="text-xs font-bold text-slate-600 dark:text-slate-400">{item.label}</span>
-                    </div>
-                    <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase">{item.status}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+                      {deviceLimit > 0 && (
+                        <div className="w-24 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full mt-1.5 overflow-hidden">
+                          <div
+                            className="h-full bg-emerald-500 rounded-full"
+                            style={{ width: `${Math.min((usedDevices / deviceLimit) * 100, 100)}%` }}
+                          />
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-slate-600 dark:text-slate-400">
+                      {clinic.doctorName || '-'}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      {expiry ? (
+                        <div className={`text-xs font-bold ${new Date(expiry) < new Date() ? 'text-rose-500' : 'text-slate-600 dark:text-slate-400'}`}>
+                          {new Date(expiry).toLocaleDateString()}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-400">-</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+              {recentClinics.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                    No clinics found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

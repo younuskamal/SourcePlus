@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Layout from './components/Layout';
+import ClinicLayout from './components/ClinicLayout';
 import Dashboard from './pages/Dashboard';
 import Licenses from './pages/Licenses';
 import Plans from './pages/Plans';
@@ -194,9 +195,11 @@ function AppContent() {
         : <Dashboard currentLang={i18n.language} setPage={setPage} />;
     }
   };
+  const CurrentLayout = product === 'CLINIC' ? ClinicLayout : Layout;
+
   return (
     <AutoRefreshProvider tick={refreshTick} requestRefresh={requestRefresh}>
-      <Layout
+      <CurrentLayout
         currentPage={currentPage}
         setPage={setPage}
         user={user}
@@ -208,7 +211,7 @@ function AppContent() {
         setDarkMode={setDarkMode}
       >
         {renderPage()}
-      </Layout>
+      </CurrentLayout>
     </AutoRefreshProvider>
   );
 }
