@@ -16,11 +16,12 @@ import { Building2, CheckCircle2, Clock, Ban, Loader2, RefreshCw } from 'lucide-
 
 interface ClinicsProps {
     viewMode: 'requests' | 'manage';
+    setPage: (page: string) => void;
 }
 
 type ActionType = 'approve' | 'reject' | 'suspend' | 'reactivate' | 'delete';
 
-const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
+const Clinics: React.FC<ClinicsProps> = ({ viewMode, setPage }) => {
     const { t } = useTranslation();
 
     // State
@@ -211,7 +212,7 @@ const Clinics: React.FC<ClinicsProps> = ({ viewMode }) => {
                             subscription={subscriptions[clinic.id]}
                             onSelect={setSelectedClinic}
                             onAction={(type) => setConfirmAction({ type, clinic })}
-                            onControls={() => setControlsModal(clinic)}
+                            onControls={() => setPage(`manage-clinics/${clinic.id}`)}
                             processing={processing === clinic.id}
                             viewMode={viewMode}
                         />

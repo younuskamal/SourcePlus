@@ -17,6 +17,7 @@ import Login from './pages/Login';
 import Clinics from './pages/Clinics';
 import ClinicDashboard from './pages/ClinicDashboard';
 import SupportMessages from './pages/SupportMessages';
+import ClinicControlPanel from './pages/ClinicControlPanel';
 import { useTranslation } from './hooks/useTranslation';
 import { User } from './types';
 import { api } from './services/api';
@@ -169,8 +170,13 @@ function AppContent() {
       }
     }
 
-    if (['clinic-dashboard', 'clinics', 'manage-clinics', 'support-messages'].includes(currentPage) && user.role !== 'admin') {
+    if (['clinic-dashboard', 'clinics', 'manage-clinics', 'support-messages'].some(p => currentPage.startsWith(p)) && user.role !== 'admin') {
       return <div className="p-8 text-center text-slate-500 dark:text-slate-400">Access Restricted</div>;
+    }
+
+    if (currentPage.startsWith('manage-clinics/')) {
+      const clinicId = currentPage.split('/')[1];
+      return <ClinicControlPanel clinicId={clinicId} setPage={setPage} />;
     }
 
     switch (currentPage) {
@@ -187,8 +193,8 @@ function AppContent() {
       case 'team': return <Team currentLang={i18n.language} />;
       case 'api': return <ApiDocs currentLang={i18n.language} />;
       case 'audit-logs': return <AuditLogs currentLang={i18n.language} />;
-      case 'clinics': return <Clinics viewMode="requests" />;
-      case 'manage-clinics': return <Clinics viewMode="manage" />;
+      case 'clinics': return <Clinics viewMode="requests" setPage={setPage} />;
+      case 'manage-clinics': return <Clinics viewMode="manage" setPage={setPage} />;
       case 'support-messages': return <SupportMessages />;
       default: return product === 'CLINIC'
         ? <ClinicDashboard setPage={setPage} />
