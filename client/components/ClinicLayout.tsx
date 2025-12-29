@@ -9,7 +9,11 @@ import {
     Moon,
     Sun,
     Stethoscope,
-    MessageSquare
+    MessageSquare,
+    Users,
+    Settings,
+    FileText,
+    Activity
 } from 'lucide-react';
 import { useTranslation } from '../hooks/useTranslation';
 import { User } from '../types';
@@ -43,6 +47,10 @@ const ClinicLayout: React.FC<LayoutProps> = ({
         { id: 'clinics', label: t('nav.clinics'), icon: Stethoscope, allowedRoles: ['admin', 'developer'] },
         { id: 'manage-clinics', label: t('nav.manageClinics'), icon: LayoutDashboard, allowedRoles: ['admin'] },
         { id: 'support-messages', label: t('nav.supportMessages'), icon: MessageSquare, allowedRoles: ['admin'] },
+        // Added sections based on user request
+        { id: 'team', label: t('nav.team'), icon: Users, allowedRoles: ['admin'] },
+        { id: 'config', label: t('nav.settings'), icon: Settings, allowedRoles: ['admin'] },
+        { id: 'audit-logs', label: t('nav.auditLogs'), icon: FileText, allowedRoles: ['admin'] },
         { id: 'api', label: t('nav.apiDocs'), icon: Code2, allowedRoles: ['admin', 'developer'] },
     ];
 
