@@ -21,6 +21,7 @@ import { api } from './services/api';
 import { AutoRefreshProvider } from './hooks/useAutoRefresh';
 import { SystemProvider, useSystem } from './context/SystemContext';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { useTranslation } from './hooks/useTranslation';
 import ClinicControlPanel from './pages/ClinicControlPanel';
 import ClinicDetails from './pages/ClinicDetails';
 
