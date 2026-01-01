@@ -1,624 +1,721 @@
-
-import React, { useState, useEffect, useMemo } from 'react';
-import { api } from '../services/api';
-import { Clinic, SubscriptionPlan, AuditLog, User } from '../types';
-import { useTranslation } from '../hooks/useTranslation';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
-    ArrowLeft,
-    Building2,
+    Activity,
+    Shield,
+    Zap,
     HardDrive,
     Users as UsersIcon,
-    Zap,
     Lock,
     Unlock,
     Save,
-    Loader2,
-    CheckCircle,
-    XCircle,
-    Shield,
-    TrendingUp,
-    Settings,
-    AlertTriangle,
-    Mail,
-    CreditCard,
-    Calendar,
-    Clock,
-    Activity,
-    FileText,
-    History,
-    MoreVertical,
-    RefreshCw,
-    Database,
-    ShieldCheck,
+    RefreshCcw,
+    ChevronLeft,
+    LayoutDashboard,
     Cpu,
-    Smartphone
+    Network,
+    Clock,
+    Bell,
+    CheckCircle2,
+    AlertCircle,
+    Server,
+    Globe,
+    FileText,
+    Calendar,
+    Stethoscope,
+    Dna,
+    Image as ImageIcon,
+    Bot,
+    ChevronRight,
+    Loader2
 } from 'lucide-react';
+import api from '../services/api';
+import { useTranslation } from '../hooks/useTranslation';
 
-interface ControlsData {
-    storageLimitMB: number;
-    usersLimit: number;
-    patientsLimit: number | null;
-    features: FeatureToggles;
-    locked: boolean;
-    lockReason: string | null;
-}
+// --- Sub-components ---
 
-interface FeatureToggles {
-    patients: boolean;
-    appointments: boolean;
-    orthodontics: boolean;
-    xray: boolean;
-    ai: boolean;
-}
+const GlassCard = ({ children, className = "" }: { children: React.ReactNode, className?: string }) => (
+    <div className={`glass-card overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-primary-500/10 border border-white/10 dark:border-white/5 ${className}`}>
+        {children}
+    </div>
+);
 
-interface UsageData {
-    storageUsedMB: number;
-    storageLimitMB: number;
-    usersUsed: number;
-    usersLimit: number;
-    patientsUsed: number | null;
-    patientsLimit: number | null;
-    filesCount: number;
-    locked: boolean;
-    lockReason: string | null;
-    lastSyncAt: string | null;
-}
+const MetricProgress = ({ label, used, total, unit, colorClass, percent }: any) => {
+    const { t } = useTranslation();
+    return (
+        <div className="space-y-4">
+            <div className="flex justify-between items-end">
+                <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</p>
+                    <div className="flex items-baseline gap-1">
+                        <span className="text-2xl font-black text-slate-900 dark:text-white leading-none">
+                            {used ?? '--'}
+                        </span>
+                        <span className="text-xs font-bold text-slate-400">/ {total || '∞'} {unit}</span>
+                    </div>
+                </div>
+                <div className="text-right">
+                    <span className={`text-lg font-black ${percent > 90 ? 'text-rose-500' : 'text-slate-900 dark:text-white'}`}>
+                        {percent !== null ? `${percent.toFixed(1)}%` : '--'}
+                    </span>
+                </div>
+            </div>
+            <div className="relative h-2 w-full bg-slate-100 dark:bg-slate-800/50 rounded-full overflow-hidden">
+                <div
+                    className={`absolute top-0 left-0 h-full bg-gradient-to-r ${colorClass} transition-all duration-1000 ease-out-expo shadow-[0_0_10px_rgba(0,0,0,0.1)]`}
+                    style={{ width: `${Math.min(100, percent || 0)}%` }}
+                />
+            </div>
+        </div>
+    );
+};
 
-interface Props {
-    clinicId: string;
-    setPage: (page: string) => void;
-}
+const FeatureToggle = ({ id, label, description, icon: Icon, enabled, onToggle }: any) => (
+    <div
+        onClick={() => onToggle(id)}
+        className={`group cursor-pointer glass-panel p-5 border-none transition-all duration-300 hover:translate-y-[-4px] ${enabled ? 'bg-primary-500/5' : 'bg-slate-50/50 dark:bg-slate-900/20'
+            }`}
+    >
+        <div className="flex items-start justify-between mb-4">
+            <div className={`p-3 rounded-xl transition-all duration-300 ${enabled ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30' : 'bg-slate-200 dark:bg-slate-800 text-slate-400'
+                }`}>
+                <Icon size={20} />
+            </div>
+            <div className={`w-12 h-6 rounded-full p-1 transition-all duration-500 relative ${enabled ? 'bg-primary-500' : 'bg-slate-300 dark:bg-slate-700'}`}>
+                <div className={`w-4 h-4 rounded-full bg-white shadow-md transition-all duration-500 transform ${enabled ? 'translate-x-6' : 'translate-x-0'}`} />
+            </div>
+        </div>
+        <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight mb-1">{label}</h4>
+        <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400 leading-relaxed uppercase tracking-wider">{description}</p>
+    </div>
+);
 
-type TabType = 'overview' | 'limits' | 'features' | 'subscription' | 'security' | 'audit';
+// --- Main Component ---
 
-const ClinicControlPanel: React.FC<Props> = ({ clinicId, setPage }) => {
+const ClinicControlPanel: React.FC = () => {
+    const { id } = useParams<{ id: string }>();
+    const navigate = useNavigate();
     const { t } = useTranslation();
 
-    const [clinic, setClinic] = useState<Clinic | null>(null);
-    const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
-
-    // Data States
-    const [activeTab, setActiveTab] = useState<TabType>('overview');
-    const [controls, setControls] = useState<ControlsData | null>(null);
-    const [usage, setUsage] = useState<UsageData | null>(null);
-    const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-
-    // UI States
+    // State
+    const [clinic, setClinic] = useState<any>(null);
+    const [usage, setUsage] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [showLockConfirm, setShowLockConfirm] = useState(false);
-    const [lockReason, setLockReason] = useState('');
-    const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    const [activeTab, setActiveTab] = useState<'overview' | 'provisioning' | 'modules' | 'security'>('overview');
+    const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
-    // Form States
-    const [storageLimitInput, setStorageLimitInput] = useState(1024);
-    const [usersLimitInput, setUsersLimitInput] = useState(3);
-    const [patientsLimitInput, setPatientsLimitInput] = useState<string>('');
-    const [features, setFeatures] = useState<FeatureToggles>({
+    // Form State (Sync with backend on load)
+    const [storageLimit, setStorageLimit] = useState(1024);
+    const [usersLimit, setUsersLimit] = useState(3);
+    const [patientsLimit, setPatientsLimit] = useState<string>('');
+    const [features, setFeatures] = useState({
         patients: true,
         appointments: true,
         orthodontics: false,
         xray: false,
         ai: false
     });
+    const [lockReason, setLockReason] = useState('');
+    const [showLockConfirm, setShowLockConfirm] = useState(false);
 
-    // Subscription Form
-    const [selectedPlanId, setSelectedPlanId] = useState<string>('');
-    const [subDuration, setSubDuration] = useState<number>(12);
-
-    useEffect(() => {
-        if (clinicId) {
-            loadData();
-        }
-    }, [clinicId]);
-
-    const loadData = async () => {
-        if (!clinicId) return;
+    const loadData = useCallback(async () => {
         try {
             setLoading(true);
-            const [clinicData, controlsData, plansData] = await Promise.all([
-                api.getClinic(clinicId),
-                api.getClinicControls(clinicId),
-                api.getPlans()
+            const [clinicsData, usageData] = await Promise.all([
+                api.get<any[]>(`/clinics/requests`),
+                api.get<any>(`/clinics/${id}/usage`)
             ]);
 
-            let usageData: UsageData | null = null;
-            try {
-                usageData = await api.getClinicUsage(clinicId);
-            } catch (e) {
-                // Ignore usage error
-            }
+            const currentClinic = clinicsData.find((c: any) => c.id === id);
+            if (!currentClinic) throw new Error('Clinic not found');
 
-            setClinic(clinicData);
-            setControls(controlsData);
+            setClinic(currentClinic);
             setUsage(usageData);
-            setPlans(plansData);
 
-            // Init form
-            setStorageLimitInput(controlsData.storageLimitMB);
-            setUsersLimitInput(controlsData.usersLimit);
-            setPatientsLimitInput(controlsData.patientsLimit !== null ? controlsData.patientsLimit.toString() : '');
-            setFeatures(controlsData.features);
-            setLockReason(controlsData.lockReason || '');
-
-            if (clinicData.license?.planId) {
-                setSelectedPlanId(clinicData.license.planId);
-            }
-
-            // Load audit logs if likely available
-            try {
-                const logs = await api.getAuditLogs();
-                // Filter logs for this clinic if user exists
-                setAuditLogs(logs.slice(0, 20)); // Just recent for now
-            } catch (e) { }
-
-        } catch (error: any) {
-            console.error('Failed to load data:', error);
-            showMessage('error', `Failed to load data: ${error.message}`);
+            // Initialize form state
+            setStorageLimit(usageData.storageLimitMB);
+            setUsersLimit(usageData.usersLimit);
+            setPatientsLimit(usageData.patientsLimit?.toString() || '');
+            setFeatures(currentClinic.control?.features || {
+                patients: true,
+                appointments: true,
+                orthodontics: false,
+                xray: false,
+                ai: false
+            });
+        } catch (err) {
+            console.error('Data load error:', err);
+            setMessage({ type: 'error', text: t('controls.usageError') });
         } finally {
             setLoading(false);
         }
-    };
+    }, [id, t]);
 
-    const showMessage = (type: 'success' | 'error', text: string) => {
-        setMessage({ type, text });
-        setTimeout(() => setMessage(null), 3000);
-    };
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
 
-    const handleSaveControls = async () => {
-        if (!clinicId) return;
+    const handleSave = async () => {
+        setSaving(true);
         try {
-            setSaving(true);
-            const patientsLimitValue = patientsLimitInput.trim() === '' ? null : Number(patientsLimitInput.trim());
-
-            await api.updateClinicControls(clinicId, {
-                storageLimitMB: Number(storageLimitInput),
-                usersLimit: Number(usersLimitInput),
-                patientsLimit: patientsLimitValue,
+            await api.put(`/clinics/${id}/controls`, {
+                storageLimitMB: storageLimit,
+                usersLimit: usersLimit,
+                patientsLimit: patientsLimit === '' ? null : parseInt(patientsLimit),
                 features
             });
-
+            setMessage({ type: 'success', text: t('controls.controlsUpdated') });
             await loadData();
-            showMessage('success', t('controls.controlsUpdated'));
-        } catch (error: any) {
-            showMessage('error', error.message);
+        } catch (err: any) {
+            setMessage({ type: 'error', text: err.response?.data?.message || 'Update failed' });
         } finally {
             setSaving(false);
-        }
-    };
-
-    const handleUpdateSubscription = async () => {
-        if (!clinicId || !selectedPlanId) return;
-        try {
-            setSaving(true);
-            await api.assignClinicLicense(clinicId, {
-                planId: selectedPlanId,
-                durationMonths: subDuration,
-                activateClinic: true
-            });
-            await loadData();
-            showMessage('success', 'Subscription updated successfully');
-        } catch (error: any) {
-            showMessage('error', error.message);
-        } finally {
-            setSaving(false);
+            setTimeout(() => setMessage(null), 5000);
         }
     };
 
     const handleToggleLock = async () => {
-        if (!clinicId || !controls) return;
+        if (!clinic.control?.locked && !lockReason) {
+            setMessage({ type: 'error', text: t('controls.lockReasonRequired') });
+            return;
+        }
+
+        setSaving(true);
         try {
-            setSaving(true);
-            await api.updateClinicControls(clinicId, {
-                locked: !controls.locked,
-                lockReason: !controls.locked ? lockReason : null
+            await api.put(`/clinics/${id}/controls`, {
+                locked: !clinic.control?.locked,
+                lockReason: clinic.control?.locked ? null : lockReason
+            });
+            setShowLockConfirm(false);
+            setLockReason('');
+            setMessage({
+                type: 'success',
+                text: clinic.control?.locked ? t('controls.clinicUnlocked') : t('controls.clinicLocked')
             });
             await loadData();
-            showMessage('success', controls.locked ? 'Clinic Unlocked' : 'Clinic Locked');
-            setShowLockConfirm(false);
-        } catch (error: any) {
-            showMessage('error', error.message);
+        } catch (err: any) {
+            setMessage({ type: 'error', text: err.response?.data?.message || 'Lock update failed' });
         } finally {
             setSaving(false);
+            setTimeout(() => setMessage(null), 5000);
         }
     };
 
-    const formatSize = (mb: number) => {
-        if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
-        return `${mb} MB`;
-    };
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+                <div className="flex flex-col items-center gap-6">
+                    <div className="relative">
+                        <div className="w-20 h-20 border-4 border-primary-500/20 rounded-full animate-spin border-t-primary-500" />
+                        <Activity className="absolute inset-0 m-auto text-primary-500 animate-pulse" size={32} />
+                    </div>
+                    <p className="text-xs font-black text-slate-500 uppercase tracking-widest animate-pulse">Initializing Data Node Interface...</p>
+                </div>
+            </div>
+        );
+    }
 
-    const healthScore = useMemo(() => {
-        if (!usage) return 0;
-        let score = 100;
-        if ((usage.storageUsedMB / usage.storageLimitMB) > 0.9) score -= 30;
-        if ((usage.usersUsed / usage.usersLimit) >= 1) score -= 20;
-        if (usage.locked) score = 0;
-        return score;
-    }, [usage]);
-
-    if (loading) return (
-        <div className="flex flex-col items-center justify-center min-h-[60vh]">
-            <RefreshCw className="animate-spin text-emerald-600 mb-4" size={48} />
-            <p className="text-slate-500 font-bold tracking-widest uppercase">Initializing Command Center...</p>
-        </div>
-    );
-
-    if (!clinic || !controls) return null;
-
-    const featureLabels: Record<string, string> = {
-        patients: t('features.patients'),
-        appointments: t('features.appointments'),
-        orthodontics: t('features.orthodontics'),
-        xray: t('features.xray'),
-        ai: t('features.ai')
-    };
+    const storagePercent = (usage?.storageUsedMB / usage?.storageLimitMB) * 100;
+    const usersPercent = (usage?.usersUsed / usage?.usersLimit) * 100;
+    const patientsPercent = usage?.patientsLimit ? (usage?.patientsUsed / usage?.patientsLimit) * 100 : 0;
 
     return (
-        <div className="max-w-[1600px] mx-auto flex flex-col h-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl">
-            {/* Header / Info Bar */}
-            <div className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div className="flex items-center gap-5">
-                    <button
-                        onClick={() => setPage('manage-clinics')}
-                        className="p-3 bg-slate-100 dark:bg-slate-700/50 rounded-xl text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all shadow-sm"
-                    >
-                        <ArrowLeft size={20} />
-                    </button>
-                    <div>
-                        <div className="flex items-center gap-3">
-                            <h1 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">
-                                {clinic.name}
-                            </h1>
-                            <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${clinic.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'
-                                }`}>
-                                {clinic.status}
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-4 mt-1 text-xs text-slate-500 font-bold uppercase tracking-wide">
-                            <span className="flex items-center gap-1.5"><Mail size={12} className="text-emerald-500" /> {clinic.email}</span>
-                            <span className="flex items-center gap-1.5"><Database size={12} className="text-blue-500" /> NODE ID: {clinic.id.slice(0, 8)}</span>
+        <div className="min-h-screen bg-[#f8fafc] dark:bg-[#020617] text-slate-900 dark:text-slate-100 p-6 lg:p-10 font-sans selection:bg-primary-500/30">
+            {/* Header Section */}
+            <div className="max-w-[1600px] mx-auto mb-12">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 pb-10 border-b border-slate-200 dark:border-slate-800/50">
+                    <div className="space-y-4">
+                        <button
+                            onClick={() => navigate('/clinics')}
+                            className="flex items-center gap-2 text-[10px] font-black text-slate-400 hover:text-primary-500 transition-colors uppercase tracking-widest group"
+                        >
+                            <ChevronLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+                            Back to Infrastructure Topology
+                        </button>
+                        <div>
+                            <div className="flex items-center gap-4 mb-2">
+                                <h1 className="text-5xl font-black tracking-tighter uppercase italic bg-gradient-to-r from-slate-950 via-primary-600 to-slate-950 dark:from-white dark:via-primary-400 dark:to-white bg-clip-text text-transparent">
+                                    {clinic.name}
+                                </h1>
+                                <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-xl flex items-center gap-2 ${clinic.control?.locked
+                                    ? 'bg-rose-500/10 text-rose-500 animate-pulse border border-rose-500/20'
+                                    : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                                    }`}>
+                                    <div className={`w-1.5 h-1.5 rounded-full ${clinic.control?.locked ? 'bg-rose-500 shadow-[0_0_8px_rose]' : 'bg-emerald-500 shadow-[0_0_8px_emerald]'}`} />
+                                    {clinic.control?.locked ? 'Isolated Node' : 'Node Operational'}
+                                </div>
+                            </div>
+                            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                                <Server size={14} className="text-primary-500" />
+                                SmartClinic Deployment • Version: {clinic.systemVersion || 'Latest'} • Region: Global-A1
+                            </p>
                         </div>
                     </div>
-                </div>
 
-                <div className="flex items-center gap-3">
-                    <div className="text-right hidden sm:block">
-                        <p className="text-[10px] uppercase font-black text-slate-400">Node Connectivity</p>
-                        <p className="text-sm font-bold text-emerald-500 flex items-center justify-end gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                            ACTIVE SYNC
-                        </p>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={loadData}
+                            className="p-4 rounded-2xl glass-panel border-none text-slate-500 hover:text-primary-500 hover:rotate-180 transition-all duration-500 bg-white/50 dark:bg-slate-900/50"
+                        >
+                            <RefreshCcw size={20} />
+                        </button>
+                        <button
+                            onClick={handleSave}
+                            disabled={saving}
+                            className="flex items-center gap-3 px-8 py-4 rounded-2xl bg-slate-950 dark:bg-white text-white dark:text-slate-950 font-black uppercase tracking-widest text-xs transition-all hover:scale-[1.02] active:scale-95 shadow-2xl shadow-primary-500/20 disabled:opacity-50"
+                        >
+                            {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                            Deploy Configuration
+                        </button>
                     </div>
-                    <div className="w-px h-10 bg-slate-200 dark:bg-slate-700 mx-2 hidden sm:block"></div>
-                    <button
-                        onClick={loadData}
-                        className="p-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20 active:scale-95"
-                    >
-                        <RefreshCw size={20} />
-                    </button>
                 </div>
             </div>
 
-            <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-                {/* Slim Sidebar */}
-                <div className="w-full md:w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 p-4 space-y-1 overflow-y-auto">
+            {/* Notification Toast */}
+            {message && (
+                <div className={`fixed top-8 left-1/2 -translate-x-1/2 z-[100] px-6 py-4 rounded-2xl shadow-2xl animate-scaleUp flex items-center gap-3 border ${message.type === 'success' ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-rose-500 text-white border-rose-400'
+                    }`}>
+                    {message.type === 'success' ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
+                    <span className="text-xs font-black uppercase tracking-widest">{message.text}</span>
+                </div>
+            )}
+
+            <div className="max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10">
+                {/* Navigation Sidebar */}
+                <div className="lg:col-span-3 space-y-4">
                     {[
-                        { id: 'overview', label: 'Overview', icon: Zap },
-                        { id: 'subscription', label: 'Licensing', icon: CreditCard },
-                        { id: 'limits', label: 'Resources', icon: HardDrive },
-                        { id: 'features', label: 'Modules', icon: Settings },
-                        { id: 'security', label: 'Access Control', icon: Shield },
-                        { id: 'audit', label: 'Audit Logs', icon: History }
-                    ].map(tab => (
+                        { id: 'overview', label: t('controls.overview'), icon: LayoutDashboard },
+                        { id: 'provisioning', label: t('controls.usage'), icon: Cpu },
+                        { id: 'modules', label: t('controls.features'), icon: Zap },
+                        { id: 'security', label: t('controls.security'), icon: Shield },
+                    ].map((tab) => (
                         <button
                             key={tab.id}
-                            onClick={() => setActiveTab(tab.id as TabType)}
-                            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-black uppercase tracking-wider transition-all ${activeTab === tab.id
-                                    ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-600/20 translate-x-1'
-                                    : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white'
+                            onClick={() => setActiveTab(tab.id as any)}
+                            className={`w-full group flex items-center gap-4 p-5 rounded-3xl transition-all duration-300 relative overflow-hidden ${activeTab === tab.id
+                                ? 'bg-white dark:bg-slate-900 shadow-xl shadow-primary-500/5 translate-x-3'
+                                : 'hover:bg-white/50 dark:hover:bg-slate-900/30'
                                 }`}
                         >
-                            <tab.icon size={18} />
-                            {tab.label}
+                            {activeTab === tab.id && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-primary-500" />}
+                            <tab.icon size={22} className={activeTab === tab.id ? 'text-primary-500' : 'text-slate-400 group-hover:text-primary-400'} />
+                            <span className={`text-xs font-black uppercase tracking-widest ${activeTab === tab.id ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>
+                                {tab.label}
+                            </span>
+                            <ChevronRight size={16} className={`ml-auto transition-transform ${activeTab === tab.id ? 'text-primary-500' : 'text-slate-300 opacity-0 group-hover:opacity-100 group-hover:translate-x-1'}`} />
                         </button>
                     ))}
+
+                    <div className="mt-10 p-8 glass-card border border-primary-500/10 bg-primary-500/5">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="p-2 bg-primary-500 rounded-lg text-white">
+                                <Activity size={16} />
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em]">{t('controls.dataNodeStatus')}</span>
+                        </div>
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                <span>Network Sync</span>
+                                <span className="text-emerald-500">100% Secure</span>
+                            </div>
+                            <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                <span>Heartbeat</span>
+                                <span className="dark:text-white">{new Date(usage?.lastSyncAt).toLocaleTimeString()}</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                {/* Content */}
-                <div className="flex-1 bg-slate-50/50 dark:bg-slate-900 p-8 overflow-y-auto">
-                    {activeTab === 'overview' && (
-                        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden group">
-                                    <div className="absolute -right-4 -top-4 w-24 h-24 bg-emerald-500/5 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
-                                    <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">Health Status</p>
-                                    <h3 className="text-3xl font-black text-slate-900 dark:text-white">{healthScore}%</h3>
-                                    <div className="mt-3 flex items-center justify-between">
-                                        <span className="text-xs font-bold text-emerald-500">Node Optimized</span>
-                                        <Cpu size={16} className="text-emerald-500" />
+                {/* Main Content Area */}
+                <div className="lg:col-span-9">
+                    <div className="animate-fadeIn">
+                        {activeTab === 'overview' && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <GlassCard className="p-8 md:col-span-2">
+                                    <div className="flex items-center justify-between mb-8">
+                                        <h3 className="text-xl font-black uppercase tracking-tight italic flex items-center gap-3">
+                                            <Network className="text-primary-500" />
+                                            Live Infrastructure Telemetry
+                                        </h3>
+                                        <div className="flex items-center gap-2 glass-panel px-3 py-1.5 text-[9px] font-black uppercase border-none bg-emerald-500/10 text-emerald-500">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                                            Real-time Stream
+                                        </div>
                                     </div>
-                                    <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full mt-4">
-                                        <div className="h-full bg-emerald-500 rounded-full transition-all duration-1000" style={{ width: `${healthScore}%` }}></div>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+                                        <MetricProgress
+                                            label="Cloud Storage"
+                                            used={usage?.storageUsedMB}
+                                            total={usage?.storageLimitMB}
+                                            unit="MB"
+                                            percent={storagePercent}
+                                            colorClass="from-indigo-500 via-primary-500 to-cyan-400"
+                                        />
+                                        <MetricProgress
+                                            label="Licensed Seats"
+                                            used={usage?.usersUsed}
+                                            total={usage?.usersLimit}
+                                            unit="Users"
+                                            percent={usersPercent}
+                                            colorClass="from-primary-600 to-indigo-600"
+                                        />
+                                        <MetricProgress
+                                            label="Record Capacity"
+                                            used={usage?.patientsUsed}
+                                            total={usage?.patientsLimit}
+                                            unit="Records"
+                                            percent={patientsPercent}
+                                            colorClass="from-emerald-500 to-teal-400"
+                                        />
                                     </div>
-                                </div>
+                                </GlassCard>
 
-                                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden group">
-                                    <div className="absolute -right-4 -top-4 w-24 h-24 bg-blue-500/5 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
-                                    <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">Storage Usage</p>
-                                    <h3 className="text-3xl font-black text-slate-900 dark:text-white">{formatSize(usage?.storageUsedMB || 0)}</h3>
-                                    <div className="mt-3 flex items-center justify-between">
-                                        <span className="text-xs font-bold text-slate-500 text-opacity-70">of {formatSize(usage?.storageLimitMB || controls.storageLimitMB)} Allocated</span>
-                                        <Database size={16} className="text-blue-500" />
-                                    </div>
-                                    <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full mt-4">
-                                        <div className="h-full bg-blue-500 rounded-full" style={{ width: `${Math.min(((usage?.storageUsedMB || 0) / (usage?.storageLimitMB || controls.storageLimitMB || 1)) * 100, 100)}%` }}></div>
-                                    </div>
-                                </div>
-
-                                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden group">
-                                    <div className="absolute -right-4 -top-4 w-24 h-24 bg-purple-500/5 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
-                                    <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">User Seats</p>
-                                    <h3 className="text-3xl font-black text-slate-900 dark:text-white">{usage?.usersUsed || 0} / {usage?.usersLimit || controls.usersLimit}</h3>
-                                    <div className="mt-3 flex items-center justify-between">
-                                        <span className="text-xs font-bold text-slate-500 text-opacity-70">{usage?.remainingSlots || (controls.usersLimit - (usage?.usersUsed || 0))} Slots Remaining</span>
-                                        <Smartphone size={16} className="text-purple-500" />
-                                    </div>
-                                    <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full mt-4">
-                                        <div className="h-full bg-purple-500 rounded-full" style={{ width: `${Math.min(((usage?.usersUsed || 0) / (usage?.usersLimit || controls.usersLimit || 1)) * 100, 100)}%` }}></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-8">
-                                <h3 className="text-sm font-black uppercase text-slate-900 dark:text-white mb-6 flex items-center gap-2">
-                                    <Activity size={18} className="text-emerald-500" /> Detailed Specifications
-                                </h3>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase">Principal Owner</p>
-                                        <p className="text-sm font-bold text-slate-900 dark:text-white">{clinic.doctorName || 'Not Set'}</p>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase">System Binary</p>
-                                        <p className="text-sm font-bold text-slate-900 dark:text-white">v{clinic.systemVersion || 'Unknown'}</p>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase">Subscription Cycle</p>
-                                        <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{clinic.license?.plan?.name || 'Manual Assignment'}</p>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase">Creation Origin</p>
-                                        <p className="text-sm font-bold text-slate-900 dark:text-white">{new Date(clinic.createdAt).toLocaleDateString()}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {activeTab === 'subscription' && (
-                        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
-                            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-8 shadow-sm">
-                                <h2 className="text-xl font-black uppercase text-slate-900 dark:text-white mb-2">License Provisioning</h2>
-                                <p className="text-slate-500 text-sm font-bold mb-8">Upgrade or extend the service contract for this node.</p>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                <GlassCard className="p-8">
+                                    <h3 className="text-sm font-black uppercase tracking-widest mb-6 flex items-center gap-2">
+                                        <Clock className="text-primary-500" size={16} />
+                                        Deployment Lifecycle
+                                    </h3>
                                     <div className="space-y-6">
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Target Service Plan</label>
-                                            <select
-                                                value={selectedPlanId}
-                                                onChange={(e) => setSelectedPlanId(e.target.value)}
-                                                className="w-full bg-slate-50 dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 text-lg font-black outline-none focus:ring-2 focus:ring-emerald-500 transition-all cursor-pointer"
-                                            >
-                                                <option value="">Select Plan...</option>
-                                                {plans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                            </select>
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Term Duration</label>
-                                            <div className="flex gap-4">
-                                                {[3, 6, 12, 24].map(m => (
-                                                    <button
-                                                        key={m}
-                                                        onClick={() => setSubDuration(m)}
-                                                        className={`flex-1 p-4 rounded-xl font-black text-sm transition-all border ${subDuration === m
-                                                                ? 'bg-emerald-600 text-white border-emerald-600'
-                                                                : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-800'
-                                                            }`}
-                                                    >
-                                                        {m} MO
-                                                    </button>
-                                                ))}
+                                        {[
+                                            { label: 'Registered On', value: new Date(clinic.createdAt).toLocaleDateString(), icon: Calendar },
+                                            { label: 'Admin Identity', value: clinic.email, icon: Globe },
+                                            { label: 'Node Uptime', value: '99.99%', icon: Activity },
+                                            { label: 'Last Config Sync', value: new Date().toLocaleTimeString(), icon: RefreshCcw },
+                                        ].map((item, idx) => (
+                                            <div key={idx} className="flex items-center justify-between p-4 glass-panel border-none bg-slate-50/50 dark:bg-slate-900/50">
+                                                <div className="flex items-center gap-3">
+                                                    <item.icon size={16} className="text-slate-400" />
+                                                    <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider font-mono">{item.label}</span>
+                                                </div>
+                                                <span className="text-xs font-black dark:text-white uppercase tracking-tight">{item.value}</span>
                                             </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-slate-50 dark:bg-slate-900/50 p-8 rounded-2xl flex flex-col justify-center items-center text-center border-2 border-dashed border-slate-200 dark:border-slate-800">
-                                        <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4">
-                                            <CreditCard size={32} />
-                                        </div>
-                                        <h4 className="text-sm font-black uppercase text-slate-900 dark:text-white">Active License Found</h4>
-                                        <p className="text-xs text-slate-500 font-bold mt-1">Exp: {clinic.license?.expireDate ? new Date(clinic.license.expireDate).toLocaleDateString() : 'N/A'}</p>
-
-                                        <button
-                                            onClick={handleUpdateSubscription}
-                                            disabled={saving || !selectedPlanId}
-                                            className="w-full mt-6 py-4 bg-emerald-600 text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20 disabled:opacity-50"
-                                        >
-                                            {saving ? 'Processing...' : 'Provision Subscription'}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {activeTab === 'limits' && (
-                        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
-                            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-8 shadow-sm space-y-10">
-                                <div className="space-y-4">
-                                    <div className="flex justify-between font-black uppercase text-[10px] text-slate-500">
-                                        <span className="flex items-center gap-2"><Database size={14} className="text-blue-500" /> Data Storage Allocation</span>
-                                        <span className="text-slate-900 dark:text-white text-sm">{formatSize(storageLimitInput)}</span>
-                                    </div>
-                                    <input
-                                        type="range" min="1024" max="102400" step="1024"
-                                        value={storageLimitInput}
-                                        onChange={(e) => setStorageLimitInput(Number(e.target.value))}
-                                        className="w-full h-2 bg-slate-100 rounded-full appearance-none accent-blue-600 cursor-pointer"
-                                    />
-                                    <p className="text-[10px] text-slate-400 font-bold">Minimum: 1GB | Premium: 100GB+</p>
-                                </div>
-
-                                <div className="space-y-4">
-                                    <div className="flex justify-between font-black uppercase text-[10px] text-slate-500">
-                                        <span className="flex items-center gap-2"><UsersIcon size={14} className="text-purple-500" /> Concurrency (Max Seats)</span>
-                                        <span className="text-slate-900 dark:text-white text-sm">{usersLimitInput} USERS</span>
-                                    </div>
-                                    <input
-                                        type="range" min="1" max="100" step="1"
-                                        value={usersLimitInput}
-                                        onChange={(e) => setUsersLimitInput(Number(e.target.value))}
-                                        className="w-full h-2 bg-slate-100 rounded-full appearance-none accent-purple-600 cursor-pointer"
-                                    />
-                                    <div className="flex gap-2">
-                                        {[5, 10, 25, 50, 100].map(v => (
-                                            <button key={v} onClick={() => setUsersLimitInput(v)} className="px-3 py-1 bg-slate-100 rounded-lg text-[10px] font-black text-slate-500">{v}</button>
                                         ))}
                                     </div>
-                                </div>
+                                </GlassCard>
 
-                                <div className="pt-6 border-t border-slate-100 dark:border-slate-700 flex justify-end gap-3">
-                                    <button
-                                        onClick={handleSaveControls}
-                                        disabled={saving}
-                                        className="px-8 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-black uppercase tracking-widest text-xs flex items-center gap-2"
-                                    >
-                                        <Save size={16} /> Save Resource configuration
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {activeTab === 'features' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-bottom-4">
-                            {Object.entries(features).map(([key, enabled]) => (
-                                <div
-                                    key={key}
-                                    onClick={() => setFeatures({ ...features, [key]: !enabled })}
-                                    className={`p-6 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between group ${enabled ? 'bg-white dark:bg-slate-800 border-emerald-500 shadow-xl shadow-emerald-500/5' : 'bg-slate-50 dark:bg-slate-900/50 border-transparent hover:border-slate-300'
-                                        }`}
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${enabled ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-400'}`}>
-                                            <Settings size={20} />
-                                        </div>
-                                        <div>
-                                            <h4 className={`text-sm font-black uppercase tracking-tight ${enabled ? 'text-slate-900 dark:text-white' : 'text-slate-400'}`}>{featureLabels[key] || key}</h4>
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{enabled ? 'Licensed' : 'Restricted'}</p>
-                                        </div>
-                                    </div>
-                                    <div className={`w-12 h-6 rounded-full relative transition-colors ${enabled ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'}`}>
-                                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all shadow-sm ${enabled ? 'right-1' : 'left-1'}`}></div>
-                                    </div>
-                                </div>
-                            ))}
-                            <div className="col-span-full pt-4 flex justify-end">
-                                <button onClick={handleSaveControls} className="px-8 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-black uppercase tracking-widest text-xs">Commit Changes</button>
-                            </div>
-                        </div>
-                    )}
-
-                    {activeTab === 'security' && (
-                        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
-                            <div className={`p-10 rounded-3xl border-2 transition-all flex flex-col items-center text-center ${controls.locked ? 'bg-rose-50 border-rose-200' : 'bg-white dark:bg-slate-800 border-emerald-100 dark:border-emerald-900/30'}`}>
-                                <div className={`w-28 h-28 rounded-full flex items-center justify-center mb-6 shadow-2xl ${controls.locked ? 'bg-rose-600 text-white shadow-rose-600/20' : 'bg-emerald-600 text-white shadow-emerald-600/20'}`}>
-                                    {controls.locked ? <Lock size={48} /> : <Unlock size={48} />}
-                                </div>
-                                <h2 className="text-3xl font-black uppercase tracking-tighter text-slate-900 dark:text-white">
-                                    {controls.locked ? 'Network Access Revoked' : 'Operational Status: Secure'}
-                                </h2>
-                                <p className="text-slate-500 font-bold max-w-md mt-2">
-                                    {controls.locked
-                                        ? 'This node has been manually locked. All sessions have been terminated and no new logins are permitted.'
-                                        : 'the Node is currently accessible by all authorized users. Critical systems monitoring active.'}
-                                </p>
-
-                                {!controls.locked && (
-                                    <textarea
-                                        value={lockReason} onChange={e => setLockReason(e.target.value)}
-                                        placeholder="Reason for suspension (required code)..."
-                                        className="w-full max-w-md mt-8 p-5 bg-slate-100 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 text-sm font-bold outline-none focus:ring-2 focus:ring-rose-500"
-                                    />
-                                )}
-
-                                <button
-                                    onClick={handleToggleLock}
-                                    className={`mt-8 px-12 py-5 rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl transition-all active:scale-95 ${controls.locked ? 'bg-emerald-600 text-white shadow-emerald-600/20' : 'bg-rose-600 text-white shadow-rose-600/20'
-                                        }`}
-                                >
-                                    {controls.locked ? 'Restore Node Access' : 'Execute Emergency Lockout'}
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {activeTab === 'audit' && (
-                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-                                <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
-                                    <h3 className="text-sm font-black uppercase text-slate-900 dark:text-white flex items-center gap-2">
-                                        <History size={18} className="text-blue-500" /> Operational History
+                                <GlassCard className="p-8 bg-slate-950 dark:bg-white text-white dark:text-slate-950">
+                                    <h3 className="text-sm font-black uppercase tracking-widest mb-6 flex items-center gap-2">
+                                        <Shield className="opacity-70" size={16} />
+                                        Security Context
                                     </h3>
-                                    <button className="text-[10px] font-black uppercase text-slate-400 hover:text-slate-900">Export CSV</button>
+                                    <div className="p-6 rounded-3xl bg-white/10 dark:bg-slate-100 border border-white/10 mb-6">
+                                        <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-2">Isolation Status</p>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-2xl font-black italic uppercase tracking-tighter">
+                                                {clinic.control?.locked ? 'Isolated' : 'Active'}
+                                            </span>
+                                            {clinic.control?.locked ? <Lock size={32} className="text-rose-400" /> : <Unlock size={32} className="opacity-50" />}
+                                        </div>
+                                    </div>
+                                    <p className="text-[10px] font-medium opacity-60 leading-relaxed uppercase tracking-wider">
+                                        Node security protocols are dynamic. Any change in licensing state or administrative override will trigger immediate session termination across the cluster.
+                                    </p>
+                                </GlassCard>
+                            </div>
+                        )}
+
+                        {activeTab === 'provisioning' && (
+                            <GlassCard className="p-10">
+                                <div className="mb-10">
+                                    <h2 className="text-3xl font-black uppercase italic tracking-tighter mb-2">Infrastructure Provisioning</h2>
+                                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Define operational boundaries and resource quotas for this node.</p>
                                 </div>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left text-xs">
-                                        <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 font-black uppercase">
-                                            <tr>
-                                                <th className="px-6 py-4">Timestamp</th>
-                                                <th className="px-6 py-4">Identity</th>
-                                                <th className="px-6 py-4">Action execute</th>
-                                                <th className="px-6 py-4 text-right">Origin</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                            {auditLogs.map(log => (
-                                                <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/80 transition-colors">
-                                                    <td className="px-6 py-4 font-bold text-slate-500 whitespace-nowrap">{new Date(log.timestamp).toLocaleString()}</td>
-                                                    <td className="px-6 py-4 font-black text-slate-900 dark:text-white">{log.userName}</td>
-                                                    <td className="px-6 py-4">
-                                                        <span className="px-2 py-1 bg-slate-100 dark:bg-slate-700 rounded-md font-bold text-[10px] uppercase text-slate-600 dark:text-slate-300">
-                                                            {log.action}
-                                                        </span>
-                                                        <div className="text-[10px] text-slate-400 mt-1 font-medium">{log.details}</div>
-                                                    </td>
-                                                    <td className="px-6 py-4 text-right font-mono text-[10px] text-slate-400">{log.ipAddress}</td>
-                                                </tr>
+
+                                <div className="space-y-12">
+                                    {/* Storage */}
+                                    <div className="space-y-6">
+                                        <div className="flex justify-between items-end">
+                                            <div className="flex items-center gap-4 text-primary-500">
+                                                <HardDrive size={24} />
+                                                <div>
+                                                    <h4 className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white">Cloud Storage Allocation</h4>
+                                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total capacity for images, files & imaging data.</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="text-3xl font-black text-primary-500 font-mono italic">
+                                                    {storageLimit >= 1024 ? `${(storageLimit / 1024).toFixed(1)}GB` : `${storageLimit}MB`}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <input
+                                            type="range"
+                                            min="256"
+                                            max="51200"
+                                            step="256"
+                                            value={storageLimit}
+                                            onChange={(e) => setStorageLimit(parseInt(e.target.value))}
+                                            className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-full appearance-none cursor-pointer accent-primary-500"
+                                        />
+                                        <div className="grid grid-cols-4 gap-3">
+                                            {[1024, 5120, 10240, 20480].map(val => (
+                                                <button
+                                                    key={val}
+                                                    onClick={() => setStorageLimit(val)}
+                                                    className={`py-6 rounded-2xl text-xs font-black transition-all ${storageLimit === val ? 'bg-primary-500 text-white shadow-2xl shadow-primary-500/30 -translate-y-1' : 'bg-slate-50 dark:bg-slate-900 text-slate-500 hover:bg-slate-100 border border-transparent hover:border-slate-200'}`}
+                                                >
+                                                    {val >= 1024 ? `${val / 1024}GB` : `${val}MB`}
+                                                </button>
                                             ))}
-                                        </tbody>
-                                    </table>
+                                        </div>
+                                    </div>
+
+                                    <div className="h-px bg-slate-100 dark:bg-slate-800" />
+
+                                    {/* Users */}
+                                    <div className="space-y-6">
+                                        <div className="flex justify-between items-end">
+                                            <div className="flex items-center gap-4 text-indigo-500">
+                                                <UsersIcon size={24} />
+                                                <div>
+                                                    <h4 className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white">Licensed Seat Capacity</h4>
+                                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Maximum active operators allowed on this deployment.</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="text-3xl font-black text-indigo-500 font-mono italic">{usersLimit} SEATS</span>
+                                            </div>
+                                        </div>
+                                        <input
+                                            type="range"
+                                            min="1"
+                                            max="100"
+                                            value={usersLimit}
+                                            onChange={(e) => setUsersLimit(parseInt(e.target.value))}
+                                            className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-full appearance-none cursor-pointer accent-indigo-500"
+                                        />
+                                        <div className="grid grid-cols-4 gap-3">
+                                            {[3, 10, 25, 50].map(val => (
+                                                <button
+                                                    key={val}
+                                                    onClick={() => setUsersLimit(val)}
+                                                    className={`py-6 rounded-2xl text-xs font-black transition-all ${usersLimit === val ? 'bg-indigo-500 text-white shadow-2xl shadow-indigo-500/30 -translate-y-1' : 'bg-slate-50 dark:bg-slate-900 text-slate-500 hover:bg-slate-100 border border-transparent hover:border-slate-200'}`}
+                                                >
+                                                    {val} SEATS
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="h-px bg-slate-100 dark:bg-slate-800" />
+
+                                    {/* Patients */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
+                                        <div className="space-y-4">
+                                            <div className="flex items-center gap-4 text-emerald-500">
+                                                <FileText size={24} />
+                                                <div>
+                                                    <h4 className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white">Record Quota</h4>
+                                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Maximum number of managed patient entities.</p>
+                                                </div>
+                                            </div>
+                                            <div className="relative">
+                                                <input
+                                                    type="number"
+                                                    value={patientsLimit}
+                                                    onChange={(e) => setPatientsLimit(e.target.value)}
+                                                    placeholder="Unlimited Access..."
+                                                    className="w-full bg-slate-50 dark:bg-slate-900/50 border-2 border-slate-100 dark:border-slate-800 px-6 py-5 rounded-2xl text-sm font-black focus:border-primary-500 outline-none transition-all placeholder:text-slate-400 placeholder:font-black placeholder:uppercase"
+                                                />
+                                                <div className="absolute right-6 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-400 uppercase tracking-widest">RECORDS</div>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {[5000, ''].map((val, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => setPatientsLimit(val.toString())}
+                                                    className={`py-6 rounded-2xl text-xs font-black uppercase transition-all ${patientsLimit === val.toString() ? 'bg-emerald-500 text-white shadow-2xl shadow-emerald-500/30' : 'bg-slate-50 dark:bg-slate-900 text-slate-500 hover:bg-slate-100 border border-transparent border-slate-200'}`}
+                                                >
+                                                    {val === '' ? 'Unlimted' : `${val} Peak`}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </GlassCard>
+                        )}
+
+                        {activeTab === 'modules' && (
+                            <div className="space-y-10">
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-4">
+                                    <div>
+                                        <h2 className="text-3xl font-black uppercase italic tracking-tighter mb-2">Service Module Hub</h2>
+                                        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Enable or restrict specific professional toolsets for this node.</p>
+                                    </div>
+                                    <div className="flex items-center gap-2 glass-panel px-4 py-2 border-none bg-primary-500/10 text-primary-500 text-[10px] font-black uppercase tracking-widest animate-pulse">
+                                        Active Deployment
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                                    <FeatureToggle
+                                        id="patients" icon={Stethoscope} label="Management-P1"
+                                        description="Core patient records & history"
+                                        enabled={features.patients}
+                                        onToggle={(id: any) => setFeatures({ ...features, [id]: !features.patients })}
+                                    />
+                                    <FeatureToggle
+                                        id="appointments" icon={Calendar} label="Scheduler-S1"
+                                        description="Calendar & workflow management"
+                                        enabled={features.appointments}
+                                        onToggle={(id: any) => setFeatures({ ...features, [id]: !features.appointments })}
+                                    />
+                                    <FeatureToggle
+                                        id="orthodontics" icon={Dna} label="Ortho-X1"
+                                        description="Specialized orthodontic treatment tracking"
+                                        enabled={features.orthodontics}
+                                        onToggle={(id: any) => setFeatures({ ...features, [id]: !features.orthodontics })}
+                                    />
+                                    <FeatureToggle
+                                        id="xray" icon={ImageIcon} label="Imaging-I1"
+                                        description="Full PACS support and image manipulation"
+                                        enabled={features.xray}
+                                        onToggle={(id: any) => setFeatures({ ...features, [id]: !features.xray })}
+                                    />
+                                    <FeatureToggle
+                                        id="ai" icon={Bot} label="Alpha-AI"
+                                        description="Neural engine for diagnostic assist"
+                                        enabled={features.ai}
+                                        onToggle={(id: any) => setFeatures({ ...features, [id]: !features.ai })}
+                                    />
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        )}
+
+                        {activeTab === 'security' && (
+                            <div className="space-y-10">
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-4">
+                                    <div>
+                                        <h2 className="text-3xl font-black uppercase italic tracking-tighter mb-2">Isolation Protocols</h2>
+                                        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Protocol-level access control for high-priority security events.</p>
+                                    </div>
+                                </div>
+
+                                <GlassCard className={`p-10 border-2 transition-all duration-700 ${clinic.control?.locked ? 'border-rose-500/50 bg-rose-500/5 shadow-rose-500/10' : 'border-emerald-500/50 bg-emerald-500/5 shadow-emerald-500/10'}`}>
+                                    <div className="flex items-start justify-between mb-10">
+                                        <div className="space-y-4 max-w-xl">
+                                            <div className={`p-4 rounded-3xl inline-flex ${clinic.control?.locked ? 'bg-rose-500 text-white shadow-xl shadow-rose-500/30' : 'bg-emerald-500 text-white shadow-xl shadow-emerald-500/30'}`}>
+                                                {clinic.control?.locked ? <Lock size={32} /> : <Unlock size={32} />}
+                                            </div>
+                                            <h3 className="text-3xl font-black uppercase italic">
+                                                {clinic.control?.locked ? 'Node Is Currently Isolated' : 'System Connectivity: Optimal'}
+                                            </h3>
+                                            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 leading-relaxed uppercase tracking-wider">
+                                                {clinic.control?.locked
+                                                    ? 'All incoming connections have been terminated. The remote data node is unresponsive to general requests until isolation is lifted.'
+                                                    : 'All infrastructure channels are open. Real-time telemetry is being received and processed from the primary cluster.'
+                                                }
+                                            </p>
+                                        </div>
+                                        <div className="hidden md:block">
+                                            {clinic.control?.locked ? (
+                                                <div className="w-24 h-24 rounded-full border-8 border-rose-500/20 flex items-center justify-center animate-pulse">
+                                                    <div className="w-12 h-12 rounded-full bg-rose-500" />
+                                                </div>
+                                            ) : (
+                                                <div className="w-24 h-24 rounded-full border-8 border-emerald-500/20 flex items-center justify-center">
+                                                    <div className="w-12 h-12 rounded-full bg-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.5)]" />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {clinic.control?.lockReason && (
+                                        <div className="mb-10 p-8 rounded-3xl bg-rose-500/10 border border-rose-500/20">
+                                            <p className="text-[10px] font-black text-rose-500 uppercase tracking-[0.2em] mb-3">Incident Protocol Justification</p>
+                                            <p className="text-lg font-black text-rose-700 dark:text-rose-300 italic">{clinic.control?.lockReason}</p>
+                                        </div>
+                                    )}
+
+                                    <div className="flex justify-center">
+                                        <button
+                                            onClick={() => setShowLockConfirm(true)}
+                                            className={`px-12 py-6 rounded-3xl font-black uppercase tracking-widest text-sm transition-all hover:scale-105 active:scale-95 shadow-2xl flex items-center gap-4 ${clinic.control?.locked
+                                                ? 'bg-emerald-500 text-white shadow-emerald-500/20'
+                                                : 'bg-rose-500 text-white shadow-rose-500/20'
+                                                }`}
+                                        >
+                                            {clinic.control?.locked ? <Unlock size={20} /> : <Lock size={20} />}
+                                            {clinic.control?.locked ? 'Re-Activate Node Access' : 'Initiate Secure Isolation'}
+                                        </button>
+                                    </div>
+                                </GlassCard>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
-            {/* Notifications */}
-            {message && (
-                <div className={`fixed top-8 right-8 z-[100] p-6 rounded-2xl shadow-2xl border animate-in slide-in-from-right-8 duration-300 flex items-center gap-4 ${message.type === 'success' ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-rose-500 text-white border-rose-400'
-                    }`}>
-                    {message.type === 'success' ? <ShieldCheck size={28} /> : <AlertTriangle size={28} />}
-                    <div>
-                        <p className="font-black text-xs uppercase tracking-widest">System Message</p>
-                        <p className="text-sm font-bold opacity-90">{message.text}</p>
+            {/* Lock Confirm Modal */}
+            {showLockConfirm && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/60 backdrop-blur-xl animate-fadeIn">
+                    <div className="max-w-xl w-full glass-card p-10 animate-scaleUp border-2 border-primary-500/20 shadow-[0_0_100px_rgba(var(--primary-rgb),0.1)]">
+                        <div className="flex items-center gap-6 mb-8">
+                            <div className={`p-6 rounded-3xl ${clinic.control?.locked ? 'bg-emerald-500' : 'bg-rose-500'} text-white shadow-2xl`}>
+                                {clinic.control?.locked ? <Unlock size={44} /> : <Lock size={44} />}
+                            </div>
+                            <div>
+                                <h3 className="text-3xl font-black uppercase italic tracking-tighter">
+                                    {clinic.control?.locked ? 'System Restoration' : 'Incident Isolation'}
+                                </h3>
+                                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Target Node: {clinic.name}</p>
+                            </div>
+                        </div>
+
+                        <p className="text-sm font-medium text-slate-500 dark:text-slate-300 mb- aggregation-8 leading-relaxed uppercase tracking-wider">
+                            {clinic.control?.locked
+                                ? 'Warning: You are about to restore full biometric and medical database access to this node. All pending telemetry catch-ups will execute immediately.'
+                                : 'Critical: Isolation will revoke all user authentication tokens and bridge connections. This action is logged in the global audit trail.'
+                            }
+                        </p>
+
+                        {!clinic.control?.locked && (
+                            <div className="mb-10 mt-8">
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-2">Justification Required</label>
+                                <textarea
+                                    value={lockReason}
+                                    onChange={(e) => setLockReason(e.target.value)}
+                                    placeholder="Indicate trigger for node isolation (e.g. Protocol-11 breach, Non-payment, Maintenance)..."
+                                    className="w-full bg-slate-50 dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 p-6 rounded-2xl text-sm font-medium focus:border-rose-500 outline-none transition-all h-32 resize-none"
+                                />
+                            </div>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-4 mt-8">
+                            <button
+                                onClick={() => { setShowLockConfirm(false); setLockReason(''); }}
+                                className="px-8 py-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 font-black uppercase tracking-widest text-[10px] hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                            >
+                                Abort Protocol
+                            </button>
+                            <button
+                                onClick={handleToggleLock}
+                                disabled={saving}
+                                className={`px-8 py-5 rounded-2xl text-white font-black uppercase tracking-widest text-[10px] shadow-2xl transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 ${clinic.control?.locked ? 'bg-emerald-500 shadow-emerald-500/20' : 'bg-rose-500 shadow-rose-500/20'
+                                    }`}
+                            >
+                                {saving ? <Loader2 className="animate-spin mx-auto" size={18} /> : 'Execute Sequence'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
+
+            {/* Global Style Inject for Expo Animations */}
+            <style>{`
+                @keyframes scaleUp {
+                    from { opacity: 0; transform: scale(0.95) translateY(10px); }
+                    to { opacity: 1; transform: scale(1) translateY(0); }
+                }
+                .animate-scaleUp {
+                    animation: scaleUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                }
+                .ease-out-expo {
+                    transition-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
+                }
+            `}</style>
         </div>
     );
 };

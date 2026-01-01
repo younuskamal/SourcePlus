@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Terminal, Copy, Check, ChevronRight, ChevronDown, Code2 } from 'lucide-react';
 
-export const LICENSING_BASE = 'https://sourceplus.onrender.com';
-export const AUTH_BASE = 'https://sourceplus.onrender.com/auth';
+export const LICENSING_BASE = window.location.origin;
+export const AUTH_BASE = window.location.origin + '/api/auth';
 
 export const CodeBlock: React.FC<{ children: string; language?: string }> = ({ children, language = 'json' }) => {
     const [copied, setCopied] = useState(false);

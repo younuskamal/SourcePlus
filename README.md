@@ -1,148 +1,99 @@
-# SourcePlus Licensing Server
+# 🌐 SourcePlus Infrastructure & Licensing Oracle
 
-Full-stack licensing and subscription server for desktop / POS apps, built with:
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Build Status](https://img.shields.io/badge/Build-Stable-emerald.svg)]()
+[![Platform: Cross-Platform](https://img.shields.io/badge/Platform-Cross--Platform-blueviolet.svg)]()
 
-- **Backend**: Fastify (TypeScript), Prisma 7, PostgreSQL
-- **Frontend**: React + Vite (TypeScript), TailwindCSS
-- **Deployment target**: Render (Node service for API + Static site for client)
-
-The server exposes REST APIs for license validation, activation, updates, backups and admin dashboards, and the client is an admin panel for managing plans, licenses, customers, updates, support tickets and system settings.
+**SourcePlus** is a high-performance, enterprise-grade licensing and telemetry orchestration engine designed for modern desktop and POS applications. It provides a secure, scalable, and visually stunning administrative environment for managing global node deployments, subscription lifecycles, and real-time system health.
 
 ---
 
-## Project structure
+## 🚀 Core Architecture
 
-- `server/` – Fastify API + Prisma schema and migrations
-- `client/` – React admin dashboard (Vite)
-- `docker-compose.yml`, `Dockerfile.frontend`, `server/Dockerfile` – optional container deployment
+The system is built on a mission-critical stack designed for zero-downtime and high data integrity.
+
+- **Backend (Nexus)**: Built with **Fastify (TypeScript)**, leveraging **Prisma 7** for ultra-fast type-safe database queries and **PostgreSQL** for relational stability.
+- **Frontend (Control Center)**: A sophisticated **React 19 + Vite** application utilizing advanced **Glassmorphism** aesthetics and **TailwindCSS** for a premium, infrastructure-first UI/UX.
+- **Telemetry Layer**: Real-time monitoring of node health, storage usage, and active user seats across global deployments.
 
 ---
 
-## Backend (server/)
-
-### Tech stack
-
-- Fastify + plugins (`@fastify/jwt`, `@fastify/cors`, `@fastify/multipart`, `@fastify/sensible`)
-- Prisma 7 + `@prisma/adapter-pg` + `pg` (PostgreSQL)
-- bcrypt لتهشير كلمات المرور
-- Zod للتحقق من المدخلات
-
-### Key features
-
-- User auth (JWT access + refresh tokens, sessions table)
-- Role-based access (admin / developer / viewer)
-- License & plan management (plans, prices, currencies, transactions)
-- Licensing APIs for clients (under `/api`):
-  - `/api/license/validate`
-  - `/api/license/activate`
-  - `/api/subscription/status`
-  - `/api/app/update`
-  - `/api/config/sync`
-  - `/api/support/request`
-- Notifications, support tickets, audit logs
-- System settings + remote config
-- Backup module (create/list/download/restore/upload JSON snapshots)
-
-### Environment variables (server)
-
-Set these for local dev in `server/.env` and on Render in the service environment:
-
-| Variable        | Description                                      |
-|-----------------|--------------------------------------------------|
-| `DATABASE_URL`  | PostgreSQL connection string                     |
-| `JWT_SECRET`    | Secret for signing JWT access/refresh tokens     |
-| `PORT`          | Port to bind Fastify (Render uses 10000)         |
-
-Prisma is configured via `server/prisma.config.ts` and always enforces `sslmode=require` when talking to Render’s managed Postgres.
-
-### Running the server locally
+## 🛠 Project Topology
 
 ```bash
-cd server
-npm install
-npx prisma migrate dev         # أو migrate deploy إذا كانت الـ DB جاهزة
-npx prisma generate
-npm run dev                    # تشغيل Fastify في وضع التطوير
-```
-
-Production build:
-
-```bash
-cd server
-npm run build                  # tsc → dist/
-npm start                      # node dist/main.js
+├── 💻 client/         # React Administrative Control Center (Vite)
+├── ⚙️ server/         # Fastify Core API & Prisma Schema
+├── 🐳 docker/         # Orchestration & Containerization configs
+└── 🛡️ shared/         # Universal type definitions and protocols
 ```
 
 ---
 
-## Frontend (client/)
+## 💎 Key Capabilities
 
-The client is a Vite/React admin panel that talks to the server via `VITE_API_URL`.
+### 🛡️ Secure Provisioning
+- **JWT Orchestration**: Advanced access and refresh token rotation with dedicated session management.
+- **Role-Based Protocols**: (Admin, Developer, Viewer) hierarchies with granular permission enforcement.
 
-### Environment variables (client)
+### 📊 Infrastructure Telemetry
+- **Node Monitoring**: Track live performance, version drift, and resource utilization (CPU, Memory, Storage) of remote nodes.
+- **Global Topology**: Visual overview of all provisioned clinics and their operational status.
 
-Create `client/.env` (or configure in Render Static site):
+### 💳 Subscription & Licensing
+- **Dynamic Serial Generation**: Instant cryptographic key provisioning based on subscription tier templates.
+- **Multi-Currency Support**: Native support for global billing with real-time exchange rate sync.
+- **Node Isolation**: One-click remote suspension and forced-logout protocols for security enforcement.
 
-```env
-VITE_API_URL=https://sourceplus.onrender.com
-```
-
-### Running the client locally
-
-```bash
-cd client
-npm install
-npm run dev        # http://localhost:5173 by default
-```
-
-Production build (used by Render Static Site):
-
-```bash
-cd client
-npm run build      # outputs to client/build
-```
+### 💾 Disaster Recovery
+- **Snapshot Engine**: Automated and manual JSON-based backup systems with secure cloud upload/restore capabilities.
 
 ---
 
-## Deployment on Render (recommended)
+## 🚦 Deployment Protocol
 
-### API service (Node)
+### ⚡ Quick Start (Local)
 
-- **Root directory**: `server`
-- **Build command**:
-  ```bash
-  cd server && npm install && npx prisma migrate deploy && npx prisma generate && npm run build
-  ```
-- **Start command**:
-  ```bash
-  cd server && npm start
-  ```
-- **Environment variables**: `DATABASE_URL`, `JWT_SECRET`, `PORT`
+1. **Initialize Dependencies**:
+   ```bash
+   npm run install:all
+   ```
 
-### Admin client (Static site)
+2. **Launch Infrastructure**:
+   ```bash
+   npm run dev
+   ```
 
-- **Root directory**: `client`
-- **Build command**:
-  ```bash
-  npm install && npm run build
-  ```
-- **Publish directory**: `build`
-- **Environment variables**: `VITE_API_URL=https://sourceplus.onrender.com`
+### 🌍 Cloud Deployment (Render/Production)
 
----
+**Backend Core (Node.js)**:
+- **Build**: `cd server && npm install && npx prisma migrate deploy && npx prisma generate && npm run build`
+- **Port**: `10000` (Managed via `PORT` environment variable)
 
-## Initial admin user
-
-On first boot, the backend seed ensures an admin account exists (idempotent):
-
-- Email: `admin@sourceplus.com`
-- Password: `Admin12345`
-- Role: `admin`
-
-Use these credentials to log in to the admin dashboard, then create additional users and change the password from there.
+**Frontend static site**:
+- **Build**: `npm install && npm run build`
+- **Output**: `client/build`
 
 ---
 
-## More details
+## 🔐 Initial Credentials
 
-For a detailed explanation of modules, database models, and request flows (in Arabic), see `SYSTEM_OVERVIEW_AR.md`.
+Upon first initialization, the system provisions an immutable root administrator:
+
+- **Identity**: `admin@sourceplus.com`
+- **Key**: `Admin12345`
+- **Role**: `admin` (Level 1 Authority)
+
+*It is recommended to rotate this key immediately upon first uplink.*
+
+---
+
+## 📖 Extended Documentation
+
+For detailed protocol specifications, database ERDs, and request-flow diagrams (available in Arabic), please refer to the `SYSTEM_OVERVIEW_AR.md`.
+
+---
+
+<div align="center">
+  <p>Built with precision by the <b>SourcePlus Engineering Team</b></p>
+  <p>© 2026 SourcePlus. All rights reserved.</p>
+</div>

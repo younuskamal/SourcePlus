@@ -7,17 +7,15 @@ export default defineConfig(({ mode }) => {
   return {
     server: {
       port: 3000,
-      host: '0.0.0.0'
+      host: '0.0.0.0',
+      hmr: {
+        host: '138.68.88.223'
+      }
     },
     build: {
       outDir: 'build'
     },
     plugins: [react()],
-    define: {
-      'import.meta.env.VITE_API_URL': JSON.stringify(
-        env.VITE_API_URL || 'https://sourceplus.onrender.com'
-      )
-    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.')

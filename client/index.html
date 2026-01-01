@@ -25,6 +25,15 @@
             sans: ['Inter', 'sans-serif'],
             arabic: ['Cairo', 'sans-serif'],
           },
+          animation: {
+            'shimmer': 'shimmer 1.5s infinite linear',
+          },
+          keyframes: {
+            shimmer: {
+              '0%': { transform: 'translateX(-100%)' },
+              '100%': { transform: 'translateX(300%)' },
+            },
+          },
           colors: {
             primary: {
               50: 'rgb(var(--color-primary-50) / <alpha-value>)',

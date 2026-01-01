@@ -24,23 +24,22 @@ import publicPlanRoutes from './modules/plans/public.routes.js';
 
 export const registerRoutes = (app: FastifyInstance) => {
   app.register(authRoutes, { prefix: '/api/auth' });
-  app.register(userRoutes, { prefix: '/users' });
-  app.register(planRoutes, { prefix: '/plans' });
-  app.register(publicPlanRoutes, { prefix: '/api/plans' });
-  app.register(currencyRoutes, { prefix: '/currencies' });
-  app.register(licenseRoutes, { prefix: '/licenses' });
-  app.register(notificationRoutes, { prefix: '/notifications' });
-  app.register(ticketRoutes, { prefix: '/tickets' });
-  app.register(versionRoutes, { prefix: '/versions' });
-  app.register(settingsRoutes, { prefix: '/settings' });
-  app.register(auditRoutes, { prefix: '/audit-logs' });
-  app.register(analyticsRoutes, { prefix: '/analytics' });
-  app.register(backupRoutes, { prefix: '/backup' });
+  app.register(userRoutes, { prefix: '/api/users' });
+  app.register(planRoutes, { prefix: '/api/plans' });
+  app.register(publicPlanRoutes, { prefix: '/api/public/plans' });
+  app.register(currencyRoutes, { prefix: '/api/currencies' });
+  app.register(licenseRoutes, { prefix: '/api/licenses' });
+  app.register(notificationRoutes, { prefix: '/api/notifications' });
+  app.register(ticketRoutes, { prefix: '/api/tickets' });
+  app.register(versionRoutes, { prefix: '/api/versions' });
+  app.register(settingsRoutes, { prefix: '/api/settings' });
+  app.register(auditRoutes, { prefix: '/api/audit-logs' });
+  app.register(analyticsRoutes, { prefix: '/api/analytics' });
+  app.register(backupRoutes, { prefix: '/api/backup' });
   app.register(clientRoutes, { prefix: '/api/pos' });
   app.register(clinicRoutes, { prefix: '/api/clinics' });
   app.register(subscriptionRoutes, { prefix: '/api/subscription' });
-  // app.register(supportRoutes, { prefix: '/api/support' }); // Disabled: Conflicts with new support/messages.ts
   app.register(messagesRoutes, { prefix: '/api/messages' });
-  app.register(supportMessagesRoutes, { prefix: '/api' }); // Prefix added to avoid conflicts
-  app.register(trafficRoutes, { prefix: '/traffic' });
+  app.register(supportMessagesRoutes, { prefix: '/api' });
+  app.register(trafficRoutes, { prefix: '/api/traffic' });
 };

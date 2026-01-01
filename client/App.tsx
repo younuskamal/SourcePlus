@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Layout from './components/Layout';
-import ClinicLayout from './components/ClinicLayout';
 import Dashboard from './pages/Dashboard';
 import Licenses from './pages/Licenses';
 import Plans from './pages/Plans';
@@ -17,12 +16,13 @@ import Login from './pages/Login';
 import Clinics from './pages/Clinics';
 import ClinicDashboard from './pages/ClinicDashboard';
 import SupportMessages from './pages/SupportMessages';
-import ClinicControlPanel from './pages/ClinicControlPanel';
-import { useTranslation } from './hooks/useTranslation';
 import { User } from './types';
 import { api } from './services/api';
 import { AutoRefreshProvider } from './hooks/useAutoRefresh';
 import { SystemProvider, useSystem } from './context/SystemContext';
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import ClinicControlPanel from './pages/ClinicControlPanel';
+import ClinicDetails from './pages/ClinicDetails';
 
 // --- Color Utility Functions ---
 const hexToRgb = (hex: string): string | null => {
@@ -170,13 +170,8 @@ function AppContent() {
       }
     }
 
-    if (['clinic-dashboard', 'clinics', 'manage-clinics', 'support-messages'].some(p => currentPage.startsWith(p)) && user.role !== 'admin') {
+    if (['clinic-dashboard', 'clinics', 'manage-clinics', 'support-messages'].includes(currentPage) && user.role !== 'admin') {
       return <div className="p-8 text-center text-slate-500 dark:text-slate-400">Access Restricted</div>;
-    }
-
-    if (currentPage.startsWith('manage-clinics/')) {
-      const clinicId = currentPage.split('/')[1];
-      return <ClinicControlPanel clinicId={clinicId} setPage={setPage} />;
     }
 
     switch (currentPage) {
@@ -193,31 +188,35 @@ function AppContent() {
       case 'team': return <Team currentLang={i18n.language} />;
       case 'api': return <ApiDocs currentLang={i18n.language} />;
       case 'audit-logs': return <AuditLogs currentLang={i18n.language} />;
-      case 'clinics': return <Clinics viewMode="requests" setPage={setPage} />;
-      case 'manage-clinics': return <Clinics viewMode="manage" setPage={setPage} />;
+      case 'clinics': return <Clinics viewMode="requests" />;
+      case 'manage-clinics': return <Clinics viewMode="manage" />;
       case 'support-messages': return <SupportMessages />;
       default: return product === 'CLINIC'
         ? <ClinicDashboard setPage={setPage} />
         : <Dashboard currentLang={i18n.language} setPage={setPage} />;
     }
   };
-  const CurrentLayout = product === 'CLINIC' ? ClinicLayout : Layout;
-
   return (
     <AutoRefreshProvider tick={refreshTick} requestRefresh={requestRefresh}>
-      <CurrentLayout
-        currentPage={currentPage}
-        setPage={setPage}
-        user={user}
-        onLogout={() => {
-          api.logout();
-          setUser(null);
-        }}
-        darkMode={darkMode}
-        setDarkMode={setDarkMode}
-      >
-        {renderPage()}
-      </CurrentLayout>
+      <Routes>
+        <Route path="/clinics/:id/control" element={<ClinicControlPanel />} />
+        <Route path="/clinics/:id/details" element={<ClinicDetails />} />
+        <Route path="*" element={
+          <Layout
+            currentPage={currentPage}
+            setPage={setPage}
+            user={user}
+            onLogout={() => {
+              api.logout();
+              setUser(null);
+            }}
+            darkMode={darkMode}
+            setDarkMode={setDarkMode}
+          >
+            {renderPage()}
+          </Layout>
+        } />
+      </Routes>
     </AutoRefreshProvider>
   );
 }

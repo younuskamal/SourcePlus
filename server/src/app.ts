@@ -22,6 +22,8 @@ export const buildApp = () => {
       'https://sourcef.onrender.com',
       'http://localhost:5173',
       'http://localhost:3000',
+      'http://138.68.88.223:3000',
+      'http://138.68.88.223',
       'http://138.68.88.223:4080'
     ],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -41,8 +43,8 @@ export const buildApp = () => {
   app.register(authPlugin);
   app.register(clientPlugin);
 
-  app.get('/', async () => ({ status: 'ok' }));
-  app.get('/health', async () => ({ healthy: true }));
+  app.get('/api', async () => ({ status: 'ok' }));
+  app.get('/api/health', async () => ({ healthy: true }));
 
   registerRoutes(app);
 

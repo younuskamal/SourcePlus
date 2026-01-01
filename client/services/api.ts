@@ -1,7 +1,6 @@
 import { LicenseKey, SubscriptionPlan, CurrencyRate, Notification, SupportRequest, AppVersion, SystemSettings, AuditLog, Transaction, User, ProductType, Clinic, RegistrationStatus, ClinicSubscriptionStatus } from '../types';
 const API_URL =
-  import.meta.env.VITE_API_URL ||
-  (window.location.hostname === 'localhost' ? 'http://localhost:3001' : 'https://sourceplus.onrender.com');
+  import.meta.env.VITE_API_URL || '';
 
 const getStorage = () => {
   const localAccess = localStorage.getItem('sp_access_token');
@@ -97,6 +96,35 @@ const doRequest = async <T>(path: string, options: RequestInit = {}, retry = tru
 
 export const api = {
   clearTokens,
+  // Helper methods for generic requests
+  get<T>(path: string, options: RequestInit = {}) {
+    return doRequest<T>(path.startsWith('/api') ? path : `/api${path}`, { ...options, method: 'GET' });
+  },
+  post<T>(path: string, body?: any, options: RequestInit = {}) {
+    return doRequest<T>(path.startsWith('/api') ? path : `/api${path}`, {
+      ...options,
+      method: 'POST',
+      body: body ? JSON.stringify(body) : undefined
+    });
+  },
+  put<T>(path: string, body?: any, options: RequestInit = {}) {
+    return doRequest<T>(path.startsWith('/api') ? path : `/api${path}`, {
+      ...options,
+      method: 'PUT',
+      body: body ? JSON.stringify(body) : undefined
+    });
+  },
+  patch<T>(path: string, body?: any, options: RequestInit = {}) {
+    return doRequest<T>(path.startsWith('/api') ? path : `/api${path}`, {
+      ...options,
+      method: 'PATCH',
+      body: body ? JSON.stringify(body) : undefined
+    });
+  },
+  delete<T>(path: string, options: RequestInit = {}) {
+    return doRequest<T>(path.startsWith('/api') ? path : `/api${path}`, { ...options, method: 'DELETE' });
+  },
+
   async login(email: string, password: string, rememberMe: boolean = false) {
     const data = await doRequest<{
       accessToken: string;
@@ -119,179 +147,179 @@ export const api = {
     });
   },
   async ping() {
-    return doRequest<{ healthy: boolean }>('/health', {}, false);
+    return doRequest<{ healthy: boolean }>('/api/health', {}, false);
   },
   getLicenses() {
-    return doRequest<(LicenseKey & { plan?: SubscriptionPlan })[]>('/licenses');
+    return doRequest<(LicenseKey & { plan?: SubscriptionPlan })[]>('/api/licenses');
   },
   generateLicense(planId: string, customerName: string, quantity = 1) {
-    return doRequest<LicenseKey[]>('/licenses/generate', {
+    return doRequest<LicenseKey[]>('/api/licenses/generate', {
       method: 'POST',
       body: JSON.stringify({ planId, customerName, quantity })
     });
   },
   updateLicense(id: string, payload: Partial<LicenseKey>) {
-    return doRequest<LicenseKey>(`/licenses/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+    return doRequest<LicenseKey>(`/api/licenses/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
   },
   renewLicense(id: string, months: number) {
-    return doRequest<LicenseKey>(`/licenses/${id}/renew`, { method: 'POST', body: JSON.stringify({ months }) });
+    return doRequest<LicenseKey>(`/api/licenses/${id}/renew`, { method: 'POST', body: JSON.stringify({ months }) });
   },
   togglePause(id: string) {
-    return doRequest<LicenseKey>(`/licenses/${id}/pause`, { method: 'POST' });
+    return doRequest<LicenseKey>(`/api/licenses/${id}/pause`, { method: 'POST' });
   },
   revoke(id: string) {
-    return doRequest<LicenseKey>(`/licenses/${id}/revoke`, { method: 'POST' });
+    return doRequest<LicenseKey>(`/api/licenses/${id}/revoke`, { method: 'POST' });
   },
   deleteLicense(id: string) {
-    return doRequest<void>(`/licenses/${id}`, { method: 'DELETE' });
+    return doRequest<void>(`/api/licenses/${id}`, { method: 'DELETE' });
   },
 
   getPlans() {
-    return doRequest<SubscriptionPlan[]>('/plans');
+    return doRequest<SubscriptionPlan[]>('/api/plans');
   },
   createPlan(payload: any) {
-    return doRequest<SubscriptionPlan>('/plans', { method: 'POST', body: JSON.stringify(payload) });
+    return doRequest<SubscriptionPlan>('/api/plans', { method: 'POST', body: JSON.stringify(payload) });
   },
   updatePlan(id: string, payload: any) {
-    return doRequest<SubscriptionPlan>(`/plans/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+    return doRequest<SubscriptionPlan>(`/api/plans/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
   },
   deletePlan(id: string) {
-    return doRequest<void>(`/plans/${id}`, { method: 'DELETE' });
+    return doRequest<void>(`/api/plans/${id}`, { method: 'DELETE' });
   },
   togglePlanStatus(id: string, action: 'activate' | 'deactivate') {
-    return doRequest<any>(`/plans/${id}/${action}`, { method: 'PATCH' });
+    return doRequest<any>(`/api/plans/${id}/${action}`, { method: 'PATCH' });
   },
   getCurrencies() {
-    return doRequest<CurrencyRate[]>('/currencies');
+    return doRequest<CurrencyRate[]>('/api/currencies');
   },
   createCurrency(payload: any) {
-    return doRequest<CurrencyRate>('/currencies', { method: 'POST', body: JSON.stringify(payload) });
+    return doRequest<CurrencyRate>('/api/currencies', { method: 'POST', body: JSON.stringify(payload) });
   },
   updateCurrency(id: string, payload: any) {
-    return doRequest<CurrencyRate>(`/currencies/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+    return doRequest<CurrencyRate>(`/api/currencies/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
   },
   deleteCurrency(id: string) {
-    return doRequest<void>(`/currencies/${id}`, { method: 'DELETE' });
+    return doRequest<void>(`/api/currencies/${id}`, { method: 'DELETE' });
   },
   syncCurrencies() {
-    return doRequest<{ updated: number }>('/currencies/sync', { method: 'POST' });
+    return doRequest<{ updated: number }>('/api/currencies/sync', { method: 'POST' });
   },
   getNotifications(productType?: ProductType) {
     const q = productType ? `?productType=${productType}` : '';
-    return doRequest<Notification[]>(`/notifications${q}`);
+    return doRequest<Notification[]>(`/api/notifications${q}`);
   },
   sendNotification(payload: any) {
-    return doRequest<Notification>('/notifications', { method: 'POST', body: JSON.stringify(payload) });
+    return doRequest<Notification>('/api/notifications', { method: 'POST', body: JSON.stringify(payload) });
   },
   deleteNotification(id: string) {
-    return doRequest<void>(`/notifications/${id}`, { method: 'DELETE' });
+    return doRequest<void>(`/api/notifications/${id}`, { method: 'DELETE' });
   },
   clearNotifications() {
-    return doRequest<void>('/notifications', { method: 'DELETE' });
+    return doRequest<void>('/api/notifications', { method: 'DELETE' });
   },
   getTickets(productType?: ProductType) {
     const q = productType ? `?productType=${productType}` : '';
-    return doRequest<SupportRequest[]>(`/tickets${q}`);
+    return doRequest<SupportRequest[]>(`/api/tickets${q}`);
   },
   createTicket(payload: any) {
-    return doRequest<SupportRequest>('/tickets', { method: 'POST', body: JSON.stringify(payload) });
+    return doRequest<SupportRequest>('/api/tickets', { method: 'POST', body: JSON.stringify(payload) });
   },
   replyTicket(id: string, message: string) {
-    return doRequest(`/tickets/${id}/reply`, { method: 'POST', body: JSON.stringify({ message }) });
+    return doRequest(`/api/tickets/${id}/reply`, { method: 'POST', body: JSON.stringify({ message }) });
   },
   resolveTicket(id: string) {
-    return doRequest(`/tickets/${id}/resolve`, { method: 'POST' });
+    return doRequest(`/api/tickets/${id}/resolve`, { method: 'POST' });
   },
   deleteTicket(id: string) {
-    return doRequest<void>(`/tickets/${id}`, { method: 'DELETE' });
+    return doRequest<void>(`/api/tickets/${id}`, { method: 'DELETE' });
   },
   getVersions() {
-    return doRequest<AppVersion[]>('/versions');
+    return doRequest<AppVersion[]>('/api/versions');
   },
   createVersion(payload: any) {
-    return doRequest<AppVersion>('/versions', { method: 'POST', body: JSON.stringify(payload) });
+    return doRequest<AppVersion>('/api/versions', { method: 'POST', body: JSON.stringify(payload) });
   },
   updateVersion(id: string, payload: any) {
-    return doRequest<AppVersion>(`/versions/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+    return doRequest<AppVersion>(`/api/versions/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
   },
   deleteVersion(id: string) {
-    return doRequest<void>(`/versions/${id}`, { method: 'DELETE' });
+    return doRequest<void>(`/api/versions/${id}`, { method: 'DELETE' });
   },
   getLatestVersion() {
-    return doRequest<AppVersion | {}>('/versions/latest');
+    return doRequest<AppVersion | {}>('/api/versions/latest');
   },
   getSettings() {
-    return doRequest<SystemSettings>('/settings');
+    return doRequest<SystemSettings>('/api/settings');
   },
   updateSettings(payload: Record<string, any>) {
-    return doRequest('/settings', { method: 'PUT', body: JSON.stringify(payload) });
+    return doRequest('/api/settings', { method: 'PUT', body: JSON.stringify(payload) });
   },
   resetSystem() {
-    return doRequest<{ message: string }>('/settings/reset', { method: 'POST' });
+    return doRequest<{ message: string }>('/api/settings/reset', { method: 'POST' });
   },
   getRemoteConfig() {
-    return doRequest<Record<string, any>>('/settings/remote');
+    return doRequest<Record<string, any>>('/api/settings/remote');
   },
   updateRemoteConfig(payload: Record<string, any>) {
-    return doRequest('/settings/remote', { method: 'PUT', body: JSON.stringify(payload) });
+    return doRequest('/api/settings/remote', { method: 'PUT', body: JSON.stringify(payload) });
   },
   getAuditLogs(productType?: ProductType) {
     const q = productType ? `?productType=${productType}` : '';
-    return doRequest<AuditLog[]>(`/audit-logs${q}`);
+    return doRequest<AuditLog[]>(`/api/audit-logs${q}`);
   },
   clearAuditLogs() {
-    return doRequest<void>('/audit-logs', { method: 'DELETE' });
+    return doRequest<void>('/api/audit-logs', { method: 'DELETE' });
   },
   getStats() {
-    return doRequest<any>('/analytics/stats');
+    return doRequest<any>('/api/analytics/stats');
   },
   getServerHealth() {
-    return doRequest<any>('/analytics/server-health');
+    return doRequest<any>('/api/analytics/server-health');
   },
   getTransactions() {
-    return doRequest<Transaction[]>('/analytics/transactions');
+    return doRequest<Transaction[]>('/api/analytics/transactions');
   },
   getFinancialStats() {
-    return doRequest('/analytics/financial-stats');
+    return doRequest('/api/analytics/financial-stats');
   },
   getRevenueHistory() {
-    return doRequest<{ name: string; revenue: number }[]>('/analytics/revenue-history');
+    return doRequest<{ name: string; revenue: number }[]>('/api/analytics/revenue-history');
   },
   getUsers() {
-    return doRequest<User[]>('/users');
+    return doRequest<User[]>('/api/users');
   },
   createUser(payload: any) {
-    return doRequest<User>('/users', { method: 'POST', body: JSON.stringify(payload) });
+    return doRequest<User>('/api/users', { method: 'POST', body: JSON.stringify(payload) });
   },
   deleteUser(id: string) {
-    return doRequest<void>(`/users/${id}`, { method: 'DELETE' });
+    return doRequest<void>(`/api/users/${id}`, { method: 'DELETE' });
   },
   getBackups() {
-    return doRequest<{ filename: string; size: number; createdAt: string }[]>('/backup');
+    return doRequest<{ filename: string; size: number; createdAt: string }[]>('/api/backup');
   },
   createBackup() {
-    return doRequest<{ message: string; filename: string }>('/backup', { method: 'POST' });
+    return doRequest<{ message: string; filename: string }>('/api/backup', { method: 'POST' });
   },
   restoreBackup(filename: string) {
-    return doRequest<{ message: string }>(`/backup/restore/${filename}`, { method: 'POST' });
+    return doRequest<{ message: string }>(`/api/backup/restore/${filename}`, { method: 'POST' });
   },
   deleteBackup(filename: string) {
-    return doRequest<{ message: string }>(`/backup/${filename}`, { method: 'DELETE' });
+    return doRequest<{ message: string }>(`/api/backup/${filename}`, { method: 'DELETE' });
   },
   uploadBackup(file: File) {
     const formData = new FormData();
     formData.append('file', file);
-    return doRequest<{ message: string; filename: string }>('/backup/upload', { method: 'POST', body: formData });
+    return doRequest<{ message: string; filename: string }>('/api/backup/upload', { method: 'POST', body: formData });
   },
   getTrafficLogs(params?: any) {
     const queryString = params ? '?' + new URLSearchParams(params).toString() : '';
-    return doRequest<any>(`/traffic${queryString}`);
+    return doRequest<any>(`/api/traffic${queryString}`);
   },
   getTrafficLogDetails(id: string) {
-    return doRequest<any>(`/traffic/${id}`);
+    return doRequest<any>(`/api/traffic/${id}`);
   },
   clearTrafficLogs() {
-    return doRequest<void>('/traffic/clear', { method: 'POST' });
+    return doRequest<void>('/api/traffic/clear', { method: 'POST' });
   },
 
   // -- Clinics --
@@ -542,3 +570,5 @@ export const api = {
     return doRequest<{ unreadCount: number }>('/api/messages/conversations/unread/count');
   }
 };
+
+export default api;

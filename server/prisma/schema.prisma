@@ -16,6 +16,7 @@ model Clinic {
   phone         String?
   address       String?
   systemVersion String?
+  invoiceFooter String?
   status        RegistrationStatus @default(PENDING)
   
   licenseId     String?            @unique
